@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% from "macros-forms.html" import state, errors %}
+{% block title %}{% if doc_id == 0 %}Add new endorsement{% else %}Edit endorsement msc:e{{ doc_id }}{% endif %}{% endblock %}
+{% block main %}
+  <form action="{{ url_for('edit_record', series='e', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
+    {{ form.hidden_tag() }}
+    <div class="form-group">
+      {{ form.citation.label(class="control-label") }}
+      {{ form.citation(placeholder="Full, formatted citation", class="form-control") }}
+      <ul class="help-block">
+        <li>APA format is preferred, but you can use another format if desired.</li>
+      </ul>
+    </div>
+    <p class="help-block">
+      If the organization you need is not listed, you can add it using
+      the following link.
+    </p>
+    <div class="form-group">
+      <a href="{{ url_for('edit_record', series='g', number=0) }}" target="_blank" class="btn btn-warning">Add organization</a>
+    </div>
+    <div class="form-group">
+      {{ form.originators.label(class="control-label") }}
+      {{ form.originators(class="form-control", style="width:auto;") }}
+      <ul class="help-block">
+        <li>Note that schemes are assumed to be endorsed by their maintaining
+          organizations; do not record such endorsements here.</li>
+      </ul>
+    </div>
+    <div class="form-group{{ state(form.issued) }}">
+      {{ form.issued.label(class="control-label") }}
+      {{ form.issued(class="form-control", style="width:auto;") }}
+      {{ errors(form.issued) }}
+      <ul class="help-block">
+        <li>Use "endorsement date" if the endorsement was a one-off (i.e. it is
+          not reviewed periodically).</li>
+      </ul>
+    </div>
+    <div class="form-group">
+      <span class="{{ state(form.valid_from) }}">{{ form.valid_from.label(class="control-label") }}</span>
+      <div class="form-inline">
+        <span class="{{ state(form.valid_from) }}">{{ form.valid_from(class="form-control") }}</span>
+        <span class="{{ state(form.valid_to) }}">{{ form.valid_to.label(class="control-label") }}
+        {{ form.valid_to(class="form-control") }}</span>
+      </div>
+      {{ errors(form.valid_from) }}
+      {{ errors(form.valid_to) }}
+      <ul class="help-block">
+        <li>Use "endorsement period" if the endorsement has been or may be
+          withdrawn at some point.</li>
+      </ul>
+    </div>
+    <p class="help-block">
+      If the scheme you need is not listed, you can add it using
+      the following link.
+    </p>
+    <div class="form-group">
+      <a href="{{ url_for('edit_record', series='m', number=0) }}" target="_blank" class="btn btn-warning">Add scheme</a>
+    </div>
+    <fieldset>
+    <legend>{{ form.endorsed_schemes.label.text }}</legend>
+    <div class="form-group">
+      <ol class="form-list">
+      {% for f in form.endorsed_schemes %}
+        <li>
+          {{ f['id'].label(class="control-label") }}
+          {{ f['id'](class="form-control") }}
+          {{ f.version.label(class="control-label") }}
+          {{ f.version(class="form-control", style="width:auto;") }}
+        </li>
+      {% endfor %}
+      </ol>
+    </div>
+    </fieldset>
+    <fieldset>
+    <legend>{{ form.locations.label.text }}</legend>
+    <div class="form-group">
+      <ol class="form-list">
+      {% for f in form.locations %}
+        <li>
+          <div class="{{ state(f.url) }}">
+          {{ f.url.label(class="control-label") }}
+          {{ f.url(placeholder="URL e.g. https://www...", class="form-control") }}
+          {{ errors(f.url) }}
+          </div>
+          <div class="{{ state(f['type']) }}">
+          {{ errors(f['type']) }}
+          </div>
+        </li>
+      {% endfor %}
+      </ol>
+    </div>
+    </fieldset>
+    <fieldset>
+    <legend>{{ form.identifiers.label.text }}</legend>
+    <datalist id="id-schemes">
+      {% for idScheme in idSchemes %}
+      <option>{{ idScheme }}</option>
+      {% endfor %}
+    </datalist>
+    <div class="form-group">
+      <ol class="form-list">
+      {% for f in form.identifiers %}
+        <li>
+        {{ f['id'].label(class="control-label") }}
+        {{ f['id'](placeholder="e.g. 10.001/1234", class="form-control") }}
+        {{ f.scheme.label(class="control-label") }}
+        {{ f.scheme(class="form-control", list="id-schemes", style="width:auto;") }}
+        </li>
+      {% endfor %}
+      </ol>
+    </div>
+    </fieldset>
+    <div class="form-group">
+      <button class="btn btn-primary">Save changes</button>
+      <a href="{{ url_for('hello') }}" class="btn btn-default">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

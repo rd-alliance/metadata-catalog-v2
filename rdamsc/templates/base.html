@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  {% block head %}
+  <title>{% block title %}{% endblock %}{% if self.title() %} – {% endif %}Metadata Standards Catalog</title>
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,400i,700" rel="stylesheet">
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bootstrap.min.css') }}" />
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/msc.css') }}" />
+  <link rel="stylesheet" type="text/css" href="https://netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css">
+  {% endblock %}
+</head>
+<body>
+  <header class="navbar navbar-inverse navbar-static-top">
+    <nav class="container">
+      <div class="navbar-header">
+        <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+          <span class="sr-only">Toggle navigation</span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="{{ url_for('hello') }}">Metadata Standards Catalog</a>
+      </div>
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class="nav navbar-nav navbar-right">
+          <li><a href="{{ url_for('scheme_search') }}">Search</a></li>
+          {% if current_user.is_authenticated %}
+          <li><a href="{{ url_for('auth.edit_profile') }}">My profile</a></li>
+          <li><a href="{{ url_for('auth.logout') }}">Sign out</a></li>
+          {% else %}
+          <li><a href="{{ url_for('auth.login') }}">Sign in</a></li>
+          {% endif %}
+        </ul>
+      </div>
+    </nav>
+  </header>
+  <main class="container">
+  <h1>{% if self.title() %}{{ self.title() }}{% else %}Metadata Standards Catalog{% endif %}</h1>
+  {% with messages = get_flashed_messages(with_categories=True, category_filter=['error', 'message', 'success', 'warning']) %}
+  {% for category, message in messages %}
+  <div class="alert alert-{% if category == 'error' %}danger{% elif category == 'success' %}success{% elif category == 'warning' %}warning{% else %}info{% endif %} alert-dismissible" role="alert">
+    <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+    <p>{{ message|safe }}</p>
+  </div>
+  {% endfor %}
+  {% endwith %}
+  {% block main %}{% endblock %}
+  </main>
+  <footer class="navbar">
+    <div class="container">
+      <ul class="nav navbar-nav">
+        <li><a href="https://www.github.com/rd-alliance/metadata-catalog-dev"><i class="fa fa-github-square"></i>&ensp;github</a></li>
+        <li><a href="https://twitter.com/resdatall"><i class="fa fa-twitter-square"></i>&ensp;@twitter</a></li>
+        <li><a href="https://www.linkedin.com/profile/view?id=272003890&trk=nav_responsive_tab_profile"><i class="fa fa-linkedin-square"></i>&ensp;linkedin</a></li>
+        <li><a href="https://www.facebook.com/pages/Research-Data-Alliance/459608890798924"><i class="fa fa-facebook-square"></i>&ensp;facebook</a></li>
+      </ul>
+    </div>
+  </footer>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+  <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/forms.js') }}"></script>
+</body>
+</html>

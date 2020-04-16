@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% from "macros-forms.html" import state, errors %}
+{% block title %}Create Profile{% endblock %}
+{% block main %}
+  <p>
+    As this is the first time you signed in on this website with that OpenID,
+    please create a profile.
+  </p>
+  <form action="{{ url_for('create_profile') }}" method="post" accept-charset="utf-8" class="form-horizontal">
+    {{ form.hidden_tag() }}
+    <div class="form-group {{ state(form.name) }}">
+      {{ form.name.label(class="col-sm-3 control-label") }}
+      <div class="col-sm-9">
+        {{ form.name(placeholder="Your full name", class="form-control") }}
+      </div>
+    </div>
+    <div class="form-group">
+      {{ form.email.label(class="col-sm-3 control-label") }}
+      <div class="col-sm-9">
+        {{ form.email(placeholder="Valid email address", class="form-control") }}
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="col-sm-offset-3 col-sm-9">
+        <button class="btn btn-primary">Create profile</button>
+        <input type=hidden name=next value="{{ next }}">
+      </div>
+    </div>
+  </form>
+  <p>
+    Your email address will be used to identify your contributions in version control, and may be used to contact you to discuss your contributions, or to inform you of upcoming changes. We will not sell, rent or trade any personal information you provide to us.
+  </p>
+  <p>
+    If you don't want to proceed, you can <a href="{{ url_for('logout') }}">sign out</a> again.
+  </p>
+{% endblock %}

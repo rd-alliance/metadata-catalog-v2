@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}{{ record['title'] }}{% endblock %}
+{% block main %}
+  {% if 'description' in record %}
+  <div class="description">{{ record['description']|safe }}</div>
+  {% endif %}
+  {% if 'types' in record %}
+  <div class="types">
+    <dl class="dl-horizontal">
+      <dt>Tool type</dt>
+      {% for type in record['types'] %}
+      <dd>{{ type }}</dd>
+      {% endfor %}
+    </dl>
+  </div>
+  {% endif %}
+  {% if 'locations' in record %}
+  <div class="locations">
+    <h2>Links and documentation</h2>
+    <ul class="locations list-inline">
+    {% for location in record['locations'] %}
+      {% if location['type'] == 'website' %}
+      <li><a class="btn btn-special" href="{{ location['url'] }}">Visit website</a></li>
+      {% elif location['type'] == 'document' %}
+      <li><a class="btn btn-special" href="{{ location['url'] }}">View documentation</a></li>
+      {% elif location['type'] == 'application' %}
+      <li><a class="btn btn-special" href="{{ location['url'] }}">Use tool online</a></li>
+      {% elif location['type'] == 'service' %}
+      <li><a class="btn btn-special" href="{{ location['url'] }}">Service endpoint</a></li>
+      {% endif %}
+    {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% if 'maintainers' in relations or 'funders' in relations or 'creators' in record %}
+  <div class="organizations">
+    <h2>Responsible people and organizations</h2>
+    <ul>
+    {% for creator in record['creators'] %}
+      <li>
+        <p>Creator: {% if 'fullName' in creator %}{{ creator['fullName'] }}{% else %}{{ creator['givenName'] }} {{ creator['familyName'] }}{% endif %}</p>
+      </li>
+    {% endfor %}
+    {% for org in relations['maintainers'] %}
+      <li>
+        <p>Maintainer: {{ org['name'] }}</p>
+      {% if 'locations' in org %}
+        <ul class="locations">
+        {% for location in org['locations'] %}
+          <li><a href="{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+      </li>
+    {% endfor %}
+    {% for org in relations['funders'] %}
+      <li>
+        <p>Funder: {{ org['name'] }}</p>
+      {% if 'locations' in org %}
+        <ul class="locations">
+        {% for location in org['locations'] %}
+          <li><a href="{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+      </li>
+    {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  <div class="identifiers">
+    <h2>Identifiers</h2>
+    <dl class="dl-horizontal">
+      <dt>Internal MSC ID</dt><dd><a href="{{ url_for('display', series='t', number=record.doc_id) }}">msc:t{{ record.doc_id }}</a></dd>
+    {% for identifier in record['identifiers'] %}
+      {% if identifier['scheme'] == 'DOI' %}
+      <dt>DOI</dt><dd><a href="https://doi.org/{{ identifier['id'][4:] }}">{{ identifier['id'] }}</a></dd>
+      {% elif identifier['scheme'] %}
+      <dt>{{ identifier['scheme'] }}</dt><dd>{{ identifier['id'] }}</dd>
+      {% else %}
+      <dt>Other identifier</dt><dd>{{ identifier['id'] }}</dd>
+      {% endif %}
+    {% endfor %}
+    </dl>
+  </div>
+  {% if versions %}
+  <div class="versions">
+    <h2>Version history</h2>
+    <dl class="dl-horizontal">
+    {% for version in versions %}
+      <dt id="v{{ version['number'] }}">{{ version['date'] }}</dt>
+      <dd>
+        <p>version {{ version['number'] }}
+          {%- if 'title' in version %} &ndash; {{ version['title'] }}{% endif %}</p>
+        {% if 'description' in version %}
+        <div class="description">{{ version['description']|safe }}</div>
+        {% endif %}
+        {% if 'identifiers' in version %}
+        <dl class="dl-horizontal">
+        {% for identifier in version['identifiers'] %}
+          {% if identifier['scheme'] == 'DOI' %}
+          <dt>DOI</dt><dd><a href="https://doi.org/{{ identifier['id'][4:] }}">{{ identifier['id'] }}</a></dd>
+          {% elif identifier['scheme'] %}
+          <dt>{{ identifier['scheme'] }}</dt><dd>{{ identifier['id'] }}</dd>
+          {% else %}
+          <dt>Other identifier</dt><dd>{{ identifier['id'] }}</dd>
+          {% endif %}
+          {% if 'locations' in version %}
+          <ul class="locations list-inline">
+          {% for location in version['locations'] %}
+            {% if location['type'] == 'website' %}
+            <li><a class="btn btn-sm btn-special" href="{{ location['url'] }}">Visit website</a></li>
+            {% elif location['type'] == 'document' %}
+            <li><a class="btn btn-sm btn-special" href="{{ location['url'] }}">View documentation</a></li>
+            {% elif location['type'] == 'application' %}
+            <li><a class="btn btn-sm btn-special" href="{{ location['url'] }}">Use tool online</a></li>
+            {% elif location['type'] == 'service' %}
+            <li><a class="btn btn-sm btn-special" href="{{ location['url'] }}">Service endpoint</a></li>
+            {% endif %}
+          {% endfor %}
+          </ul>
+          {% endif %}
+        {% endfor %}
+        </dl>
+        {% endif %}
+      </dd>
+    {% endfor %}
+    </dl>
+  </div>
+  {% endif %}
+  {% if 'supported_schemes' in relations %}
+  <div class="related_schemes">
+    <h2>Supported metadata standards</h2>
+    <p>This tool is used with the following schemes:</p>
+    <ul>
+    {% for scheme in relations['supported_schemes'] %}
+      <li><a href="{{ url_for('display', series='m', number=scheme.doc_id) }}">{{ scheme['title'] }}</a></li>
+    {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% if current_user.is_authenticated %}
+  <aside>
+    <p>
+      <a href="{{ url_for('edit_record', series='t', number=record.doc_id) }}" class="btn btn-default">Edit this record</a>
+    </p>
+  </aside>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% from "macros-forms.html" import state, errors %}
+{% block title %}{% if doc_id == 0 %}Add new tool{% else %}Edit tool msc:t{{ doc_id }}{% endif %}{% if version %}, version {{ version }}{% endif %}{% endblock %}
+{% block main %}
+  <form action="{{ url_for('edit_record', series='t', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
+    {{ form.hidden_tag() }}
+    <div class="form-group">
+      {{ form.title.label(class="control-label") }}
+      {{ form.title(placeholder="Name of tool", class="form-control") }}
+    </div>
+    <div class="form-group">
+      {{ form.description.label(class="control-label") }}
+      {{ form.description(class="form-control") }}
+      <ul class="help-block">
+        <li>Please provide a short description of the intended use of the tool,
+          and its capabilities.</li>
+      </ul>
+    </div>
+    <p class="help-block">
+      If the scheme you need is not listed, you can add it using
+      the following link.
+    </p>
+    <div class="form-group">
+      <a href="{{ url_for('edit_record', series='m', number=0) }}" target="_blank" class="btn btn-warning">Add scheme</a>
+    </div>
+    <div class="form-group">
+      {{ form.supported_schemes.label(class="control-label") }}
+      {{ form.supported_schemes(class="form-control") }}
+      <ul class="help-block">
+        <li>Select a scheme if the tool accepts metadata conforming to it as
+          an input, or emits metadata conforming to it as an output.</li>
+      </ul>
+    </div>
+    <fieldset>
+    <legend>{{ form.types.label.text }}</legend>
+    <datalist id="tool-types">
+      {% for toolType in toolTypes %}
+      <option>{{ toolType }}</option>
+      {% endfor %}
+    </datalist>
+    <div class="form-group">
+      <ol class="form-list">
+      {% for f in form.types %}
+        <li class="{{ state(f) }}">
+          {{ f.label(class="control-label") }}
+          {{ f(list="tool-types", class="form-control") }}
+          {{ errors(f) }}
+        </li>
+      {% endfor %}
+      </ol>
+    </div>
+    </fieldset>
+    <fieldset>
+    <legend>{{ form.creators.label.text }}</legend>
+    <div class="form-group">
+      <ol class="form-list">
+      {% for f in form.creators %}
+        <li>
+          {{ f.givenName.label(class="control-label") }}
+          {{ f.givenName(class="form-control") }}
+          {{ f.familyName.label(class="control-label") }}
+          {{ f.familyName(class="form-control") }}
+          {{ f.fullName.label(class="control-label") }}
+          {{ f.fullName(class="form-control") }}
+        </li>
+      {% endfor %}
+      </ol>
+      <ul class="help-block">
+        <li>For preference, provide the given name(s) and family name.</li>
+        <li>Use "full name" to override the assumed given&ndash;family name
+          order, or if you are not sure how the name breaks down into given
+          and family.</li>
+      </ul>
+    </div>
+    </fieldset>
+    <p class="help-block">
+      If the organization you need is not listed, you can add it using
+      the following link.
+    </p>
+    <div class="form-group">
+      <a href="{{ url_for('edit_record', series='g', number=0) }}" target="_blank" class="btn btn-warning">Add organization</a>
+    </div>
+    <div class="form-group">
+      {{ form.maintainers.label(class="control-label") }}
+      {{ form.maintainers(class="form-control", style="width:auto;") }}
+    </div>
+    <div class="form-group">
+      {{ form.funders.label(class="control-label") }}
+      {{ form.funders(class="form-control", style="width:auto;") }}
+    </div>
+    <fieldset>
+    <legend>{{ form.locations.label.text }}</legend>
+    <div class="form-group">
+      <ol class="form-list">
+      {% for f in form.locations %}
+        <li>
+          <div class="{{ state(f.url) }}">
+          {{ f.url.label(class="control-label") }}
+          {{ f.url(placeholder="URL e.g. https://www...", class="form-control") }}
+          {{ errors(f.url) }}
+          </div>
+          <div class="{{ state(f['type']) }}">
+          {{ f['type'].label(class="control-label") }}
+          {{ f['type'](class="form-control", style="width:auto;") }}
+          {{ errors(f['type']) }}
+          </div>
+        </li>
+      {% endfor %}
+      </ol>
+    </div>
+    </fieldset>
+    <fieldset>
+    <legend>{{ form.identifiers.label.text }}</legend>
+    <datalist id="id-schemes">
+      {% for idScheme in idSchemes %}
+      <option>{{ idScheme }}</option>
+      {% endfor %}
+    </datalist>
+    <div class="form-group">
+      <ol class="form-list">
+      {% for f in form.identifiers %}
+        <li>
+        {{ f['id'].label(class="control-label") }}
+        {{ f['id'](placeholder="e.g. 10.001/1234", class="form-control") }}
+        {{ f.scheme.label(class="control-label") }}
+        {{ f.scheme(class="form-control", list="id-schemes", style="width:auto;") }}
+        </li>
+      {% endfor %}
+      </ol>
+    </div>
+    </fieldset>
+    {% if version %}
+    <input type="hidden" name="version" value="{{ version }}">
+    {% else %}
+    <fieldset>
+    <legend>{{ form.versions.label.text }}</legend>
+    <div class="form-group">
+      <ol class="form-list">
+      {% for f in form.versions %}
+        <li>
+          <div class="form-group{{ state(f.number) }}">
+            {{ f.number.label(class="control-label") }}
+            <div class="form-inline">
+              {{ f.number(class="form-control", style="width:auto;") }}
+              {% if f.number_old.data %}
+              {{ f.number_old() }}
+              <a href="{{ url_for('edit_record', series='t', number=doc_id) }}?version={{ f.number_old.data }}" target="_blank" class="btn btn-warning">Add version-specific details</a>
+              {% endif %}
+            </div>
+            {{ errors(f.number) }}
+            <ul class="help-block">
+              <li>Do not preface the version number with "version" or "v".</li>
+            </ul>
+          </div>
+          <div class="form-group{{ state(f.issued) }}">
+            {{ f.issued.label(class="control-label") }}
+            {{ f.issued(class="form-control", style="width:auto;") }}
+            {{ errors(f.issued) }}
+          </div>
+        </li>
+      {% endfor %}
+      </ol>
+    </div>
+    </fieldset>
+    {% endif %}
+    <div class="form-group">
+      <button class="btn btn-primary">Save changes</button>
+      {% if version %}
+      <a href="{{ url_for('edit_record', series='t', number=doc_id) }}" class="btn btn-default">Cancel &amp; edit main record</a>
+      {% elif doc_id == 0 %}
+      <a href="{{ url_for('hello') }}" class="btn btn-default">Cancel</a>
+      {% else %}
+      <a href="{{ url_for('display', series='t', number=doc_id) }}" class="btn btn-default">Cancel &amp; view record</a>
+      {% endif %}
+    </div>
+  </form>
+{% endblock %}

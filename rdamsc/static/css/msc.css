@@ -1,0 +1,187 @@
+/* Overrides and additions to the Bootstrap theme:
+ * https://getbootstrap.com/customize/?id=b9ba39cdf5905210784f439d75d04889
+ */
+
+/* A bit more space around the headings */
+
+h1, .h1, h2, .h2, h3, .h3 {
+	margin-top: 40px;
+	margin-bottom: 32px;
+}
+
+/* Descriptions may or may not be wrapped in a <p> */
+
+div.description {
+	margin: 0px 0px 11px;
+}
+
+div.description p:last-child {
+	margin-bottom: 0px;
+}
+
+/* Fix bad spacing in nested lists */
+
+ul ul,
+ul ol,
+ol ul,
+ol ol {
+	margin-bottom: 11px;
+}
+
+ul ul ul ul > li {
+	list-style-type: disc;
+	list-style-type: "–  ";
+}
+
+ul ul ul ul ul > li {
+	list-style-type: circle;
+	list-style-type: "»  ";
+}
+
+ul ul ul ul ul ul > li {
+	list-style-type: square;
+	list-style-type: "›  ";
+}
+
+div.types {
+	padding-top: 16px;
+}
+
+/* Displaying certain lists of links as series of buttons */
+
+div.keywords p,
+div.dataTypes p {
+	padding: 0px 0px 11px;
+}
+
+@media (min-width: 768px) {
+	div.keywords p,
+	div.dataTypes p,
+	div.types p {
+		padding: 13px 4px;
+		text-align: right;
+	}
+}
+div.keywords li a,
+div.dataTypes li a,
+ul.locations li a {
+	padding: 8px 16px;
+	margin: 4px 0px;
+}
+div.keywords li a.btn-special {
+	border: 1px solid #BCAAA4;
+	background-color: #D7CCC8;
+	color: black;
+}
+div.keywords li a.btn-special:active,
+div.keywords li a.btn-special:hover,
+div.keywords li a.btn-special:focus {
+	border: 1px solid #A1887F;
+	background-color: #BCAAA4;
+	color: black;
+}
+div.dataTypes li a.btn-special {
+	border: 1px solid #FFE082;
+	background-color: #FFECB3;
+	color: black;
+}
+div.dataTypes li a.btn-special:active,
+div.dataTypes li a.btn-special:hover,
+div.dataTypes li a.btn-special:focus {
+	border: 1px solid #FFD54F;
+	background-color: #FFE082;
+	color: black;
+}
+ul.locations li a.btn-special {
+	border: 1px solid #90CAF9;
+	background-color: #BBDEFB;
+	color: black;
+}
+ul.locations li a.btn-special:active,
+ul.locations li a.btn-special:hover,
+ul.locations li a.btn-special:focus {
+	border: 1px solid #64B5F6;
+	background-color: #90CAF9;
+	color: black;
+}
+
+/* Special formats for form controls */
+
+@media (min-width: 768px) {
+	.form-inline .form-control-narrow {
+		display: inline-block;
+		width: 221px;
+	}
+	.form-group-wide {
+		width: 100%;
+	}
+	.form-group-wide .input-group {
+		width: 75%;
+	}
+}
+
+.form-inline label,
+.form-inline input {
+	margin-right: 16px;
+}
+
+.form-block .form-group + .form-group {
+	margin-top: 32px;
+}
+.form-block .help-block {
+	margin-top: 16px;
+	margin-bottom: 16px;
+}
+.form-block .help-block li + li {
+	margin-top: 8px;
+}
+
+@media (max-width: 768px) {
+	ol.form-list {
+		padding: 0px 1.5em;
+	}
+}
+
+ol.form-list li + li {
+	padding-top: 24px;
+}
+
+fieldset {
+  margin-bottom: 24px;
+}
+
+/* Special formatting for the footer */
+
+aside {
+	margin-top: 40px;
+}
+
+footer {
+	margin-top: 64px;
+	background-color: #eee;
+	background-image: linear-gradient(#bdbdbd, #eee 17%, #eee 67%, #fff);
+	color: #757575;
+}
+footer.navbar {
+	border-radius: 0px;
+	border: none;
+}
+footer div.container {
+	text-align: center;
+}
+
+footer ul.navbar-nav {
+	float: none;
+	display: inline-block;
+}
+
+footer .nav > li > a {
+	color: #757575;
+}
+
+footer .nav > li > a:hover,
+footer .nav > li > a:focus {
+    text-decoration: none;
+    background-color: #f5f5f5;
+	background-image: linear-gradient(#bdbdbd, #f5f5f5 17%, #f5f5f5 67%, #fff);
+}

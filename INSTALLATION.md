@@ -22,6 +22,11 @@ Activate it:
 venv\Scripts\activate
 ```
 
+Install the required Python packages
+
+```bash
+pip install Flask Flask-WTF flask-login Flask-OpenID rauth oauth2client flask-httpauth passlib tinydb tinyrecord rdflib dulwich flask-cors
+```
 
 ## Pre-requisite software
 

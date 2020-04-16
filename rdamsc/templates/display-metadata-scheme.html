@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% block title %}{{ record['title'] }}{% endblock %}
+{% block main %}
+  {% if 'description' in record %}
+  <div class="description">{{ record['description']|safe }}</div>
+  {% endif %}
+  {% if 'keywords' in record %}
+  <div class="keywords clearfix">
+    <p class="col-sm-2">Used in</p>
+    <ul class="col-sm-10 list-inline">
+    {% for keyword in record['keywords'] %}
+      <li><a class="btn btn-special" href="{{ url_for('subject', subject=toURLSlug(keyword)) }}">{{ keyword }}</a></li>
+    {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% if 'dataTypes' in record %}
+  <div class="dataTypes clearfix">
+    <p class="col-sm-2">Used for</p>
+    <ul class="col-sm-10 list-inline">
+    {% for type in record['dataTypes'] %}
+      {% if 'label' in type %}
+      <li><a class="btn btn-special" href="{{ url_for('dataType', dataType=toURLSlug(type['label'])) }}">{{ type['label'] }}</a></li>
+      {% else %}
+      <li><a class="btn btn-special" href="{{ url_for('dataType', dataType=toURLSlug(type['url'])) }}">{{ abbrevURL(type['url']) }}</a></li>
+      {% endif %}
+    {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% if 'locations' in record %}
+  <div class="locations">
+    <h2>Documentation</h2>
+    <ul class="locations list-inline">
+    {% for location in record['locations'] %}
+      {% if location['type'] == 'website' %}
+      <li><a class="btn btn-special" href="{{ location['url'] }}">Visit website</a></li>
+      {% elif location['type'] == 'document' %}
+      <li><a class="btn btn-special" href="{{ location['url'] }}">View specification</a></li>
+      {% else %}
+      <li><a class="btn btn-special" href="{{ location['url'] }}">View specification in {{ location['type'] }} format</a></li>
+      {% endif %}
+    {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% if 'maintainers' in relations or 'funders' in relations %}
+  <div class="organizations">
+    <h2>Responsible organizations</h2>
+    <ul>
+    {% for org in relations['maintainers'] %}
+      <li>
+        <p>Maintainer: <a href="{{ url_for('group', maintainer=org.doc_id) }}">{{ org['name'] }}</a></p>
+      {% if 'locations' in org %}
+        <ul class="locations list-inline">
+        {% for location in org['locations'] %}
+          <li><a class="btn btn-special" href="{% if location['type'] == 'email' %}mailto:{% endif %}{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
+        {% endfor %}
+        {% if current_user.is_authenticated %}
+          <li><a class="btn btn-default" href="{{ url_for('edit_record', series='g', number=org.doc_id) }}">Edit record</a></li>
+        {% endif %}
+        </ul>
+      {% endif %}
+      </li>
+    {% endfor %}
+    {% for org in relations['funders'] %}
+      <li>
+        <p>Funder: <a href="{{ url_for('group', funder=org.doc_id) }}">{{ org['name'] }}</a></p>
+      {% if 'locations' in org %}
+        <ul class="locations list-inline">
+        {% for location in org['locations'] %}
+          <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
+        {% endfor %}
+        {% if current_user.is_authenticated %}
+          <li><a class="btn btn-default" href="{{ url_for('edit_record', series='g', number=org.doc_id) }}">Edit record</a></li>
+        {% endif %}
+        </ul>
+      {% endif %}
+      </li>
+    {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% if 'samples' in record %}
+  <div class="samples">
+    <h2>Samples</h2>
+    <ul>{% for sample in record['samples'] %}
+      <li><a href="{{ sample['url'] }}">{{ sample['title'] }}</a></li>
+    {% endfor %}</ul>
+  </div>
+  {% endif %}
+  <div class="identifiers">
+    <h2>Identifiers</h2>
+    <dl class="dl-horizontal">
+      <dt>Internal MSC ID</dt><dd><a href="{{ url_for('display', series='m', number=record.doc_id) }}">msc:m{{ record.doc_id }}</a></dd>
+    {% for identifier in record['identifiers'] %}
+      {% if identifier['scheme'] == 'DOI' %}
+      <dt>DOI</dt><dd><a href="https://doi.org/{{ identifier['id'] }}">{{ identifier['id'] }}</a></dd>
+      {% elif identifier['scheme'] %}
+      <dt>{{ identifier['scheme'] }}</dt><dd>{{ identifier['id'] }}</dd>
+      {% else %}
+      <dt>Other identifier</dt><dd>{{ identifier['id'] }}</dd>
+      {% endif %}
+    {% endfor %}
+    </dl>
+  </div>
+  {% if versions %}
+  <div class="versions">
+    <h2>Version history</h2>
+    <dl class="dl-horizontal">
+    {% for version in versions %}
+      <dt id="v{{ version['number'] }}">{{ version['date'] }}</dt>
+      <dd>
+        <p>version {{ version['number'] }}{% if version['status'] %} ({{ version['status'] }}){% endif %}
+          {% if 'title' in version %} &ndash; {{ version['title'] }}{% endif %}</p>
+        {% if 'description' in version %}
+        <div class="description">{{ version['description']|safe }}</div>
+        {% endif %}
+        {% for identifier in version['identifiers'] %}
+          <p>
+          {% if identifier['scheme'] == 'DOI' %}
+          <strong>DOI</strong>&emsp;<a href="https://doi.org/{{ identifier['id'] }}">{{ identifier['id'] }}</a>
+          {% elif identifier['scheme'] %}
+          <strong>{{ identifier['scheme'] }}</strong>&emsp;{{ identifier['id'] }}
+          {% else %}
+          <strong>Identifier</strong>&emsp;{{ identifier['id'] }}
+          {% endif %}
+          </p>
+        {% endfor %}
+        {% if 'locations' in version %}
+        <ul class="locations list-inline">
+        {% for location in version['locations'] %}
+          {% if location['type'] == 'website' %}
+          <li><a class="btn btn-sm btn-special" href="{{ location['url'] }}">Visit website</a></li>
+          {% elif location['type'] == 'document' %}
+          <li><a class="btn btn-sm btn-special" href="{{ location['url'] }}">View specification</a></li>
+          {% else %}
+          <li><a class="btn btn-sm btn-special" href="{{ location['url'] }}">View specification in {{ location['type'] }} format</a></li>
+          {% endif %}
+        {% endfor %}
+        </ul>
+        {% endif %}
+      </dd>
+    {% endfor %}
+    </dl>
+  </div>
+  {% endif %}
+  {% if hasRelatedSchemes %}
+  <div class="related_schemes">
+    <h2>Relationships to other metadata standards</h2>
+    <ul>
+    {% for parent in relations['parent_schemes'] %}
+      <li><p>This scheme is a profile of <a href="{{ url_for('display', series='m', number=parent.doc_id) }}">{{ parent['title'] }}</a>.</p></li>
+    {% endfor %}
+    {% for child in relations['child_schemes'] %}
+      <li><p><a href="{{ url_for('display', series='m', number=child.doc_id) }}">{{ child['title'] }}</a> is a profile of this scheme.</p></li>
+    {% endfor %}
+    {% for mapping in relations['mappings_from'] %}
+      <li class="mappings">
+        <p>This scheme can be mapped to {% for scheme in mapping['output_schemes'] %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}<a href="{{ url_for('display', series='m', number=scheme.doc_id) }}">{{ scheme['title'] }}</a>{% endfor %}.</p>
+        {% if 'description' in mapping %}
+        <div class="description">{{ mapping['description']|safe }}</div>
+        {% endif %}
+        {% if 'locations' in mapping %}
+        <ul class="locations list-inline">
+        {% for location in mapping['locations'] %}
+          <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'document' %}View documentation{% else %}Download {{ location['type'] }}{% endif %}</a></li>
+        {% endfor %}
+        {% if current_user.is_authenticated %}
+          <li><a class="btn btn-default" href="{{ url_for('edit_record', series='c', number=mapping.doc_id) }}">Edit record</a></li>
+        {% endif %}
+        </ul>
+        {% endif %}
+    {% endfor %}
+    {% for mapping in relations['mappings_to'] %}
+      <li class="mappings">
+        <p>This scheme can be mapped from {% for scheme in mapping['input_schemes'] %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}<a href="{{ url_for('display', series='m', number=scheme.doc_id) }}">{{ scheme['title'] }}</a>{% endfor %}.</p>
+        {% if 'description' in mapping %}
+        <div class="description">{{ mapping['description']|safe }}</div>
+        {% endif %}
+        {% if 'locations' in mapping %}
+        <ul class="locations list-inline">
+        {% for location in mapping['locations'] %}
+          <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'document' %}View documentation{% else %}Download {{ location['type'] }}{% endif %}</a></li>
+        {% endfor %}
+        {% if current_user.is_authenticated %}
+          <li><a class="btn btn-default" href="{{ url_for('edit_record', series='c', number=mapping.doc_id) }}">Edit record</a></li>
+        {% endif %}
+        </ul>
+        {% endif %}
+    {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% if 'tools' in relations %}
+  <div class="tools">
+    <h2>Tools</h2>
+    <ul>
+    {% for tool in relations['tools'] %}
+      <li>
+        <p><a href="{{ url_for('display', series='t', number=tool.doc_id) }}">{{ tool['title'] }}</a></p>
+        {% if 'description' in tool %}
+        <div class="description">{{ tool['description']|safe }}</div>
+        {% endif %}
+      </li>
+    {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% if 'users' in relations %}
+  <div class="users">
+    <h2>Known users</h2>
+    <ul>
+    {% for user in relations['users'] %}
+      <li>
+        <p><a href="{{ url_for('group', user=user.doc_id) }}">{{ user['name'] }}</a></p>
+        {% if 'description' in user %}
+        <div class="description">{{ user['description']|safe }}</div>
+        {% endif %}
+        {% if 'locations' in user %}
+        <ul class="locations list-inline">
+        {% for location in user['locations'] %}
+          <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
+        {% endfor %}
+        {% if current_user.is_authenticated %}
+          <li><a class="btn btn-default" href="{{ url_for('edit_record', series='g', number=user.doc_id) }}">Edit record</a></li>
+        {% endif %}
+        </ul>
+      {% endif %}
+      </li>
+    {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% if 'endorsements' in relations %}
+  <div class="endorsements">
+    <h2>Endorsements of this scheme</h2>
+    <ul>
+    {% for endorsement in relations['endorsements'] %}
+      <li>
+        {% if 'citation' in endorsement %}
+        <p>{{ endorsement['citation'] }}</p>
+        {% elif 'originators' in endorsement %}
+        {% for originator in endorsement['originators'] %}
+        <p>{{ originator['name'] }}</p>
+        {% endfor %}
+        {% endif %}
+        {% if 'valid_from' in endorsement %}
+        <p>Endorsed {% if 'valid_until' in endorsement %}between {{ endorsement['valid_from'] }} and {{ endorsement['valid_until'] }}{% else %}since {{ endorsement['valid_from'] }}{% endif %}</p>
+        {% elif 'issued' in endorsement %}
+        <p>Endorsed on {{ endorsement['issued'] }}</p>
+        {% endif %}
+        {% if 'locations' in endorsement %}
+        <ul class="locations list-inline">
+        {% for location in endorsement['locations'] %}
+          <li><a class="btn btn-special" href="{{ location['url'] }}">View endorsement</a></li>
+        {% endfor %}
+        {% if current_user.is_authenticated %}
+          <li><a class="btn btn-default" href="{{ url_for('edit_record', series='e', number=endorsement.doc_id) }}">Edit record</a></li>
+        {% endif %}
+        </ul>
+        {% endif %}
+      </li>
+    {% endfor %}</ul>
+  </div>
+  {% endif %}
+  {% if current_user.is_authenticated %}
+  <aside>
+    <p>
+      <a href="{{ url_for('edit_record', series='m', number=record.doc_id) }}" class="btn btn-default">Edit this record</a>
+    </p>
+  </aside>
+  {% endif %}
+{% endblock %}
