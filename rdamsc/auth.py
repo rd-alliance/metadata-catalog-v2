@@ -70,7 +70,7 @@ class OAuthSignIn(object):
         pass
 
     def get_callback_url(self):
-        return url_for('oauth_callback', provider=self.provider_name,
+        return url_for('auth.oauth_callback', provider=self.provider_name,
                        _external=True)
 
     @classmethod
@@ -486,7 +486,7 @@ def create_or_login(resp):
         login_user(user)
         return redirect(oid.get_next_url())
     return redirect(url_for(
-        'create_profile', next=oid.get_next_url(),
+        'auth.create_profile', next=oid.get_next_url(),
         name=resp.fullname or resp.nickname, email=resp.email))
 
 
@@ -522,7 +522,7 @@ def oauth_callback(provider):
         login_user(user)
         return redirect(url_for('hello'))
     return redirect(url_for(
-        'create_profile', next=url_for('hello'),
+        'auth.create_profile', next=url_for('hello'),
         name=username, email=email))
 
 

@@ -10,7 +10,7 @@
   <p>
     You can change the details associated with this profile.
   </p>
-  <form action="{{ url_for('edit_profile') }}" method="post" accept-charset="utf-8" class="form-horizontal">
+  <form action="{{ url_for('auth.edit_profile') }}" method="post" accept-charset="utf-8" class="form-horizontal">
     {{ form.hidden_tag() }}
     <div class="form-group {{ state(form.name) }}">
       {{ form.name.label(class="col-sm-3 control-label") }}
@@ -40,5 +40,5 @@
     <li>doing so will sign you out of the website;</li>
     <li>your details will <em>not</em> be removed from the version history of the database.</li>
   </ul>
-  <p><a href="{{ url_for('remove_profile') }}" class="btn btn-default">Delete profile</a></p>
+  <p><a href="{{ url_for('auth.remove_profile') }}" class="btn btn-default">Delete profile</a></p>
 {% endblock %}

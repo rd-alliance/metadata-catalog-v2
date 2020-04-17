@@ -13,7 +13,7 @@
   <p>You can sign in with one of these OpenID Connect providers:</p>
   <ul>
     {% for p in providers %}
-    <li><a href="{{ url_for('oauth_authorize', provider=p['slug']) }}">Sign in with {{ p['name'] }}</a></li>
+    <li><a href="{{ url_for('auth.oauth_authorize', provider=p['slug']) }}">Sign in with {{ p['name'] }}</a></li>
     {% endfor %}
   </ul>
   {% endif %}

@@ -7,17 +7,22 @@
     <li><a href="{{ url_for('terms_of_use') }}">Read terms of use</a></li>
   </ul>
   <h2>Metadata standards, profiles and schemes</h2>
+  {#
   <ul>
     <li><a href="{{ url_for('scheme_index') }}">Browse by scheme name</a></li>
     <li><a href="{{ url_for('subject_index') }}">Browse by subject</a></li>
     <li><a href="{{ url_for('scheme_search') }}">Search</a></li>
   </ul>
+  #}
   <h2>Metadata-related tools</h2>
+  {#
   <ul>
     <li><a href="{{ url_for('tool_index') }}">Browse by tool name</a></li>
   </ul>
+  #}
   {% if current_user.is_authenticated %}
   <h2>Make changes</h2>
+  {#
   <ul>
     <li><a href="{{ url_for('edit_record', series='m', number=0) }}">Add metadata scheme</a></li>
     <li><a href="{{ url_for('edit_record', series='c', number=0) }}">Add mapping between schemes</a></li>
@@ -25,5 +30,6 @@
     <li><a href="{{ url_for('edit_record', series='g', number=0) }}">Add organization</a></li>
     <li><a href="{{ url_for('edit_record', series='e', number=0) }}">Add endorsement</a></li>
   </ul>
+  #}
   {% endif %}
 {% endblock %}

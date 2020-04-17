@@ -3,6 +3,7 @@
 # Standard
 # --------
 import os
+import json
 
 # Non-standard
 # ------------
@@ -19,6 +20,8 @@ from tinydb.storages import Storage, touch
 from dulwich.repo import Repo
 from dulwich.errors import NotGitRepository
 import dulwich.porcelain as git
+
+mscwg_email = 'mscwg@rda-groups.org'
 
 
 class JSONStorageWithGit(Storage):

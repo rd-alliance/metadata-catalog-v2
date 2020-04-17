@@ -6,7 +6,7 @@
     As this is the first time you signed in on this website with that OpenID,
     please create a profile.
   </p>
-  <form action="{{ url_for('create_profile') }}" method="post" accept-charset="utf-8" class="form-horizontal">
+  <form action="{{ url_for('auth.create_profile') }}" method="post" accept-charset="utf-8" class="form-horizontal">
     {{ form.hidden_tag() }}
     <div class="form-group {{ state(form.name) }}">
       {{ form.name.label(class="col-sm-3 control-label") }}
@@ -31,6 +31,6 @@
     Your email address will be used to identify your contributions in version control, and may be used to contact you to discuss your contributions, or to inform you of upcoming changes. We will not sell, rent or trade any personal information you provide to us.
   </p>
   <p>
-    If you don't want to proceed, you can <a href="{{ url_for('logout') }}">sign out</a> again.
+    If you don't want to proceed, you can <a href="{{ url_for('auth.logout') }}">sign out</a> again.
   </p>
 {% endblock %}
