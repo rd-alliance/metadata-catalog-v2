@@ -60,44 +60,10 @@ class User(Document):
         return not equal
 
 
-class ApiUser(Document):
+class ApiUser(User):
     '''For objects representing an application using the API. Source:
     https://blog.miguelgrinberg.com/post/restful-authentication-with-flask
     '''
-    @property
-    def is_active(self):
-        if self.get('blocked'):
-            return False
-        return True
-
-    @property
-    def is_authenticated(self):
-        return True
-
-    @property
-    def is_anonymous(self):
-        return False
-
-    def get_id(self):
-        return str(self.doc_id)
-
-    def __eq__(self, other):
-        '''
-        Checks the equality of two `UserMixin` objects using `get_id`.
-        '''
-        if isinstance(other, User):
-            return self.get_id() == other.get_id()
-        return NotImplemented
-
-    def __ne__(self, other):
-        '''
-        Checks the inequality of two `UserMixin` objects using `get_id`.
-        '''
-        equal = self.__eq__(other)
-        if equal is NotImplemented:
-            return NotImplemented
-        return not equal
-
     def hash_password(self, password):
         user_db = get_user_db()
         self['password_hash'] = pwd_context.encrypt(password)

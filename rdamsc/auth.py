@@ -33,7 +33,7 @@ from tinydb import TinyDB, Query
 # -----
 from .users import User, get_user_db
 
-bp = Blueprint('auth', __name__, url_prefix='/')
+bp = Blueprint('auth', __name__)
 oid = OpenID()
 lm = LoginManager()
 lm.login_view = 'login'
@@ -426,7 +426,7 @@ def get_oauth_db():
 
 @lm.user_loader
 def load_user(id):
-    """Utility for loading users."""
+    '''Utility for loading users.'''
     user_db = get_user_db()
     document = user_db.get(doc_id=int(id))
     if document:
