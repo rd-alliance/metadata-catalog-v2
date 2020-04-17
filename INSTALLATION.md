@@ -16,16 +16,29 @@ py -3 -m venv venv
 Activate it:
 
 ```bash
-# *nux
+# *nix
 . venv/bin/activate
 # Windows
 venv\Scripts\activate
 ```
 
-Install the required Python packages
+Install the Catalog and its dependencies to your virtual environment:
 
 ```bash
-pip install Flask Flask-WTF flask-login Flask-OpenID rauth oauth2client flask-httpauth passlib tinydb tinyrecord rdflib dulwich flask-cors
+pip install -e .
+```
+
+Run the application:
+
+```bash
+# *nix
+export FLASK_APP=rdamsc; flask run
+# Windows
+set FLASK_APP=rdamsc
+flask run
+# Windows Powershell
+$env:FLASK_APP = "rdamsc"
+flask run
 ```
 
 ## Pre-requisite software
