@@ -1,0 +1,3 @@
+graft rdamsc/static
+graft rdamsc/templates
+global-exclude *.pyc
