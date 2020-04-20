@@ -10,7 +10,7 @@ from email.utils import parsedate_tz, mktime_tz
 import requests
 # See https://flask.palletsprojects.com/en/1.1.x/
 from flask import (
-    current_app, Blueprint, flash, g, redirect, render_template, request,
+    Blueprint, current_app, flash, g, redirect, render_template, request,
     session, url_for
 )
 # See https://flask-wtf.readthedocs.io/ and https://wtforms.readthedocs.io/

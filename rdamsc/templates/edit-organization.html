@@ -2,7 +2,7 @@
 {% from "macros-forms.html" import state, errors %}
 {% block title %}{% if doc_id == 0 %}Add new organization{% else %}Edit record msc:g{{ doc_id }}{% endif %}{% endblock %}
 {% block main %}
-  <form action="{{ url_for('edit_record', series='g', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
+  <form action="{{ url_for('main.edit_record', series='g', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
     {{ form.hidden_tag() }}
     <div class="form-group">
       {{ form.name.label(class="control-label") }}

@@ -71,7 +71,7 @@
   <div class="identifiers">
     <h2>Identifiers</h2>
     <dl class="dl-horizontal">
-      <dt>Internal MSC ID</dt><dd><a href="{{ url_for('display', series='t', number=record.doc_id) }}">msc:t{{ record.doc_id }}</a></dd>
+      <dt>Internal MSC ID</dt><dd><a href="{{ url_for('main.display', series='t', number=record.doc_id) }}">msc:t{{ record.doc_id }}</a></dd>
     {% for identifier in record['identifiers'] %}
       {% if identifier['scheme'] == 'DOI' %}
       <dt>DOI</dt><dd><a href="https://doi.org/{{ identifier['id'][4:] }}">{{ identifier['id'] }}</a></dd>
@@ -134,7 +134,7 @@
     <p>This tool is used with the following schemes:</p>
     <ul>
     {% for scheme in relations['supported_schemes'] %}
-      <li><a href="{{ url_for('display', series='m', number=scheme.doc_id) }}">{{ scheme['title'] }}</a></li>
+      <li><a href="{{ url_for('main.display', series='m', number=scheme.doc_id) }}">{{ scheme['title'] }}</a></li>
     {% endfor %}
     </ul>
   </div>
@@ -142,7 +142,7 @@
   {% if current_user.is_authenticated %}
   <aside>
     <p>
-      <a href="{{ url_for('edit_record', series='t', number=record.doc_id) }}" class="btn btn-default">Edit this record</a>
+      <a href="{{ url_for('main.edit_record', series='t', number=record.doc_id) }}" class="btn btn-default">Edit this record</a>
     </p>
   </aside>
   {% endif %}

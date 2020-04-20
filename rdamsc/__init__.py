@@ -6,6 +6,8 @@
 # --------
 import os
 
+import urllib.parse
+
 # Non-standard
 # ------------
 from flask import Flask, render_template
@@ -82,9 +84,61 @@ def create_app(test_config=None):
             subjects=list(), ids=list(), funders=list(),
             dataTypes=list())
 
+    @app.route('/subject/<subject>')
+    def subject(subject):
+        pass
+
+    @app.route('/datatype/<path:dataType>')
+    def dataType(dataType):
+        pass
+
+
     from . import auth
     auth.oid.init_app(app)
     auth.lm.init_app(app)
     app.register_blueprint(auth.bp)
 
+    from . import records
+    app.register_blueprint(records.bp)
+
+    @app.context_processor
+    def utility_processor():
+        return {
+            'toURLSlug': to_url_slug,
+            'fromURLSlug': from_url_slug,
+            'abbrevURL': abbrev_url,
+            'parseDateRange': parse_date_range}
+
     return app
+
+
+def to_url_slug(string):
+    """Transforms string into URL-safe slug."""
+    slug = urllib.parse.quote_plus(string)
+    return slug
+
+
+def from_url_slug(slug):
+    """Transforms URL-safe slug back into regular string."""
+    string = urllib.parse.unquote_plus(slug)
+    return string
+
+
+def abbrev_url(url):
+    """Extracts last component of URL path. Useful for datatype URLs."""
+    url_tuple = urllib.parse.urlparse(url)
+    path = url_tuple.path
+    if not path:
+        return url
+    path_fragments = path.split("/")
+    if not path_fragments[-1] and len(path_fragments) > 1:
+        return path_fragments[-2]
+    return path_fragments[-1]
+
+
+def parse_date_range(string):
+    date_split = string.partition('/')
+    if date_split[2]:
+        return (date_split[0], date_split[2])
+    return (string, None)
+
