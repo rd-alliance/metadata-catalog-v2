@@ -2,9 +2,12 @@
 # ============
 # Standard
 # --------
+import json
 import re
 from typing import (
+    List,
     Mapping,
+    Type,
 )
 from urllib.parse import urlparse
 
@@ -35,9 +38,498 @@ from wtforms.compat import string_types
 # Local
 # -----
 from .db_utils import JSONStorageWithGit
-from .utils import Pluralizer
+from .utils import Pluralizer, to_file_slug
 
 bp = Blueprint('main', __name__)
+
+
+# Database wrapper classes
+# ========================
+class Relation:
+    '''Utility class for handling common operations on the relations table.'''
+    def __init__(self):
+        db = get_data_db()
+        self.tb = db.table('rel')
+
+    def add(self, relations: Mapping[str, Mapping[str, List[str]]]):
+        '''Adds relations to the table.'''
+        with transaction(self.tb) as t:
+            for s, properties in relations.items():
+                relation = t.get(Query()['@id'] == s)
+                if relation is None:
+                    properties['@id'] = s
+                    t.insert(properties)
+                    continue
+                for p, objects in properties.items():
+                    if p not in relation:
+                        relation[p] = objects
+                        continue
+                    for o in objects:
+                        if o not in relation[p]:
+                            relation[p].append(o)
+                t.update(relation, doc_ids=[relation.doc_id])
+
+    def remove(self, relations: Mapping[str, Mapping[str, List[str]]]):
+        '''Removes relations from table, and returns those successfully
+        removed for comparison.'''
+        removed_relations = dict()
+        with transaction(self.tb) as t:
+            for s, properties in relations.items():
+                relation = t.get(Query()['@id'] == s)
+                if relation is None:
+                    continue
+                for p, objects in properties.items():
+                    if p not in relation:
+                        continue
+                    for o in objects:
+                        if o not in relation[p]:
+                            continue
+                        if s not in removed_relations:
+                            removed_relations[s] = dict()
+                        if p not in removed_relations:
+                            removed_relations[s][p] = list()
+                        relation[p].remove(o)
+                        removed_relations[s][p].append(o)
+                    if not relation[p]:
+                        del relation[p]
+                t.update(relation, doc_ids=[relation.doc_id])
+        return removed_relations
+
+    def subjects(self, predicate=None, object=None):
+        mscids = set()
+        Q = Query()
+        if object is None:
+            if predicate is None:
+                relations = self.tb.all()
+            else:
+                relations = self.tb.search(Q[predicate].exists())
+            for relation in relations:
+                if len(relation.keys() == 1):
+                    continue
+                mscids.add(relation.get('@id'))
+        else:
+            if predicate is None:
+                relations = self.tb.all()
+                for relation in relations:
+                    for objects in relation.values():
+                        if isinstance(objects, list) and object in objects:
+                            mscids.add(relation.get('@id'))
+            else:
+                relations = self.tb.search(Q[predicate].any(object))
+                mscids = [relation.get('@id') for relation in relations]
+        return sorted(mscids, key=lambda k: k[:n] + k[n:].zfill(5))
+
+    def objects(self, subject=None, predicate=None):
+        mscids = set()
+        Q = Query()
+        if predicate is None:
+            if subject is None:
+                relations = self.tb.all()
+            else:
+                relations = self.tb.search(Q['@id'] == subject)
+            for relation in relations:
+                for key, objects in relation.items():
+                    if key == '@id':
+                        continue
+                    for object in objects:
+                        mscids.add(object)
+        else:
+            if subject is None:
+                relations = self.tb.search(Q[predicate].exists())
+            else:
+                relations = self.tb.search(Q['@id'] == subject)
+            for relation in relations:
+                for object in relation.get(predicate, list()):
+                    mscids.add(object)
+        return sorted(mscids, key=lambda k: k[:n] + k[n:].zfill(5))
+
+
+class Record(Document):
+    '''Abstract class with common methods for the helper classes
+    for different types of record.'''
+
+    @staticmethod
+    def cleanup(data):
+        """Takes dictionary and recursively removes entries where the value is (a)
+        an empty string, (b) an empty list, (c) a dictionary wherein all the
+        values are empty, (d) null. Values of 0 are not removed. Also strips
+        out csrf_token.
+        """
+        for key, value in data.copy().items():
+            if isinstance(value, dict):
+                new_value = Record.cleanup(value)
+                if not new_value:
+                    del data[key]
+                else:
+                    data[key] = new_value
+            elif isinstance(value, list):
+                if not value:
+                    del data[key]
+                else:
+                    clean_list = list()
+                    for item in value:
+                        if isinstance(item, dict):
+                            new_item = Record.cleanup(item)
+                            if new_item:
+                                clean_list.append(new_item)
+                        elif item:
+                            clean_list.append(item)
+                    if clean_list:
+                        data[key] = clean_list
+                    else:
+                        del data[key]
+            elif value == '':
+                del data[key]
+            elif value is None:
+                del data[key]
+            elif key is 'csrf_token':
+                del data[key]
+        return data
+
+    @classmethod
+    def load(cls, doc_id: int, table: str=None):
+        '''Returns an instance of the Record subclass that corresponds to the
+        given table, either blank or the existing record with the given doc_id.
+        '''
+        if table is None:
+            table = cls.table
+
+        # This bit allows the function to be called on Record and
+        # return a Scheme (say):
+        subclass = cls
+        valid_tables = list()
+        for subcls in cls.__subclasses__():
+            valid_tables.append(subcls.table)
+            if subcls.table == table:
+                subclass = subcls
+
+        db = get_data_db()
+        if table not in valid_tables:
+            print(f"DEBUG: {table} not a valid table.")
+            return None
+        tb = db.table(table)
+        doc = tb.get(doc_id=doc_id)
+
+        if doc:
+            return subclass(value=doc, doc_id=doc.doc_id)
+        return subclass(value=dict(), doc_id=0)
+
+    @classmethod
+    def search(cls, cond: Query):
+        '''Should only be called on subclasses of Record. Performs a TinyDB
+        search on the corresponding table, converts the results into
+        instances of the given subclass.'''
+        db = get_data_db()
+        tb = db.table(cls.table)
+        docs = tb.search(cond)
+        return [cls(value=doc, doc_id=doc.doc_id) for doc in docs]
+
+    def __init__(self, value: Mapping, doc_id: int, table: str):
+        super().__init__(value, doc_id)
+        self.table = table
+
+    @property
+    def mscid(self):
+        return f"msc:{self.table}{self.doc_id}"
+
+    @property
+    def slug(self):
+        return self.get('slug')
+
+    def _save(self, value: Mapping):
+        '''Saves record to database. Returns error message if a problem
+        arises.'''
+
+        # Remove empty and noisy fields
+        value = self.cleanup(value)
+
+        # Update or insert record as appropriate
+        db = get_data_db()
+        tb = db.table(self.table)
+        if self.doc_id:
+            with transaction(tb) as t:
+                for key in (k for k in self if k not in value):
+                    t.update_callable(delete(key), doc_ids=[self.doc_id])
+                t.update(value, doc_ids=[self.doc_id])
+        else:
+            self.doc_id = tb.insert(value)
+
+        return ''
+
+    def _save_relations(self, statements: List[Mapping],
+                        missing_statements: List[Mapping]):
+        '''Saves relation edits to the Relations table.'''
+        rel = Relation()
+
+        if statements:
+            relations = self._triples_to_dict(statements)
+            rel.add(relations)
+
+        if missing_statements:
+            relations_to_delete = self._triples_to_dict(missing_statements)
+            rel.remove(relations_to_delete)
+
+        return ''
+
+    def _triples_to_dict(self, statements: List[Mapping]):
+        '''Assembles dictionary of relations. Replaces 'SELF' with actual mscid.'''
+        relations = dict()
+        for statement in statements:
+            s = statement['subject']
+            p = statement['predicate']
+            o = statement['object']
+            if s == o:
+                continue
+            if s == 'SELF':
+                s = self.mscid
+            if o == 'SELF':
+                o = self.mscid
+            if s not in relations:
+                relations[s] = dict()
+            if p not in relations[s]:
+                relations[s][p] = list()
+            relations[s][p].append()
+        return relations
+
+    def save_gui_input(self, value: Mapping):
+        '''Processes form input and saves it. Returns error message if a problem
+        arises.'''
+
+        # Insert slug:
+        value['slug'] = self.slug
+
+        # Restore version information:
+        value['versions'] = self.get('versions', list())
+
+        # Check to see if any relatedEntities information has been removed:
+        missing_statements = list()
+        rel = Relation()
+        if self.doc_id != 0:
+            for field in self.form():
+                if field.type != 'SelectRelatedField':
+                    continue
+                predicate = field.description
+                if field.flags.inverse:
+                    object = self.mscid
+                    mscids = rel.subjects(
+                        predicate=predicate, object=object)
+                    if mscids:
+                        for subject in mscids:
+                            if subject not in value.get(field.name, list()):
+                                missing_statements.append({
+                                    'subject': subject,
+                                    'predicate': predicate,
+                                    'object': object})
+                else:
+                    subject = self.mscid
+                    mscids = rel.objects(
+                        subject=subject, predicate=predicate)
+                    if mscids:
+                        for object in mscids:
+                            if object not in value.get(field.name, list()):
+                                missing_statements.append({
+                                    'subject': subject,
+                                    'predicate': predicate,
+                                    'object': object})
+
+        # Remove form inputs containing relatedEntities information, and save
+        # them separately. NB. We may not have mscid yet, so use 'SELF' for
+        # current record:
+        statements = list()
+        for field in self.form():
+            if field.type != 'SelectRelatedField':
+                continue
+            if field.name not in value:
+                continue
+            # Save in our list, the right way around:
+            predicate = field.description
+            for entity in value[field.name]:
+                if field.flags.inverse:
+                    subject = entity
+                    object = 'SELF'
+                else:
+                    subject = 'SELF'
+                    object = entity
+                statements.append({
+                    'subject': subject,
+                    'predicate': predicate,
+                    'object': object})
+            del value[field.name]
+
+        # Save the main record:
+        error = self._save(value)
+        if error:
+            return error
+
+        # Update relations
+        return self._save_relations(statements, missing_statements)
+
+
+class Scheme(Record):
+    table = 'm'
+    template = 'metadata-scheme.html'
+
+    @classmethod
+    def get_choices(cls):
+        choices = [('', '')]
+        for scheme in cls.search(Query().slug.exists()):
+            choices.append(
+                (scheme.mscid, scheme.get('title', 'Untitled')))
+
+        choices.sort(key=lambda k: k[1].lower())
+        return choices
+
+    @classmethod
+    def get_vocabs(cls):
+        '''Gets controlled vocabularies for use in form autocompletion.'''
+        vocabs = dict()
+
+        vocabs['subjects'] = list()
+        vocabs['dataTypeURLs'] = list()
+        vocabs['dataTypeLabels'] = list()
+
+        return vocabs
+
+    '''Object representing a metadata scheme.'''
+    def __init__(self, value: Mapping, doc_id: int):
+        super().__init__(value, doc_id, self.table)
+
+    @property
+    def form(self):
+        return SchemeForm
+
+    @property
+    def slug(self):
+        slug = self.get('slug')
+        if slug:
+            return slug
+        raw = self.get('title')
+        if raw:
+            return to_file_slug(raw)
+        return None
+
+    def get_form(self):
+        # Get data from database:
+        data = json.loads(json.dumps(self))
+
+        # Strip out version info, this is handled separately:
+        if 'versions' in data:
+            del data['versions']
+
+        # Populate with relevant relations
+        rel = Relation()
+        for field in self.form():
+            if field.type != 'SelectRelatedField':
+                continue
+            predicate = field.description
+            mscids = list()
+            if field.flags.inverse:
+                object = self.mscid
+                mscids.extend(rel.subjects(
+                    predicate=predicate, object=object))
+            else:
+                subject = self.mscid
+                mscids.extend(rel.objects(
+                    subject=subject, predicate=predicate))
+            if mscids:
+                data[field.short_name] = mscids
+
+        # Populate form:
+        form = self.form(data=data)
+
+        # Assign validators to current choices:
+        scheme_locations = [
+            ('', ''), ('document', 'document'), ('website', 'website'),
+            ('RDA-MIG', 'RDA MIG Schema'), ('DTD', 'XML/SGML DTD'),
+            ('XSD', 'XML Schema'), ('RDFS', 'RDF Schema')]
+        for f in form.locations:
+            f['type'].choices = scheme_locations
+
+        return form
+
+
+class Tool(Record):
+    table = 't'
+    template = 'tool.html'
+
+    '''Object representing a tool.'''
+    def __init__(self, value: Mapping, doc_id: int):
+        super().__init__(value, doc_id, self.table)
+
+    @property
+    def slug(self):
+        slug = self.get('slug')
+        if slug:
+            return slug
+        raw = self.get('title')
+        if raw:
+            return to_file_slug(raw)
+        return None
+
+
+class Crosswalk(Record):
+    table = 'c'
+    template = 'mapping.html'
+
+    '''Object representing a mapping.'''
+    def __init__(self, value: Mapping, doc_id: int):
+        super().__init__(value, doc_id, self.table)
+
+    @property
+    def slug(self):
+        slug = self.get('slug')
+        if slug:
+            return slug
+        # TODO
+        return None
+
+
+class Group(Record):
+    table = 'g'
+    template = 'organization.html'
+
+    @classmethod
+    def get_choices(cls):
+        choices = [('', '')]
+        for scheme in cls.search(Query().slug.exists()):
+            choices.append(
+                (scheme.mscid, scheme.get('name', 'Unnamed')))
+
+        choices.sort(key=lambda k: k[1].lower())
+        return choices
+
+    '''Object representing an organization.'''
+    def __init__(self, value: Mapping, doc_id: int):
+        super().__init__(value, doc_id, self.table)
+
+    @property
+    def slug(self):
+        slug = self.get('slug')
+        if slug:
+            return slug
+        raw = self.get('name')
+        if raw:
+            return to_file_slug(raw)
+        return None
+
+
+class Endorsement(Record):
+    table = 'e'
+    template = 'endorsement.html'
+
+    '''Object representing an endorsement.'''
+    def __init__(self, value: Mapping, doc_id: int):
+        super().__init__(value, doc_id, self.table)
+
+    @property
+    def slug(self):
+        slug = self.get('slug')
+        if slug:
+            return slug
+        raw = self.get('citation')
+        if raw:
+            return to_file_slug(raw)
+        return None
 
 
 # Form components
@@ -101,6 +593,17 @@ def W3CDate(form, field):
     """Raise error if a string is not a valid W3C-formatted date."""
     if re.search(r'^\d{4}(-\d{2}){0,2}$', field.data) is None:
         raise ValidationError('Please provide the date in yyyy-mm-dd format.')
+
+
+# Custom elements
+# ---------------
+class SelectRelatedField(SelectMultipleField):
+    def __init__(self, label='', record: Type[Record]=Scheme, inverse=False,
+                 **kwargs):
+        choices = record.get_choices()
+        super(SelectMultipleField, self).__init__(
+            label, choices=choices, **kwargs)
+        setattr(self.flags, 'inverse', inverse)
 
 
 # Reusable subforms
@@ -175,11 +678,21 @@ class SchemeForm(FlaskForm):
         'Subject areas', min_entries=1)
     dataTypes = FieldList(
         FormField(DataTypeForm), 'Data types', min_entries=1)
-    parent_schemes = SelectMultipleField('Parent metadata scheme(s)')
-    maintainers = SelectMultipleField(
-        'Organizations that maintain this scheme')
-    funders = SelectMultipleField('Organizations that funded this scheme')
-    users = SelectMultipleField('Organizations that use this scheme')
+    parent_schemes = SelectRelatedField(
+        'Parent metadata scheme(s)', Scheme,
+        description='parent scheme')
+    child_schemes = SelectRelatedField(
+        'Parent metadata scheme(s)', Scheme,
+        description='parent scheme', inverse=True)
+    maintainers = SelectRelatedField(
+        'Organizations that maintain this scheme', Group,
+        description='maintainer')
+    funders = SelectRelatedField(
+        'Organizations that funded this scheme', Group,
+        description='funder')
+    users = SelectRelatedField(
+        'Organizations that use this scheme', Group,
+        description='user')
     locations = FieldList(
         FormField(LocationForm), 'Relevant links', min_entries=1)
     samples = FieldList(
@@ -188,179 +701,6 @@ class SchemeForm(FlaskForm):
     identifiers = FieldList(
         FormField(IdentifierForm), 'Identifiers for this scheme',
         min_entries=1)
-
-
-# Database wrapper classes
-# ========================
-class Record(Document):
-    '''Abstract class with common methods for the helper classes
-    for different types of record.'''
-
-    @classmethod
-    def load(cls, doc_id: int, table: str=None):
-        '''Returns an instance of the Record subclass that corresponds to the
-        given table, either blank or the existing record with the given doc_id.
-        '''
-        if table is None:
-            table = cls.table
-
-        # This bit allows the function to be called on Record and
-        # return a Scheme (say):
-        subclass = cls
-        valid_tables = list()
-        for subcls in cls.__subclasses__():
-            valid_tables.append(subcls.table)
-            if subcls.table == table:
-                subclass = subcls
-
-        db = get_data_db()
-        if table not in valid_tables:
-            print(f"DEBUG: {table} not a valid table.")
-            return None
-        tb = db.table(table)
-        doc = tb.get(doc_id=doc_id)
-
-        if doc:
-            print(f"DEBUG: Returning existing record.")
-            return subclass(value=doc, doc_id=doc.doc_id)
-        print(f"DEBUG: Returning new record.")
-        return subclass(value=dict(), doc_id=0)
-
-    @classmethod
-    def search(cls, cond: Query):
-        '''Should only be called on subclasses of Record. Performs a TinyDB
-        search on the corresponding table, converts the results into
-        instances of the given subclass.'''
-        db = get_data_db()
-        tb = db.table(cls.table)
-        docs = tb.search(cond)
-        return [cls(value=doc, doc_id=doc.doc_id) for doc in docs]
-
-    def __init__(self, value: Mapping, doc_id: int, table: str):
-        super().__init__(value, doc_id)
-        self.table = table
-
-    @property
-    def mscid(self):
-        return f"msc:{self.table}{self.doc_id}"
-
-    def create(self, value: Mapping):
-        if self.doc_id:
-            # Should be zero
-            return 0
-
-        db = get_data_db()
-        tb = db.table(self.table)
-        return tb.insert(value)
-
-    def modify(self, value: Mapping):
-        if not self.doc_id:
-            # Should not be zero
-            return False
-
-        db = get_data_db()
-        tb = db.table(self.table)
-        with transaction(self.table) as t:
-            for key in (k for k in self if k not in value):
-                t.update_callable(delete(key), eids=[self.doc_id])
-            t.update(value, eids=[self.doc_id])
-
-        return True
-
-
-class Scheme(Record):
-    table = 'm'
-    template = 'metadata-scheme.html'
-
-    @classmethod
-    def get_choices(cls):
-        choices = [('', '')]
-        for scheme in cls.search(Query().slug.exists()):
-            choices.append(
-                (scheme.mscid, scheme.get('title', 'Untitled')))
-
-        choices.sort(key=lambda k: k[1].lower())
-        return choices
-
-    @classmethod
-    def get_vocabs(cls):
-        '''Gets controlled vocabularies for use in form autocompletion.'''
-        vocabs = dict()
-
-        vocabs['subjects'] = list()
-        vocabs['dataTypeURLs'] = list()
-        vocabs['dataTypeLabels'] = list()
-
-        return vocabs
-
-    '''Object representing a metadata scheme.'''
-    def __init__(self, value: Mapping, doc_id: int):
-        super().__init__(value, doc_id, self.table)
-
-    def get_form(self):
-        # Populate form with current data:
-        form = SchemeForm(data=self)
-
-        # Assign validators to current choices:
-        form.parent_schemes.choices = self.get_choices()
-        organization_choices = Group.get_choices()
-        form.maintainers.choices = organization_choices
-        form.funders.choices = organization_choices
-        form.users.choices = organization_choices
-        scheme_locations = [
-            ('', ''), ('document', 'document'), ('website', 'website'),
-            ('RDA-MIG', 'RDA MIG Schema'), ('DTD', 'XML/SGML DTD'),
-            ('XSD', 'XML Schema'), ('RDFS', 'RDF Schema')]
-        for f in form.locations:
-            f['type'].choices = scheme_locations
-
-        return form
-
-
-class Tool(Record):
-    table = 't'
-    template = 'tool.html'
-
-    '''Object representing a tool.'''
-    def __init__(self, value: Mapping, doc_id: int):
-        super().__init__(value, doc_id, self.table)
-
-
-class Crosswalk(Record):
-    table = 'c'
-    template = 'mapping.html'
-
-    '''Object representing a mapping.'''
-    def __init__(self, value: Mapping, doc_id: int):
-        super().__init__(value, doc_id, self.table)
-
-
-class Group(Record):
-    table = 'g'
-    template = 'organization.html'
-
-    @classmethod
-    def get_choices(cls):
-        choices = [('', '')]
-        for scheme in cls.search(Query().slug.exists()):
-            choices.append(
-                (scheme.mscid, scheme.get('name', 'Unnamed')))
-
-        choices.sort(key=lambda k: k[1].lower())
-        return choices
-
-    '''Object representing an organization.'''
-    def __init__(self, value: Mapping, doc_id: int):
-        super().__init__(value, doc_id, self.table)
-
-
-class Endorsement(Record):
-    table = 'e'
-    template = 'endorsement.html'
-
-    '''Object representing an endorsement.'''
-    def __init__(self, value: Mapping, doc_id: int):
-        super().__init__(value, doc_id, self.table)
 
 
 def get_data_db():
@@ -408,28 +748,29 @@ def edit_record(series, number):
                     location = {'url': f.url.data, 'type': 'document'}
                     filtered_locations.append(location)
             form_data['locations'] = filtered_locations
-        # Translate form data into internal data model
+        # Save form data to database
+        error = record.save_gui_input(form_data)
         if record.doc_id:
             # Editing an existing record
-            if record.modify(form_data):
+            if error:
+                flash(error, 'error')
+                return redirect(
+                    url_for('main.edit_record', series=series, number=number))
+            else:
                 flash('Successfully updated record.', 'success')
                 return redirect(
                     url_for('main.display', series=series, number=number))
-            else:
-                flash('You tried to update a non-existent record.', 'error')
-                return redirect(
-                    url_for('main.edit_record', series=series, number=number))
         else:
             # Adding a new record
-            number = record.create(form_data)
-            if number:
+            if error:
+                flash(error, 'error')
+                return redirect(
+                    url_for('main.edit_record', series=series, number=number))
+            else:
+                number = record.doc_id
                 flash('Successfully added record.', 'success')
                 return redirect(
                     url_for('main.display', series=series, number=number))
-            else:
-                flash('You tried to re-create an existing record.', 'error')
-                return redirect(
-                    url_for('main.edit_record', series=series, number=number))
     if form.errors:
         flash('Could not save changes as there {:/was an error/were N errors}.'
               ' See below for details.'.format(Pluralizer(len(form.errors))),
