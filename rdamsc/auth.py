@@ -32,6 +32,7 @@ from tinydb import TinyDB, Query
 # Local
 # -----
 from .users import User, get_user_db
+from .utils import Pluralizer
 
 bp = Blueprint('auth', __name__)
 oid = OpenID()
@@ -81,6 +82,32 @@ class OAuthSignIn(object):
                 provider = provider_class()
                 self.providers[provider.provider_name] = provider
         return self.providers[provider_name]
+
+
+class TestSignIn(OAuthSignIn):
+    def __init__(self):
+        super(TestSignIn, self).__init__('test')
+        self.formatted_name = 'Test'
+        self.service = OAuth2Service(
+            name=self.provider_name,
+            client_id=self.consumer_id,
+            client_secret=self.consumer_secret,
+            authorize_url='https://localhost/login/oauth/authorize',
+            access_token_url='https://localhost/login/oauth/access_token',
+            base_url='https://localhost/')
+
+    def authorize(self):
+        return redirect(self.service.get_authorize_url(
+            scope='read:user',
+            redirect_uri=self.get_callback_url()))
+
+    def callback(self):
+        if current_app.config['TESTING']:
+            return (
+                self.provider_name + '$testuser',
+                "Test User",
+                "test@localhost.local")
+        return (None, None, None)
 
 
 class GoogleSignIn(OAuthSignIn):
@@ -557,6 +584,10 @@ def create_profile():
         user = User(value=data, doc_id=user_doc_id)
         login_user(user)
         return redirect(oid.get_next_url() or url_for('hello'))
+    if form.errors:
+        flash('Could not create profile as there {:/was an error/were N errors}.'
+              ' See below for details.'.format(Pluralizer(len(form.errors))),
+              'error')
     return render_template(
         'create-profile.html', form=form,
         next=oid.get_next_url() or url_for('hello'))

@@ -17,7 +17,10 @@ from flask_login import current_user
 # -----
 from .utils import *
 
+
 def create_app(test_config=None):
+    '''Factory for initialising the Flask application.'''
+
     # Create the app:
     app = Flask(__name__, instance_relative_config=True)
 
@@ -50,8 +53,7 @@ def create_app(test_config=None):
     app.config.from_envvar('MSC_SETTINGS', silent=True)
 
     # Make sure all these directories exist:
-    for path in [app.instance_path,
-                 os.path.dirname(app.config['MAIN_DATABASE_PATH']),
+    for path in [os.path.dirname(app.config['MAIN_DATABASE_PATH']),
                  os.path.dirname(app.config['USER_DATABASE_PATH']),
                  os.path.dirname(app.config['OAUTH_DATABASE_PATH']),
                  app.config['OPENID_FS_STORE_PATH']]:

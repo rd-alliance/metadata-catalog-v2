@@ -32,12 +32,14 @@ Run the application:
 
 ```bash
 # *nix
-export FLASK_APP=rdamsc; flask run
+export FLASK_APP=rdamsc; export FLASK_ENV=development; flask run
 # Windows
 set FLASK_APP=rdamsc
+set FLASK_ENV=development
 flask run
 # Windows Powershell
 $env:FLASK_APP = "rdamsc"
+$env:FLASK_ENV = "development"
 flask run
 ```
 

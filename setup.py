@@ -21,5 +21,7 @@ setup(
         'rdflib',
         'dulwich',
         'flask-cors',
+        'pytest',
+        'coverage',
     ],
 )
