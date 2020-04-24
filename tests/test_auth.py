@@ -1,5 +1,6 @@
 import re
 from urllib.parse import urlencode
+import json
 import pytest
 from flask import g, session
 
@@ -57,3 +58,9 @@ def test_oauth_login(client, app):
     is_in_html(msg, html)
     auth_only = "<h2>Make changes</h2>"
     is_in_html(auth_only, html)
+
+    with open(app.config['USER_DATABASE_PATH']) as f:
+        users = json.load(f)
+        assert users.get('_default').get('1').get('userid') == userid
+        assert users.get('_default').get('1').get('name') == username
+        assert users.get('_default').get('1').get('email') == useremail
