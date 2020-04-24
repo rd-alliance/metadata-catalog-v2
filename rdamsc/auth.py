@@ -36,7 +36,7 @@ from .users import User, get_user_db
 bp = Blueprint('auth', __name__)
 oid = OpenID()
 lm = LoginManager()
-lm.login_view = 'login'
+lm.login_view = 'auth.login'
 lm.login_message = 'Please sign in to access this page.'
 lm.login_message_category = "error"
 
@@ -419,7 +419,7 @@ class OrcidSignIn(OAuthSignIn):
 
 def get_oauth_db():
     if 'oauth_db' not in g:
-        g.user_db = TinyDB(current_app.config['OAUTH_DATABASE_PATH'])
+        g.oauth_db = TinyDB(current_app.config['OAUTH_DATABASE_PATH'])
 
     return g.oauth_db
 
