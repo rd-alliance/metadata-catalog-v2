@@ -7,19 +7,15 @@
     <li><a href="{{ url_for('terms_of_use') }}">Read terms of use</a></li>
   </ul>
   <h2>Metadata standards, profiles and schemes</h2>
-  {#
   <ul>
-    <li><a href="{{ url_for('scheme_index') }}">Browse by scheme name</a></li>
-    <li><a href="{{ url_for('subject_index') }}">Browse by subject</a></li>
-    <li><a href="{{ url_for('scheme_search') }}">Search</a></li>
+    <li><a href="{{ url_for('list.record_index', series='scheme') }}">Browse by scheme name</a></li>
+    {# <li><a href="{{ url_for('subject_index') }}">Browse by subject</a></li> #}
+    {# <li><a href="{{ url_for('scheme_search') }}">Search</a></li> #}
   </ul>
-  #}
   <h2>Metadata-related tools</h2>
-  {#
   <ul>
-    <li><a href="{{ url_for('tool_index') }}">Browse by tool name</a></li>
+    <li><a href="{{ url_for('list.record_index', series='tool') }}">Browse by tool name</a></li>
   </ul>
-  #}
   {% if current_user.is_authenticated %}
   <h2>Make changes</h2>
   <ul>

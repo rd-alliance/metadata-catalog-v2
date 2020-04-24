@@ -41,12 +41,38 @@ from .db_utils import JSONStorageWithGit
 from .utils import Pluralizer, to_file_slug
 
 bp = Blueprint('main', __name__)
+mscid_prefix = 'msc:'
+allowed_tags = {
+    'p': [],
+    'blockquote': [],
+    'ol': [],
+    'ul': [],
+    'li': [],
+    'dl': [],
+    'dt': [],
+    'dd': [],
+    'a': ['href'],
+    'em': [],
+    'strong': [],
+    'q': [],
+    'abbr': ['title'],
+    'code': [],
+    'i': [],
+    'sup': [],
+    'sub': [],
+    'bdi': [],
+    'bdo': ['dir'],
+    'br': [],
+    'wbr': [],
+    }
+
 
 
 # Database wrapper classes
 # ========================
 class Relation:
-    '''Utility class for handling common operations on the relations table.'''
+    '''Utility class for handling common operations on the relations table.
+    Relations are stored using MSCIDs to identify records.'''
     def __init__(self):
         db = get_data_db()
         self.tb = db.table('rel')
@@ -96,6 +122,8 @@ class Relation:
         return removed_relations
 
     def subjects(self, predicate=None, object=None):
+        '''Returns list of MSCIDs for all records that are subjects in the
+        relations database, optionally filtered by predicate and object.'''
         mscids = set()
         Q = Query()
         if object is None:
@@ -117,9 +145,18 @@ class Relation:
             else:
                 relations = self.tb.search(Q[predicate].any(object))
                 mscids = [relation.get('@id') for relation in relations]
+        n = len(mscid_prefix) + 1
         return sorted(mscids, key=lambda k: k[:n] + k[n:].zfill(5))
 
+    def subject_records(self, predicate=None, object=None):
+        '''Returns list of Records that are subjects in the relations database,
+        optionally filtered by predicate and object.'''
+        mscids = self.subjects(predicate, object)
+        return [Record.load_by_mscid(mscid) for mscid in mscids]
+
     def objects(self, subject=None, predicate=None):
+        '''Returns list of MSCIDs for all records that are objects in the
+        relations database, optionally filtered by subject and predicate.'''
         mscids = set()
         Q = Query()
         if predicate is None:
@@ -141,7 +178,14 @@ class Relation:
             for relation in relations:
                 for object in relation.get(predicate, list()):
                     mscids.add(object)
+        n = len(mscid_prefix) + 1
         return sorted(mscids, key=lambda k: k[:n] + k[n:].zfill(5))
+
+    def object_records(self, subject=None, predicate=None):
+        '''Returns list of Records that are objects in the relations database,
+        optionally filtered by subject and predicate.'''
+        mscids = self.objects(subject, predicate)
+        return [Record.load_by_mscid(mscid) for mscid in mscids]
 
 
 class Record(Document):
@@ -215,6 +259,30 @@ class Record(Document):
         return subclass(value=dict(), doc_id=0)
 
     @classmethod
+    def load_by_mscid(cls, mscid: str):
+        '''Returns an instance of the Record subclass that corresponds to the
+        given MSCID, or None if the MSCID was not syntactically correct.
+        '''
+        mscid_format = re.compile(
+            mscid_prefix
+            + r'(?P<table>c|e|g|m|t)'
+            + r'(?P<doc_id>\d+)'
+            + r'(#v(?P<version>.*))?$')
+        m = mscid_format.match(mscid)
+        if m:
+            return cls.load(int(m.group('doc_id')), m.group('table'))
+        return None
+
+    @classmethod
+    def all(cls):
+        '''Should only be called on subclasses of Record. Returns a list of all
+        instances of that subclass from the database.'''
+        db = get_data_db()
+        tb = db.table(cls.table)
+        docs = tb.all()
+        return [cls(value=doc, doc_id=doc.doc_id) for doc in docs]
+
+    @classmethod
     def search(cls, cond: Query):
         '''Should only be called on subclasses of Record. Performs a TinyDB
         search on the corresponding table, converts the results into
@@ -230,7 +298,7 @@ class Record(Document):
 
     @property
     def mscid(self):
-        return f"msc:{self.table}{self.doc_id}"
+        return f"{mscid_prefix}{self.table}{self.doc_id}"
 
     @property
     def slug(self):
@@ -301,11 +369,25 @@ class Record(Document):
         # Restore version information:
         value['versions'] = self.get('versions', list())
 
+        # Get list of fields we can iterate over:
+        fields = self.form()
+
+        # Sanitize HTML input:
+        for field in fields:
+            if field.type != 'TextHTMLField':
+                continue
+            html_in = value.get(field.short_name)
+            if not html_in:
+                continue
+            # TODO: apply filtering
+            html_safe = html_in
+            value[field.short_name] = html_safe
+
         # Check to see if any relatedEntities information has been removed:
         missing_statements = list()
         rel = Relation()
         if self.doc_id != 0:
-            for field in self.form():
+            for field in fields:
                 if field.type != 'SelectRelatedField':
                     continue
                 predicate = field.description
@@ -336,7 +418,7 @@ class Record(Document):
         # them separately. NB. We may not have mscid yet, so use 'SELF' for
         # current record:
         statements = list()
-        for field in self.form():
+        for field in fields:
             if field.type != 'SelectRelatedField':
                 continue
             if field.name not in value:
@@ -367,7 +449,7 @@ class Record(Document):
 
 class Scheme(Record):
     table = 'm'
-    template = 'metadata-scheme.html'
+    series = 'scheme'
 
     @classmethod
     def get_choices(cls):
@@ -399,13 +481,16 @@ class Scheme(Record):
         return SchemeForm
 
     @property
+    def name(self):
+        return self.get('title')
+
+    @property
     def slug(self):
         slug = self.get('slug')
         if slug:
             return slug
-        raw = self.get('title')
-        if raw:
-            return to_file_slug(raw)
+        if self.name:
+            return to_file_slug(self.name)
         return None
 
     def get_form(self):
@@ -450,43 +535,51 @@ class Scheme(Record):
 
 class Tool(Record):
     table = 't'
-    template = 'tool.html'
+    series = 'tool'
 
     '''Object representing a tool.'''
     def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
 
     @property
-    def slug(self):
-        slug = self.get('slug')
-        if slug:
-            return slug
-        raw = self.get('title')
-        if raw:
-            return to_file_slug(raw)
-        return None
-
-
-class Crosswalk(Record):
-    table = 'c'
-    template = 'mapping.html'
-
-    '''Object representing a mapping.'''
-    def __init__(self, value: Mapping, doc_id: int):
-        super().__init__(value, doc_id, self.table)
+    def name(self):
+        return self.get('title')
 
     @property
     def slug(self):
         slug = self.get('slug')
         if slug:
             return slug
-        # TODO
+        if self.name:
+            return to_file_slug(self.name)
+        return None
+
+
+class Crosswalk(Record):
+    table = 'c'
+    series = 'mapping'
+
+    '''Object representing a mapping.'''
+    def __init__(self, value: Mapping, doc_id: int):
+        super().__init__(value, doc_id, self.table)
+
+    @property
+    def name(self):
+        return self.get('name')
+
+    @property
+    def slug(self):
+        slug = self.get('slug')
+        if slug:
+            return slug
+        if self.name:
+            return to_file_slug(self.name)
         return None
 
 
 class Group(Record):
     table = 'g'
-    template = 'organization.html'
+    series = 'organization'
 
     @classmethod
     def get_choices(cls):
@@ -503,32 +596,38 @@ class Group(Record):
         super().__init__(value, doc_id, self.table)
 
     @property
-    def slug(self):
-        slug = self.get('slug')
-        if slug:
-            return slug
-        raw = self.get('name')
-        if raw:
-            return to_file_slug(raw)
-        return None
-
-
-class Endorsement(Record):
-    table = 'e'
-    template = 'endorsement.html'
-
-    '''Object representing an endorsement.'''
-    def __init__(self, value: Mapping, doc_id: int):
-        super().__init__(value, doc_id, self.table)
+    def name(self):
+        return self.get('name')
 
     @property
     def slug(self):
         slug = self.get('slug')
         if slug:
             return slug
-        raw = self.get('citation')
-        if raw:
-            return to_file_slug(raw)
+        if self.name:
+            return to_file_slug(self.name)
+        return None
+
+
+class Endorsement(Record):
+    table = 'e'
+    series = 'endorsement'
+
+    '''Object representing an endorsement.'''
+    def __init__(self, value: Mapping, doc_id: int):
+        super().__init__(value, doc_id, self.table)
+
+    @property
+    def name(self):
+        return self.get('title')
+
+    @property
+    def slug(self):
+        slug = self.get('slug')
+        if slug:
+            return slug
+        if self.name:
+            return to_file_slug(self.name)
         return None
 
 
@@ -606,6 +705,10 @@ class SelectRelatedField(SelectMultipleField):
         setattr(self.flags, 'inverse', inverse)
 
 
+class TextHTMLField(TextAreaField):
+    pass
+
+
 # Reusable subforms
 # -----------------
 class NativeDateField(StringField):
@@ -666,7 +769,7 @@ class CreatorForm(Form):
 # ---------------
 class SchemeForm(FlaskForm):
     title = StringField('Name of metadata scheme')
-    description = TextAreaField('Description')
+    description = TextHTMLField('Description')
     keywords = FieldList(
         StringField('Subject area', validators=[
             validators.Optional(),
@@ -787,8 +890,8 @@ def edit_record(series, number):
                             for f in form[field]:
                                 f[subfield].errors = clean_error_list(f[subfield])
     return render_template(
-        'edit-' + record.template, form=form, doc_id=number, version=None,
-        idSchemes=list(), **params)
+        f"edit-{record.series}.html", form=form, doc_id=number, version=None,
+        idSchemes=list(), safe_tags=allowed_tags **params)
 
 
 @bp.route('/msc/<string(length=1):series><int:number>')
@@ -891,7 +994,7 @@ def display(series, number, field=None, api=False):
 
     # We are ready to display the information.
     return render_template(
-        'display-' + record.template, record=record, versions=versions,
+        f"display-{record.series}.html", record=record, versions=versions,
         relations=relations, hasRelatedSchemes=hasRelatedSchemes)
 
 

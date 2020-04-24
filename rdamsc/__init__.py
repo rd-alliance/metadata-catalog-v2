@@ -94,7 +94,6 @@ def create_app(test_config=None):
     def dataType(dataType):
         pass
 
-
     from . import auth
     auth.oid.init_app(app)
     auth.lm.init_app(app)
@@ -102,6 +101,9 @@ def create_app(test_config=None):
 
     from . import records
     app.register_blueprint(records.bp)
+
+    from . import lists
+    app.register_blueprint(lists.bp)
 
     @app.context_processor
     def utility_processor():
