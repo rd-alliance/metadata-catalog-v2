@@ -5,19 +5,7 @@ import pytest
 from flask import g, session
 
 
-def is_in_html(sub, page):
-    __tracebackhide__ = True
-    if sub not in page:
-        pytest.fail(f"‘{sub}’ not in page. Full page:\n{page}")
-
-
-def not_in_html(sub, page):
-    __tracebackhide__ = True
-    if sub not in page:
-        pytest.fail(f"‘{sub}’ is in page. Full page:\n{page}")
-
-
-def test_oauth_login(client, app):
+def test_oauth_login(client, auth, app, page):
     base = 'http://localhost'
     scope = 'read:user'
     callback = f'{base}/callback/test'
@@ -25,6 +13,11 @@ def test_oauth_login(client, app):
     userid = "test$testuser"
     username = "Test User"
     useremail = "test@localhost.local"
+
+    # The following only appears on the home page when the user is logged in:
+    auth_only = "<h2>Make changes</h2>"
+
+    # Test profile creation via new OAuth login
 
     response = client.get('/authorize/test')
     assert response.status_code == 302
@@ -42,25 +35,76 @@ def test_oauth_login(client, app):
     response = client.get(url)
     assert response.status_code == 200
     html = response.get_data(as_text=True)
-    m = re.search(
-        r'<input id="csrf_token" name="csrf_token"'' type="hidden"'
-        r' value="([^"]+)">', html)
-    assert m
-    csrf = m.group(1)
+    csrf = page.get_csrf(html)
+    assert csrf
 
     response = client.post(
         '/create-profile',
         data={'csrf_token': csrf, 'name': username, 'email': useremail},
         follow_redirects=True)
     assert response.status_code == 200
-    msg = "Profile successfully created."
     html = response.get_data(as_text=True)
-    is_in_html(msg, html)
-    auth_only = "<h2>Make changes</h2>"
-    is_in_html(auth_only, html)
+    msg = "Profile successfully created."
+    page.assert_contains(msg, html)
+    page.assert_contains(auth_only)
 
     with open(app.config['USER_DATABASE_PATH']) as f:
         users = json.load(f)
-        assert users.get('_default').get('1').get('userid') == userid
-        assert users.get('_default').get('1').get('name') == username
-        assert users.get('_default').get('1').get('email') == useremail
+        assert users.get('_default', dict()).get('1', dict()).get(
+            'userid') == userid
+        assert users.get('_default', dict()).get('1', dict()).get(
+            'name') == username
+        assert users.get('_default', dict()).get('1', dict()).get(
+            'email') == useremail
+
+    newemail = "test@example.com"
+
+    response = client.get('/edit-profile')
+    html = response.get_data(as_text=True)
+    csrf = page.get_csrf(html)
+    assert csrf
+
+    # Test profile editing
+
+    response = client.post(
+        '/edit-profile',
+        data={'csrf_token': csrf, 'name': username, 'email': newemail},
+        follow_redirects=True)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    msg = "Profile successfully updated."
+    page.assert_contains(msg, html)
+
+    with open(app.config['USER_DATABASE_PATH']) as f:
+        users = json.load(f)
+        assert users.get('_default', dict()).get('1', dict()).get(
+            'email') == newemail
+
+    # Test regular logout
+
+    response = client.get('/logout', follow_redirects=True)
+    html = response.get_data(as_text=True)
+    msg = "You were signed out."
+    page.assert_contains(msg, html)
+    page.assert_lacks(auth_only)
+
+    # Test regular login via OAuth
+
+    response = auth.login()
+    html = response.get_data(as_text=True)
+    msg = "Successfully signed in."
+    page.assert_contains(msg, html)
+    page.assert_contains(auth_only)
+
+    # Test logout via profile deletion
+
+    response = client.get('/remove-profile', follow_redirects=True)
+    html = response.get_data(as_text=True)
+    msg = "Your profile was successfully deleted."
+    page.assert_contains(msg, html)
+    page.assert_lacks(auth_only)
+
+    with open(app.config['USER_DATABASE_PATH']) as f:
+        users = json.load(f)
+        assert users.get('_default', dict()).get('1', dict()).get(
+            'userid') is None

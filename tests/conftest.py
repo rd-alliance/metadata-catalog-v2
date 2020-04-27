@@ -7,29 +7,68 @@ from rdamsc import create_app
 
 
 class AuthActions(object):
-    def __init__(self, client):
+    def __init__(self, client, page):
         self._client = client
+        self._page = page
 
     def login(self):
         r = self._client.get('/callback/test', follow_redirects=True)
         html = r.get_data(as_text=True)
-        m = re.search(
-            r'<input id="csrf_token" name="csrf_token"'' type="hidden"'
-            r' value="([^"]+)">', html)
-        if not m:
-            return r
-        csrf = m.group(1)
-        m = re.search(r'<input [^>]+ name="name" [^>]+ value="([^"]+)">', html)
-        username = m.group(1)
-        m = re.search(r'<input [^>]+ name="email" [^>]+ value="([^"]+)">', html)
-        useremail = m.group(1)
-        return self._client.post(
-            '/create-profile',
-            data={'csrf_token': csrf, 'name': username, 'email': useremail},
-            follow_redirects=True)
+        if "<h1>Create Profile</h1>" in html:
+            csrf = self._page.get_csrf(html)
+            m = re.search(
+                r'<input [^>]+ name="name" [^>]+ value="([^"]+)">', html)
+            username = m.group(1)
+            m = re.search(
+                r'<input [^>]+ name="email" [^>]+ value="([^"]+)">', html)
+            useremail = m.group(1)
+            return self._client.post(
+                '/create-profile',
+                data={'csrf_token': csrf,
+                      'name': username,
+                      'email': useremail},
+                follow_redirects=True)
+        return r
 
     def logout(self):
         return self._client.get('/logout')
+
+
+class PageActions(object):
+    def __init__(self):
+        self.html = ''
+
+    def read(self, html):
+        '''Loads HTML ready to be tested or processed further. Could include
+        additional prep, currently doesn't.'''
+        self.html = html
+
+    def get_csrf(self, html=None):
+        '''Extracts CSRF token from page's form controls.'''
+        if html is not None:
+            self.read(html)
+        m = re.search(
+            r'<input id="csrf_token" name="csrf_token"'' type="hidden"'
+            r' value="([^"]+)">', self.html)
+        if not m:
+            return None
+        return m.group(1)
+
+    def assert_contains(self, substring, html=None):
+        '''Asserts page source includes substring.'''
+        __tracebackhide__ = True
+        if html is not None:
+            self.read(html)
+        if substring not in self.html:
+            pytest.fail(f"‘{substring}’ not in page. Full page:\n{self.html}")
+
+    def assert_lacks(self, substring, html=None):
+        '''Asserts page source does not include substring.'''
+        __tracebackhide__ = True
+        if html is not None:
+            self.read(html)
+        if substring in self.html:
+            pytest.fail(f"‘{substring}’ is in page. Full page:\n{self.html}")
 
 
 @pytest.fixture
@@ -62,5 +101,10 @@ def runner(app):
 
 
 @pytest.fixture
-def auth(client):
-    return AuthActions(client)
+def auth(client, page):
+    return AuthActions(client, page)
+
+
+@pytest.fixture
+def page():
+    return PageActions()

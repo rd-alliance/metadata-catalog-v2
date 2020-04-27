@@ -10,8 +10,8 @@ from email.utils import parsedate_tz, mktime_tz
 import requests
 # See https://flask.palletsprojects.com/en/1.1.x/
 from flask import (
-    Blueprint, current_app, flash, g, redirect, render_template, request,
-    session, url_for
+    abort, Blueprint, current_app, flash, g, redirect, render_template,
+    request, session, url_for
 )
 # See https://flask-wtf.readthedocs.io/ and https://wtforms.readthedocs.io/
 from flask_wtf import FlaskForm
@@ -85,6 +85,8 @@ class OAuthSignIn(object):
 
 
 class TestSignIn(OAuthSignIn):
+    '''For testing authorization flow, and authorized-only content. Disabled
+    unless TESTING is True.'''
     def __init__(self):
         super(TestSignIn, self).__init__('test')
         self.formatted_name = 'Test'
@@ -97,9 +99,11 @@ class TestSignIn(OAuthSignIn):
             base_url='https://localhost/')
 
     def authorize(self):
-        return redirect(self.service.get_authorize_url(
-            scope='read:user',
-            redirect_uri=self.get_callback_url()))
+        if current_app.config['TESTING']:
+            return redirect(self.service.get_authorize_url(
+                scope='read:user',
+                redirect_uri=self.get_callback_url()))
+        abort(404)
 
     def callback(self):
         if current_app.config['TESTING']:
