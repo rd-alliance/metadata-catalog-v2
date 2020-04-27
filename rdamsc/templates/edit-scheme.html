@@ -95,43 +95,6 @@
     </div>
     </fieldset>
     <fieldset>
-    <legend>Relationships to other records</legend>
-    <div class="form-group">
-      {{ form.parent_schemes.label(class="control-label") }}
-      {{ form.parent_schemes(class="form-control") }}
-    </div>
-    <div class="form-group">
-      {{ form.child_schemes.label(class="control-label") }}
-      {{ form.child_schemes(class="form-control") }}
-    </div>
-    {#
-    <div class="form-group">
-      {{ form.maintainers.label(class="control-label") }}
-      {{ form.maintainers(class="form-control", style="width:auto;") }}
-    </div>
-    <div class="form-group">
-      {{ form.funders.label(class="control-label") }}
-      {{ form.funders(class="form-control", style="width:auto;") }}
-    </div>
-    <div class="form-group">
-      {{ form.users.label(class="control-label") }}
-      {{ form.users(class="form-control", style="width:auto;") }}
-    </div>
-    #}
-    {% if doc_id != 0 %}
-    <p class="help-block">
-      Once you have saved this record, you can add relationships from other records:
-    </p>
-    <div class="form-group">
-      <a href="{{ url_for('main.edit_record', series='m', number=0) }}" target="_blank" class="btn btn-warning">Add scheme</a>
-      <a href="{{ url_for('main.edit_record', series='g', number=0) }}" target="_blank" class="btn btn-warning">Add organization</a>
-      <a href="{{ url_for('main.edit_record', series='t', number=0) }}" target="_blank" class="btn btn-warning">Add tool</a>
-      <a href="{{ url_for('main.edit_record', series='c', number=0) }}" target="_blank" class="btn btn-warning">Add mapping between schemes</a>
-      <a href="{{ url_for('main.edit_record', series='e', number=0) }}" target="_blank" class="btn btn-warning">Add endorsement</a>
-    </div>
-    {% endif %}
-    </fieldset>
-    <fieldset>
     <legend>{{ form.locations.label.text }}</legend>
     <div class="form-group">
       <ol class="form-list">
@@ -208,6 +171,57 @@
         <li>To give several identifiers, save after adding each one.</li>
       </ul>
     </div>
+    </fieldset>
+    <fieldset>
+    <legend>Relationships to other records</legend>
+    <div class="form-group">
+      {{ form.parent_schemes.label(class="control-label") }}
+      {{ form.parent_schemes(class="form-control") }}
+    </div>
+    <div class="form-group">
+      {{ form.child_schemes.label(class="control-label") }}
+      {{ form.child_schemes(class="form-control") }}
+    </div>
+    <div class="form-group">
+      {{ form.input_to_mappings.label(class="control-label") }}
+      {{ form.input_to_mappings(class="form-control") }}
+    </div>
+    <div class="form-group">
+      {{ form.output_from_mappings.label(class="control-label") }}
+      {{ form.output_from_mappings(class="form-control") }}
+    </div>
+    <div class="form-group">
+      {{ form.maintainers.label(class="control-label") }}
+      {{ form.maintainers(class="form-control") }}
+    </div>
+    <div class="form-group">
+      {{ form.funders.label(class="control-label") }}
+      {{ form.funders(class="form-control") }}
+    </div>
+    <div class="form-group">
+      {{ form.users.label(class="control-label") }}
+      {{ form.users(class="form-control") }}
+    </div>
+    <div class="form-group">
+      {{ form.tools.label(class="control-label") }}
+      {{ form.tools(class="form-control") }}
+    </div>
+    <div class="form-group">
+      {{ form.endorsements.label(class="control-label") }}
+      {{ form.endorsements(class="form-control") }}
+    </div>
+    {% if doc_id != 0 %}
+    <p class="help-block">
+      Once you have saved this record, you can add relationships from other records:
+    </p>
+    <div class="form-group">
+      <a href="{{ url_for('main.edit_record', series='m', number=0) }}" target="_blank" class="btn btn-warning">Add scheme</a>
+      <a href="{{ url_for('main.edit_record', series='g', number=0) }}" target="_blank" class="btn btn-warning">Add organization</a>
+      <a href="{{ url_for('main.edit_record', series='t', number=0) }}" target="_blank" class="btn btn-warning">Add tool</a>
+      <a href="{{ url_for('main.edit_record', series='c', number=0) }}" target="_blank" class="btn btn-warning">Add mapping between schemes</a>
+      <a href="{{ url_for('main.edit_record', series='e', number=0) }}" target="_blank" class="btn btn-warning">Add endorsement</a>
+    </div>
+    {% endif %}
     </fieldset>
     {#
     {% if version %}

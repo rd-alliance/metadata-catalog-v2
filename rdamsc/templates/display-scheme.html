@@ -155,9 +155,9 @@
     {% for child in relations['child_schemes'] %}
       <li><p><a href="{{ url_for('main.display', series='m', number=child.doc_id) }}">{{ child['title'] }}</a> is a profile of this scheme.</p></li>
     {% endfor %}
-    {% for mapping in relations['mappings_from'] %}
+    {% for mapping in relations['input_to_mappings'] %}
       <li class="mappings">
-        <p>This scheme can be mapped to {% for scheme in mapping['output_schemes'] %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}<a href="{{ url_for('main.display', series='m', number=scheme.doc_id) }}">{{ scheme['title'] }}</a>{% endfor %}.</p>
+        <p>This scheme can be mapped to {% for scheme in mapping['input_to_mappings'] %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}<a href="{{ url_for('main.display', series='m', number=scheme.doc_id) }}">{{ scheme['title'] }}</a>{% endfor %}.</p>
         {% if 'description' in mapping %}
         <div class="description">{{ mapping['description']|safe }}</div>
         {% endif %}
@@ -172,9 +172,9 @@
         </ul>
         {% endif %}
     {% endfor %}
-    {% for mapping in relations['mappings_to'] %}
+    {% for mapping in relations['output_from_mappings'] %}
       <li class="mappings">
-        <p>This scheme can be mapped from {% for scheme in mapping['input_schemes'] %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}<a href="{{ url_for('main.display', series='m', number=scheme.doc_id) }}">{{ scheme['title'] }}</a>{% endfor %}.</p>
+        <p>This scheme can be generated from {% for scheme in mapping['output_from_mappings'] %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}<a href="{{ url_for('main.display', series='m', number=scheme.doc_id) }}">{{ scheme['title'] }}</a>{% endfor %}.</p>
         {% if 'description' in mapping %}
         <div class="description">{{ mapping['description']|safe }}</div>
         {% endif %}

@@ -7,6 +7,7 @@ import re
 from typing import (
     List,
     Mapping,
+    Tuple,
     Type,
 )
 from urllib.parse import urlparse
@@ -67,7 +68,6 @@ allowed_tags = {
     }
 
 
-
 # Database wrapper classes
 # ========================
 class Relation:
@@ -79,21 +79,24 @@ class Relation:
 
     def add(self, relations: Mapping[str, Mapping[str, List[str]]]):
         '''Adds relations to the table.'''
+        n = len(mscid_prefix) + 1
         with transaction(self.tb) as t:
             for s, properties in relations.items():
-                relation = self.tb.get(Query()['@id'] == s)
-                if relation is None:
+                rel_record = self.tb.get(Query()['@id'] == s)
+                if rel_record is None:
                     properties['@id'] = s
                     t.insert(properties)
                     continue
                 for p, objects in properties.items():
-                    if p not in relation:
-                        relation[p] = objects
+                    if p not in rel_record:
+                        rel_record[p] = objects
                         continue
                     for o in objects:
-                        if o not in relation[p]:
-                            relation[p].append(o)
-                t.update(relation, doc_ids=[relation.doc_id])
+                        if o not in rel_record[p]:
+                            rel_record[p].append(o)
+                            rel_record[p].sort(
+                                key=lambda k: k[:n] + k[n:].zfill(5))
+                t.update(rel_record, doc_ids=[rel_record.doc_id])
 
     def remove(self, relations: Mapping[str, Mapping[str, List[str]]]):
         '''Removes relations from table, and returns those successfully
@@ -102,6 +105,7 @@ class Relation:
         with transaction(self.tb) as t:
             for s, properties in relations.items():
                 relation = self.tb.get(Query()['@id'] == s)
+                print(f"DEBUG Relation.remove: processing {relation}")
                 if relation is None:
                     continue
                 for p, objects in properties.items():
@@ -117,7 +121,11 @@ class Relation:
                         relation[p].remove(o)
                         removed_relations[s][p].append(o)
                     if not relation[p]:
+                        print(f"DEBUG Relation.remove: removing empty key {p}")
                         del relation[p]
+                        t.update_callable(delete(p), doc_ids=[relation.doc_id])
+                    else:
+                        print(f"DEBUG Relation.remove: not removing non-empty key {p} = {relation[p]}")
                 t.update(relation, doc_ids=[relation.doc_id])
         return removed_relations
 
@@ -226,9 +234,23 @@ class Record(Document):
                 del data[key]
             elif value is None:
                 del data[key]
-            elif key is 'csrf_token':
+            elif key in ['csrf_token', 'old_relations']:
                 del data[key]
         return data
+
+    @classmethod
+    def get_choices(cls, exceptions: List[str]=None):
+        choices = [('', '')]
+        for record in cls.search(Query().slug.exists()):
+            choices.append(
+                (record.mscid, record.name))
+
+        if exceptions is not None:
+            choices = [choice for choice in choices
+                       if choices[0] not in exceptions]
+
+        choices.sort(key=lambda k: k[1].lower())
+        return choices
 
     @classmethod
     def load(cls, doc_id: int, table: str=None):
@@ -300,6 +322,10 @@ class Record(Document):
         return f"{mscid_prefix}{self.table}{self.doc_id}"
 
     @property
+    def name(self):
+        return "Generic record"
+
+    @property
     def slug(self):
         return self.get('slug')
 
@@ -323,50 +349,62 @@ class Record(Document):
 
         return ''
 
-    def _save_relations(self, statements: List[Mapping],
-                        missing_statements: List[Mapping]):
+    def _save_relations(self, forward: List[Tuple[bool, str, List[str]]],
+                        inverted: List[Tuple[str, str, bool]]):
         '''Saves relation edits to the Relations table.'''
         rel = Relation()
+        additions = dict()
+        deletions = dict()
 
-        if statements:
-            relations = self._triples_to_dict(statements)
-            rel.add(relations)
+        for is_addition, p, objects in forward:
+            if is_addition:
+                if self.mscid in objects:
+                    objects.remove(self.mscid)
+                if not objects:
+                    continue
+                if self.mscid not in additions:
+                    additions[self.mscid] = dict()
+                if p not in additions[self.mscid]:
+                    additions[self.mscid][p] = list()
+                additions[self.mscid][p].extend(objects)
+            else:
+                if not objects:
+                    continue
+                if self.mscid not in deletions:
+                    deletions[self.mscid] = dict()
+                if p not in deletions[self.mscid]:
+                    deletions[self.mscid][p] = list()
+                deletions[self.mscid][p].extend(objects)
 
-        if missing_statements:
-            relations_to_delete = self._triples_to_dict(missing_statements)
-            rel.remove(relations_to_delete)
+        for s, p, is_addition in inverted:
+            if is_addition:
+                if s not in additions:
+                    additions[s] = dict()
+                if p not in additions[s]:
+                    additions[s][p] = list()
+                additions[s][p].append(self.mscid)
+            else:
+                if s not in deletions:
+                    deletions[s] = dict()
+                if p not in deletions[s]:
+                    deletions[s][p] = list()
+                deletions[s][p].append(self.mscid)
+
+        rel.add(additions)
+        rel.remove(deletions)
 
         return ''
 
-    def _triples_to_dict(self, statements: List[Mapping]):
-        '''Assembles dictionary of relations. Replaces 'SELF' with actual mscid.'''
-        relations = dict()
-        for statement in statements:
-            s = statement['subject']
-            p = statement['predicate']
-            o = statement['object']
-            if s == o:
-                continue
-            if s == 'SELF':
-                s = self.mscid
-            if o == 'SELF':
-                o = self.mscid
-            if s not in relations:
-                relations[s] = dict()
-            if p not in relations[s]:
-                relations[s][p] = list()
-            relations[s][p].append(o)
-        return relations
 
-    def save_gui_input(self, value: Mapping):
+    def save_gui_input(self, formdata: Mapping):
         '''Processes form input and saves it. Returns error message if a problem
         arises.'''
 
         # Insert slug:
-        value['slug'] = self.slug
+        formdata['slug'] = self.slug
 
         # Restore version information:
-        value['versions'] = self.get('versions', list())
+        formdata['versions'] = self.get('versions', list())
 
         # Get list of fields we can iterate over:
         fields = self.form()
@@ -375,90 +413,96 @@ class Record(Document):
         for field in fields:
             if field.type != 'TextHTMLField':
                 continue
-            html_in = value.get(field.short_name)
+            html_in = formdata.get(field.name)
             if not html_in:
                 continue
             # TODO: apply filtering
             html_safe = html_in
-            value[field.short_name] = html_safe
-
-        # Check to see if any relatedEntities information has been removed:
-        missing_statements = list()
-        rel = Relation()
-        if self.doc_id != 0:
-            for field in fields:
-                if field.type != 'SelectRelatedField':
-                    continue
-                predicate = field.description
-                if field.flags.inverse:
-                    object = self.mscid
-                    mscids = rel.subjects(
-                        predicate=predicate, object=object)
-                    if mscids:
-                        for subject in mscids:
-                            if subject not in value.get(field.name, list()):
-                                missing_statements.append({
-                                    'subject': subject,
-                                    'predicate': predicate,
-                                    'object': object})
-                else:
-                    subject = self.mscid
-                    mscids = rel.objects(
-                        subject=subject, predicate=predicate)
-                    if mscids:
-                        for object in mscids:
-                            if object not in value.get(field.name, list()):
-                                missing_statements.append({
-                                    'subject': subject,
-                                    'predicate': predicate,
-                                    'object': object})
+            formdata[field.name] = html_safe
 
         # Remove form inputs containing relatedEntities information, and save
-        # them separately. NB. We may not have mscid yet, so use 'SELF' for
-        # current record:
-        statements = list()
+        # them separately. Things to note:
+        # - If a field is missing from formdata, no values are set and user has
+        #   not interacted with it (nothing to do).
+        # - If the field is present but the value is a list containing just the
+        #   empty string, the user has deliberately cleared any existing
+        #   relationships.
+        # - If the field is present and has a list of actual values, these are
+        #   the only values that should be set.
+
+        # Forward relationships are List[Tuple[Boolean, predicate, List[object]]]
+        # Inverse relationships are List[Tuple[subject, predicate, Boolean]]
+
+        # where True indicates an addition and False indicates a deletion
+        forward = list()
+        inverted = list()
+
+        # Previously stored relationships (falling back to databases if not
+        # available from form data):
+        rel = Relation()
+        old_relations = dict
+        old_relation_json = formdata.get('old_relations')
+        if old_relation_json:
+            try:
+                old_relations = json.loads(old_relation_json)
+            except json.JSONDecodeError:
+                print("DEBUG save_gui_input: ignoring bad JSON in"
+                      " old_relations.")
+
         for field in fields:
             if field.type != 'SelectRelatedField':
                 continue
-            if field.name not in value:
+            if field.name not in formdata:
                 continue
-            # Save in our list, the right way around:
+
             predicate = field.description
-            for entity in value[field.name]:
-                if field.flags.inverse:
-                    subject = entity
-                    object = 'SELF'
-                else:
-                    subject = 'SELF'
-                    object = entity
-                statements.append({
-                    'subject': subject,
-                    'predicate': predicate,
-                    'object': object})
-            del value[field.name]
+            if '' in formdata[field.name]:
+                formdata[field.name].remove('')
+
+            # What do we need to do?
+            if field.flags.inverse:
+                # Base state to compare against:
+                old_subjects = old_relations.get(
+                    field.name,
+                    rel.subjects(predicate=predicate, object=self.mscid))
+                for s in formdata[field.name]:
+                    if s not in old_subjects:
+                        inverted.append((s, predicate, True))
+                for s in old_subjects:
+                    if s not in formdata[field.name]:
+                        inverted.append((s, predicate, False))
+            else:
+                old_objects = old_relations.get(
+                    field.name,
+                    rel.objects(subject=self.mscid, predicate=predicate))
+                additions = list()
+                for o in formdata[field.name]:
+                    if o not in old_objects:
+                        additions.append(o)
+                if additions:
+                    forward.append((True, predicate, additions))
+                deletions = list()
+                for o in old_objects:
+                    if o not in formdata[field.name]:
+                        deletions.append(o)
+                if deletions:
+                    forward.append((False, predicate, deletions))
+
+            # Clear from formdata
+            del formdata[field.name]
 
         # Save the main record:
-        error = self._save(value)
+        error = self._save(formdata)
         if error:
             return error
 
         # Update relations
-        return self._save_relations(statements, missing_statements)
+        return self._save_relations(forward, inverted)
 
 
 class Scheme(Record):
     table = 'm'
     series = 'scheme'
-
-    @classmethod
-    def get_choices(cls):
-        choices = [('', '')]
-        for scheme in cls.search(Query().slug.exists()):
-            choices.append(
-                (scheme.mscid, scheme.get('title', 'Untitled')))
-
-        choices.sort(key=lambda k: k[1].lower())
-        return choices
 
     @classmethod
     def get_vocabs(cls):
@@ -481,7 +525,7 @@ class Scheme(Record):
 
     @property
     def name(self):
-        return self.get('title')
+        return self.get('title', "Untitled")
 
     @property
     def slug(self):
@@ -502,6 +546,7 @@ class Scheme(Record):
 
         # Populate with relevant relations
         rel = Relation()
+        rel_summary = dict()
         for field in self.form():
             if field.type != 'SelectRelatedField':
                 continue
@@ -515,11 +560,19 @@ class Scheme(Record):
                 subject = self.mscid
                 mscids.extend(rel.objects(
                     subject=subject, predicate=predicate))
-            if mscids:
-                data[field.short_name] = mscids
+            rel_summary[field.name] = mscids
+
+        for key, value in rel_summary.items():
+            if value:
+                data[key] = value
+
+        data['old_relations'] = json.dumps(rel_summary)
 
         # Populate form:
         form = self.form(data=data)
+        fitered_schemes = self.get_choices([self.mscid])
+        form.parent_schemes.choices = fitered_schemes
+        form.child_schemes.choices = fitered_schemes
 
         # Assign validators to current choices:
         scheme_locations = [
@@ -789,11 +842,17 @@ class SchemeForm(FlaskForm):
         FormField(IdentifierForm), 'Identifiers for this scheme',
         min_entries=1)
     parent_schemes = SelectRelatedField(
-        'Parent metadata scheme(s)', Scheme,
+        'Parent metadata schemes', Scheme,
         description='parent scheme')
     child_schemes = SelectRelatedField(
-        'Profile(s) of this scheme', Scheme,
+        'Profiles of this scheme', Scheme,
         description='parent scheme', inverse=True)
+    input_to_mappings = SelectRelatedField(
+        'Mappings that take this scheme as input', Crosswalk,
+        description='input scheme', inverse=True)
+    output_from_mappings = SelectRelatedField(
+        'Mappings that give this scheme as output', Crosswalk,
+        description='output scheme', inverse=True)
     maintainers = SelectRelatedField(
         'Organizations that maintain this scheme', Group,
         description='maintainer')
@@ -803,6 +862,13 @@ class SchemeForm(FlaskForm):
     users = SelectRelatedField(
         'Organizations that use this scheme', Group,
         description='user')
+    tools = SelectRelatedField(
+        'Tools that support this scheme', Tool,
+        description='supported scheme', inverse=True)
+    endorsements = SelectRelatedField(
+        'Endorsements of this scheme', Endorsement,
+        description='endorsed scheme', inverse=True)
+    old_relations = HiddenField()
 
 
 def get_data_db():
