@@ -81,7 +81,7 @@ class Relation:
         '''Adds relations to the table.'''
         with transaction(self.tb) as t:
             for s, properties in relations.items():
-                relation = t.get(Query()['@id'] == s)
+                relation = self.tb.get(Query()['@id'] == s)
                 if relation is None:
                     properties['@id'] = s
                     t.insert(properties)
@@ -101,7 +101,7 @@ class Relation:
         removed_relations = dict()
         with transaction(self.tb) as t:
             for s, properties in relations.items():
-                relation = t.get(Query()['@id'] == s)
+                relation = self.tb.get(Query()['@id'] == s)
                 if relation is None:
                     continue
                 for p, objects in properties.items():
@@ -132,7 +132,7 @@ class Relation:
             else:
                 relations = self.tb.search(Q[predicate].exists())
             for relation in relations:
-                if len(relation.keys() == 1):
+                if len(relation.keys()) == 1:
                     continue
                 mscids.add(relation.get('@id'))
         else:
@@ -249,7 +249,6 @@ class Record(Document):
 
         db = get_data_db()
         if table not in valid_tables:
-            print(f"DEBUG: {table} not a valid table.")
             return None
         tb = db.table(table)
         doc = tb.get(doc_id=doc_id)
@@ -356,7 +355,7 @@ class Record(Document):
                 relations[s] = dict()
             if p not in relations[s]:
                 relations[s][p] = list()
-            relations[s][p].append()
+            relations[s][p].append(o)
         return relations
 
     def save_gui_input(self, value: Mapping):
@@ -781,11 +780,19 @@ class SchemeForm(FlaskForm):
         'Subject areas', min_entries=1)
     dataTypes = FieldList(
         FormField(DataTypeForm), 'Data types', min_entries=1)
+    locations = FieldList(
+        FormField(LocationForm), 'Relevant links', min_entries=1)
+    samples = FieldList(
+        FormField(SampleForm), 'Sample records conforming to this scheme',
+        min_entries=1)
+    identifiers = FieldList(
+        FormField(IdentifierForm), 'Identifiers for this scheme',
+        min_entries=1)
     parent_schemes = SelectRelatedField(
         'Parent metadata scheme(s)', Scheme,
         description='parent scheme')
     child_schemes = SelectRelatedField(
-        'Parent metadata scheme(s)', Scheme,
+        'Profile(s) of this scheme', Scheme,
         description='parent scheme', inverse=True)
     maintainers = SelectRelatedField(
         'Organizations that maintain this scheme', Group,
@@ -796,14 +803,6 @@ class SchemeForm(FlaskForm):
     users = SelectRelatedField(
         'Organizations that use this scheme', Group,
         description='user')
-    locations = FieldList(
-        FormField(LocationForm), 'Relevant links', min_entries=1)
-    samples = FieldList(
-        FormField(SampleForm), 'Sample records conforming to this scheme',
-        min_entries=1)
-    identifiers = FieldList(
-        FormField(IdentifierForm), 'Identifiers for this scheme',
-        min_entries=1)
 
 
 def get_data_db():
@@ -891,7 +890,7 @@ def edit_record(series, number):
                                 f[subfield].errors = clean_error_list(f[subfield])
     return render_template(
         f"edit-{record.series}.html", form=form, doc_id=number, version=None,
-        idSchemes=list(), safe_tags=allowed_tags **params)
+        idSchemes=list(), safe_tags=allowed_tags, **params)
 
 
 @bp.route('/msc/<string(length=1):series><int:number>')
@@ -953,44 +952,34 @@ def display(series, number, field=None, api=False):
                 break
 
     # If the record has related entities, include the corresponding entries in
-    # a 'relations' dictionary.
+    # a 'relations' dictionary. The keys are consistent with form controls, so
+    # we defer to that for lookups.
+    rel = Relation()
     relations = dict()
-    hasRelatedSchemes = False
-    #if 'relatedEntities' in record:
-        #for entity in record['relatedEntities']:
-            #role = entity['role']
-            #if role not in relations_msc_form:
-                #print('WARNING: Record {} has related entity with unrecognized'
-                      #' role "{}".'.format(mscid, role))
-                #continue
-            #relation_list = relations_msc_form[role]
-            #if relation_list not in relations:
-                #relations[relation_list] = list()
-            #entity_series, entity_number = parse_mscid(entity['id'])
-            #document_record = tables[entity_series].get(doc_id=entity_number)
-            #if document_record:
-                #relations[relation_list].append(document_record)
-                #if entity_series == 'm':
-                    #hasRelatedSchemes = True
+    scheme_scheme_fields = list()
+    for field in record.form():
+        if field.type != 'SelectRelatedField':
+            continue
+        if (field.description in [
+                'parent scheme', 'input scheme', 'output scheme']):
+            scheme_scheme_fields.append(field.name)
+        if field.flags.inverse:
+            others = rel.subject_records(
+                predicate=field.description, object=record.mscid)
+        else:
+            others = rel.object_records(
+                subject=record.mscid, predicate=field.description)
+        if others:
+            relations[field.name] = others
 
-    # Now we gather information about inverse relationships and add them to the
-    # 'relations' dictionary as well.
-    # For speed, we only run this check for metadata schemes, since only that
-    # template currently includes this information.
-    #if series in ['m']:
-        #for s, t in tables.items():
-            ## The following query takes account of id#version syntax
-            #matches = t.search(Query().relatedEntities.any(
-                #Query()['id'].matches('{}(#v.*)?$'.format(mscid))))
-            #for match in matches:
-                #role_list, document_record = get_relation(mscid, match)
-                #if role_list:
-                    #if role_list in [
-                            #'child schemes', 'mappings_to', 'mappings_from']:
-                        #hasRelatedSchemes = True
-                    #if role_list not in relations:
-                        #relations[role_list] = list()
-                    #relations[role_list].append(document_record)
+    # This is only relevant in Scheme views, since relations to other schemes
+    # are grouped under a single heading.
+    hasRelatedSchemes = False
+    if series == 'm':
+        for field in scheme_scheme_fields:
+            if field in relations:
+                hasRelatedSchemes = True
+                break
 
     # We are ready to display the information.
     return render_template(

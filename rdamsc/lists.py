@@ -26,7 +26,7 @@ def get_scheme_tree(records: List[Scheme]) -> Mapping[str, str]:
     tree = list()
     rel = Relation()
     for record in records:
-        children = rel.subjects("parent scheme", record.mscid)
+        children = rel.subject_records("parent scheme", record.mscid)
         node = {
             'name': record.name,
             'url': url_for(

@@ -4,6 +4,7 @@
 {% block main %}
   <form action="{{ url_for('main.edit_record', series='m', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
     {{ form.hidden_tag() }}
+    <fieldset>
     <div class="form-group">
       {{ form.title.label(class="control-label") }}
       {{ form.title(placeholder="Name of scheme", class="form-control") }}
@@ -56,6 +57,7 @@
         <li>To give several terms, save after adding each one.</li>
       </ul>
     </div>
+    </fieldset>
     <fieldset>
     <legend>{{ form.dataTypes.label.text }}</legend>
     <datalist id="dataTypeLabel-list">
@@ -94,17 +96,13 @@
     </fieldset>
     <fieldset>
     <legend>Relationships to other records</legend>
-    <p class="help-block">
-      If the scheme or organization you need is not listed, you can add it using
-      the following links.
-    </p>
-    <div class="form-group">
-      <a href="{{ url_for('main.edit_record', series='m', number=0) }}" target="_blank" class="btn btn-warning">Add scheme</a>
-      <a href="{{ url_for('main.edit_record', series='g', number=0) }}" target="_blank" class="btn btn-warning">Add organization</a>
-    </div>
     <div class="form-group">
       {{ form.parent_schemes.label(class="control-label") }}
       {{ form.parent_schemes(class="form-control") }}
+    </div>
+    <div class="form-group">
+      {{ form.child_schemes.label(class="control-label") }}
+      {{ form.child_schemes(class="form-control") }}
     </div>
     {#
     <div class="form-group">
@@ -122,10 +120,11 @@
     #}
     {% if doc_id != 0 %}
     <p class="help-block">
-      For some other relationships, you need to add them from a different
-      record.
+      Once you have saved this record, you can add relationships from other records:
     </p>
     <div class="form-group">
+      <a href="{{ url_for('main.edit_record', series='m', number=0) }}" target="_blank" class="btn btn-warning">Add scheme</a>
+      <a href="{{ url_for('main.edit_record', series='g', number=0) }}" target="_blank" class="btn btn-warning">Add organization</a>
       <a href="{{ url_for('main.edit_record', series='t', number=0) }}" target="_blank" class="btn btn-warning">Add tool</a>
       <a href="{{ url_for('main.edit_record', series='c', number=0) }}" target="_blank" class="btn btn-warning">Add mapping between schemes</a>
       <a href="{{ url_for('main.edit_record', series='e', number=0) }}" target="_blank" class="btn btn-warning">Add endorsement</a>
