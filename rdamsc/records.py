@@ -40,6 +40,7 @@ from wtforms.compat import string_types
 # -----
 from .db_utils import JSONStorageWithGit
 from .utils import Pluralizer, to_file_slug
+from .vocab import get_subject_terms
 
 bp = Blueprint('main', __name__)
 mscid_prefix = 'msc:'
@@ -70,7 +71,7 @@ allowed_tags = {
 
 # Database wrapper classes
 # ========================
-class Relation:
+class Relation(object):
     '''Utility class for handling common operations on the relations table.
     Relations are stored using MSCIDs to identify records.'''
     def __init__(self):
@@ -239,15 +240,11 @@ class Record(Document):
         return data
 
     @classmethod
-    def get_choices(cls, exceptions: List[str]=None):
+    def get_choices(cls):
         choices = [('', '')]
         for record in cls.search(Query().slug.exists()):
             choices.append(
                 (record.mscid, record.name))
-
-        if exceptions is not None:
-            choices = [choice for choice in choices
-                       if choices[0] not in exceptions]
 
         choices.sort(key=lambda k: k[1].lower())
         return choices
@@ -395,7 +392,6 @@ class Record(Document):
 
         return ''
 
-
     def save_gui_input(self, formdata: Mapping):
         '''Processes form input and saves it. Returns error message if a problem
         arises.'''
@@ -419,6 +415,14 @@ class Record(Document):
             # TODO: apply filtering
             html_safe = html_in
             formdata[field.name] = html_safe
+
+        # Convert subjects to URIs:
+        if 'keywords' in formdata:
+            keyword_uris = list()
+            kw = get_subject_terms()
+            for keyword in formdata['keywords']:
+                keyword_uris.append(kw.get_uri(keyword))
+            formdata['keywords'] = keyword_uris
 
         # Remove form inputs containing relatedEntities information, and save
         # them separately. Things to note:
@@ -505,11 +509,16 @@ class Scheme(Record):
     series = 'scheme'
 
     @classmethod
+    def get_keywords(cls):
+        keywords = get_subject_terms()
+        return keywords.get_choices()
+
+    @classmethod
     def get_vocabs(cls):
         '''Gets controlled vocabularies for use in form autocompletion.'''
         vocabs = dict()
 
-        vocabs['subjects'] = list()
+        vocabs['subjects'] = cls.get_keywords()
         vocabs['dataTypeURLs'] = list()
         vocabs['dataTypeLabels'] = list()
 
@@ -568,13 +577,29 @@ class Scheme(Record):
 
         data['old_relations'] = json.dumps(rel_summary)
 
+        # Translate keywords from URI to string
+        kw = get_subject_terms()
+        if 'keywords' in data:
+            keywords = list()
+            for keyword_uri in data['keywords']:
+                keywords.append(kw.get_long_label(keyword_uri))
+            data['keywords'] = keywords
+
         # Populate form:
         form = self.form(data=data)
-        fitered_schemes = self.get_choices([self.mscid])
-        form.parent_schemes.choices = fitered_schemes
-        form.child_schemes.choices = fitered_schemes
+        for field in form:
+            if field.type == 'FieldList' and field.name in data:
+                field.append_entry()
 
         # Assign validators to current choices:
+        for field in form.keywords:
+            if len(field.validators) == 1:
+                field.validators.append(
+                    validators.AnyOf(
+                        kw.get_choices(),
+                        'Value must be drawn from the UNESCO Thesaurus.'))
+        form.parent_schemes.omit_mscid(self.mscid)
+        form.child_schemes.omit_mscid(self.mscid)
         scheme_locations = [
             ('', ''), ('document', 'document'), ('website', 'website'),
             ('RDA-MIG', 'RDA MIG Schema'), ('DTD', 'XML/SGML DTD'),
@@ -756,6 +781,11 @@ class SelectRelatedField(SelectMultipleField):
             label, choices=choices, **kwargs)
         setattr(self.flags, 'inverse', inverse)
 
+    def omit_mscid(self, mscid: str):
+        filtered_choices = [choice for choice in self.choices
+                            if choice[0] != mscid]
+        self.choices = filtered_choices
+
 
 class TextHTMLField(TextAreaField):
     pass
@@ -825,10 +855,6 @@ class SchemeForm(FlaskForm):
     keywords = FieldList(
         StringField('Subject area', validators=[
             validators.Optional(),
-            #validators.AnyOf(
-                #get_subject_terms(complete=True),
-                #'Value must match an English preferred label in the {}.'
-                #.format(thesaurus_link))
             ]),
         'Subject areas', min_entries=1)
     dataTypes = FieldList(
@@ -945,15 +971,16 @@ def edit_record(series, number):
               'error')
         for field, errors in form.errors.items():
             if len(errors) > 0:
-                if isinstance(errors[0], str):
-                    # Simple field
-                    form[field].errors = clean_error_list(form[field])
-                else:
+                print(f"DEBUG edit_record: field: {field}, errors: {errors}.")
+                if isinstance(errors[0], dict):
                     # Subform
                     for subform in errors:
                         for subfield, suberrors in subform.items():
                             for f in form[field]:
                                 f[subfield].errors = clean_error_list(f[subfield])
+                else:
+                    # Simple field
+                    form[field].errors = clean_error_list(form[field])
     return render_template(
         f"edit-{record.series}.html", form=form, doc_id=number, version=None,
         idSchemes=list(), safe_tags=allowed_tags, **params)
@@ -971,6 +998,14 @@ def display(series, number, field=None, api=False):
 
     # Form MSC ID
     mscid = record.mscid
+
+    # Translate URI-based vocabularies:
+    if 'keywords' in record:
+        kw = get_subject_terms()
+        keywords = list()
+        for keyword_uri in record['keywords']:
+            keywords.append(kw.get_label(keyword_uri))
+        record['keywords'] = keywords
 
     # If the record has version information, interpret the associated dates.
     versions = None
@@ -1056,5 +1091,9 @@ def display(series, number, field=None, api=False):
 def clean_error_list(field):
     seen_errors = set()
     for error in field.errors:
-        seen_errors.add(error)
+        if isinstance(error, list):
+            for sub_error in error:
+                seen_errors.add(sub_error)
+        else:
+            seen_errors.add(error)
     return list(seen_errors)
