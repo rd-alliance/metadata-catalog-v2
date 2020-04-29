@@ -78,6 +78,7 @@ def app():
     app = create_app({
         'TESTING': True,
         'MAIN_DATABASE_PATH': os.path.join(inst_path, 'data', 'db.json'),
+        'VOCAB_DATABASE_PATH': os.path.join(inst_path, 'data', 'vocab.json'),
         'USER_DATABASE_PATH': os.path.join(inst_path, 'users', 'db.json'),
         'OAUTH_DATABASE_PATH': os.path.join(inst_path, 'oauth', 'db.json'),
         'OPENID_FS_STORE_PATH': os.path.join(inst_path, 'open-id'),

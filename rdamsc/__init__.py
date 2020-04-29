@@ -30,6 +30,8 @@ def create_app(test_config=None):
         WEBHOOK_SECRET='Do not use this in production either.',
         MAIN_DATABASE_PATH=os.path.join(
             app.instance_path, 'data', 'db.json'),
+        VOCAB_DATABASE_PATH=os.path.join(
+            app.instance_path, 'data', 'vocab.json'),
         USER_DATABASE_PATH=os.path.join(
             app.instance_path, 'users', 'db.json'),
         OAUTH_DATABASE_PATH=os.path.join(
@@ -54,6 +56,7 @@ def create_app(test_config=None):
 
     # Make sure all these directories exist:
     for path in [os.path.dirname(app.config['MAIN_DATABASE_PATH']),
+                 os.path.dirname(app.config['VOCAB_DATABASE_PATH']),
                  os.path.dirname(app.config['USER_DATABASE_PATH']),
                  os.path.dirname(app.config['OAUTH_DATABASE_PATH']),
                  app.config['OPENID_FS_STORE_PATH']]:

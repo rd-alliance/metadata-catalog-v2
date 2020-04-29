@@ -35,12 +35,11 @@ from wtforms import (
 )
 from wtforms.compat import string_types
 
-
 # Local
 # -----
 from .db_utils import JSONStorageWithGit
 from .utils import Pluralizer, to_file_slug
-from .vocab import get_subject_terms
+from .vocab import get_thesaurus
 
 bp = Blueprint('main', __name__)
 mscid_prefix = 'msc:'
@@ -419,9 +418,11 @@ class Record(Document):
         # Convert subjects to URIs:
         if 'keywords' in formdata:
             keyword_uris = list()
-            kw = get_subject_terms()
+            th = get_thesaurus()
             for keyword in formdata['keywords']:
-                keyword_uris.append(kw.get_uri(keyword))
+                keyword_uri = th.get_uri(keyword)
+                if keyword_uri:
+                    keyword_uris.append(keyword_uri)
             formdata['keywords'] = keyword_uris
 
         # Remove form inputs containing relatedEntities information, and save
@@ -509,16 +510,17 @@ class Scheme(Record):
     series = 'scheme'
 
     @classmethod
-    def get_keywords(cls):
-        keywords = get_subject_terms()
-        return keywords.get_choices()
+    def get_thesaurus_terms(cls):
+        th = get_thesaurus()
+        return th.get_choices()
 
     @classmethod
     def get_vocabs(cls):
         '''Gets controlled vocabularies for use in form autocompletion.'''
         vocabs = dict()
 
-        vocabs['subjects'] = cls.get_keywords()
+        th = get_thesaurus()
+        vocabs['subjects'] = th.get_choices()
         vocabs['dataTypeURLs'] = list()
         vocabs['dataTypeLabels'] = list()
 
@@ -578,17 +580,26 @@ class Scheme(Record):
         data['old_relations'] = json.dumps(rel_summary)
 
         # Translate keywords from URI to string
-        kw = get_subject_terms()
+        th = get_thesaurus()
         if 'keywords' in data:
             keywords = list()
             for keyword_uri in data['keywords']:
-                keywords.append(kw.get_long_label(keyword_uri))
+                keywords.append(th.get_long_label(keyword_uri))
             data['keywords'] = keywords
 
         # Populate form:
         form = self.form(data=data)
         for field in form:
             if field.type == 'FieldList' and field.name in data:
+                last_entry = data[field.name][-1]
+                if not last_entry:
+                    continue
+                if isinstance(last_entry, dict):
+                    for value in last_entry.values():
+                        if value:
+                            break
+                    else:
+                        continue
                 field.append_entry()
 
         # Assign validators to current choices:
@@ -596,7 +607,7 @@ class Scheme(Record):
             if len(field.validators) == 1:
                 field.validators.append(
                     validators.AnyOf(
-                        kw.get_choices(),
+                        th.get_choices(),
                         'Value must be drawn from the UNESCO Thesaurus.'))
         form.parent_schemes.omit_mscid(self.mscid)
         form.child_schemes.omit_mscid(self.mscid)
@@ -1001,10 +1012,14 @@ def display(series, number, field=None, api=False):
 
     # Translate URI-based vocabularies:
     if 'keywords' in record:
-        kw = get_subject_terms()
+        th = get_thesaurus()
         keywords = list()
         for keyword_uri in record['keywords']:
-            keywords.append(kw.get_label(keyword_uri))
+            keyword = th.get_label(keyword_uri)
+            if keyword:
+                keywords.append(keyword)
+            else:
+                print(f"DEBUG display: No keyword for {keyword_uri}.")
         record['keywords'] = keywords
 
     # If the record has version information, interpret the associated dates.

@@ -209,15 +209,9 @@
     </div>
     {% if doc_id != 0 %}
     <p class="help-block">
-      Once you have saved this record, you can add relationships from other records:
+      If the record you need isn't listed, save this one and create the other
+      record: you will be able to add the relationship from the other record.
     </p>
-    <div class="form-group">
-      <a href="{{ url_for('main.edit_record', series='m', number=0) }}" target="_blank" class="btn btn-warning">Add scheme</a>
-      <a href="{{ url_for('main.edit_record', series='g', number=0) }}" target="_blank" class="btn btn-warning">Add organization</a>
-      <a href="{{ url_for('main.edit_record', series='t', number=0) }}" target="_blank" class="btn btn-warning">Add tool</a>
-      <a href="{{ url_for('main.edit_record', series='c', number=0) }}" target="_blank" class="btn btn-warning">Add mapping between schemes</a>
-      <a href="{{ url_for('main.edit_record', series='e', number=0) }}" target="_blank" class="btn btn-warning">Add endorsement</a>
-    </div>
     {% endif %}
     </fieldset>
     {#
