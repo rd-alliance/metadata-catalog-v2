@@ -7,6 +7,7 @@ import shutil
 from typing import (
     List,
     Mapping,
+    Tuple,
     Union,
 )
 
@@ -16,6 +17,7 @@ from typing import (
 from flask import current_app, g
 # See http://tinydb.readthedocs.io/
 from tinydb import TinyDB, Query
+from tinydb.database import Document
 # See http://rdflib.readthedocs.io/
 # See https://github.com/eugene-eeo/tinyrecord
 from tinyrecord import transaction
@@ -31,8 +33,7 @@ UNO = Namespace('http://vocabularies.unesco.org/ontology#')
 
 
 class Thesaurus(object):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self):
         db = get_vocab_db()
         self.terms = db.table('thesaurus_terms')
         self.trees = db.table('thesaurus_trees')

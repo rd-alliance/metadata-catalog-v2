@@ -39,7 +39,7 @@ from wtforms.compat import string_types
 # -----
 from .db_utils import JSONStorageWithGit
 from .utils import Pluralizer, to_file_slug
-from .vocab import get_thesaurus
+from .vocab import get_thesaurus, get_vocab_db
 
 bp = Blueprint('main', __name__)
 mscid_prefix = 'msc:'
@@ -249,25 +249,34 @@ class Record(Document):
         return choices
 
     @classmethod
+    def get_db(cls):
+        return get_data_db()
+
+    @classmethod
     def load(cls, doc_id: int, table: str=None):
         '''Returns an instance of the Record subclass that corresponds to the
         given table, either blank or the existing record with the given doc_id.
         '''
-        if table is None:
-            table = cls.table
 
-        # This bit allows the function to be called on Record and
-        # return a Scheme (say):
+        # We need to get the table to look up and the class to return the
+        # record as. If called from subclass, this comes direct from the class.
+        # If called on Record, we get it from the table string.
         subclass = cls
-        valid_tables = list()
-        for subcls in cls.__subclasses__():
-            valid_tables.append(subcls.table)
-            if subcls.table == table:
-                subclass = subcls
+        if table is None:
+            if not hasattr(cls, 'table'):
+                return None
+            table = cls.table
+        else:
+            valid_tables = list()
+            for subcls in cls.__subclasses__():
+                valid_tables.append(subcls.table)
+                if subcls.table == table:
+                    subclass = subcls
 
-        db = get_data_db()
-        if table not in valid_tables:
-            return None
+            if table not in valid_tables:
+                return None
+
+        db = subclass.get_db()
         tb = db.table(table)
         doc = tb.get(doc_id=doc_id)
 
@@ -282,7 +291,7 @@ class Record(Document):
         '''
         mscid_format = re.compile(
             mscid_prefix
-            + r'(?P<table>c|e|g|m|t)'
+            + r'(?P<table>[a-z]+)'
             + r'(?P<doc_id>\d+)'
             + r'(#v(?P<version>.*))?$')
         m = mscid_format.match(mscid)
@@ -294,7 +303,7 @@ class Record(Document):
     def all(cls):
         '''Should only be called on subclasses of Record. Returns a list of all
         instances of that subclass from the database.'''
-        db = get_data_db()
+        db = cls.get_db()
         tb = db.table(cls.table)
         docs = tb.all()
         return [cls(value=doc, doc_id=doc.doc_id) for doc in docs]
@@ -304,7 +313,7 @@ class Record(Document):
         '''Should only be called on subclasses of Record. Performs a TinyDB
         search on the corresponding table, converts the results into
         instances of the given subclass.'''
-        db = get_data_db()
+        db = cls.get_db()
         tb = db.table(cls.table)
         docs = tb.search(cond)
         return [cls(value=doc, doc_id=doc.doc_id) for doc in docs]
@@ -333,7 +342,7 @@ class Record(Document):
         value = self.cleanup(value)
 
         # Update or insert record as appropriate
-        db = get_data_db()
+        db = self.get_db()
         tb = db.table(self.table)
         if self.doc_id:
             with transaction(tb) as t:
@@ -611,6 +620,7 @@ class Scheme(Record):
                         'Value must be drawn from the UNESCO Thesaurus.'))
         form.parent_schemes.omit_mscid(self.mscid)
         form.child_schemes.omit_mscid(self.mscid)
+        form.dataTypes.choices = Datatype.get_choices()
         scheme_locations = [
             ('', ''), ('document', 'document'), ('website', 'website'),
             ('RDA-MIG', 'RDA MIG Schema'), ('DTD', 'XML/SGML DTD'),
@@ -719,6 +729,60 @@ class Endorsement(Record):
         return None
 
 
+class Datatype(Record):
+    '''Abstract class with common methods for the helper classes
+    for different types of vocabulary terms.'''
+    table = 'datatype'
+    series = 'datatype'
+
+    @classmethod
+    def get_db(cls):
+        return get_vocab_db()
+
+    @classmethod
+    def get_choices(cls):
+        '''Returns choices as tuples.'''
+        choices = [('', '')]
+        for record in cls.search(Query().id.exists()):
+            choices.append(
+                (record.mscid, record['label']))
+
+        choices.sort(key=lambda k: k[1])
+        return choices
+
+    @classmethod
+    def get_types_used(cls):
+        labels = list()
+        for record in cls.all():
+            labels.append(record['label'])
+        labels.sort()
+        return labels
+
+    def __init__(self, value: Mapping, doc_id: int):
+        super().__init__(value, doc_id, self.table)
+
+    @property
+    def form(self):
+        return DatatypeForm
+
+    def get_form(self):
+        # Get data from database:
+        data = json.loads(json.dumps(self))
+
+        # Populate form:
+        form = self.form(data=data)
+
+        # Add validators:
+        if self.doc_id == 0 and len(form.label.validators) == 1:
+            form.label.validators.append(
+                validators.NoneOf(
+                    self.get_types_used(),
+                    message="That descriptor is already in use." +
+                    " Please make it distinct in some way."))
+
+        return form
+
+
 # Form components
 # ===============
 # Custom validators
@@ -809,12 +873,6 @@ class NativeDateField(StringField):
     validators = [validators.Optional(), W3CDate]
 
 
-class DataTypeForm(Form):
-    label = StringField('Data type', default='')
-    url = StringField('URL of definition', validators=[
-        validators.Optional(), EmailOrURL])
-
-
 class LocationForm(Form):
     url = StringField('URL', validators=[RequiredIf(['type']), EmailOrURL])
     type = SelectField('Type', validators=[RequiredIf(['url'])], default='')
@@ -868,8 +926,8 @@ class SchemeForm(FlaskForm):
             validators.Optional(),
             ]),
         'Subject areas', min_entries=1)
-    dataTypes = FieldList(
-        FormField(DataTypeForm), 'Data types', min_entries=1)
+    dataTypes = SelectMultipleField(
+        'Types of data described by this scheme')
     locations = FieldList(
         FormField(LocationForm), 'Relevant links', min_entries=1)
     samples = FieldList(
@@ -906,6 +964,15 @@ class SchemeForm(FlaskForm):
         'Endorsements of this scheme', Endorsement,
         description='endorsed scheme', inverse=True)
     old_relations = HiddenField()
+
+
+class DatatypeForm(FlaskForm):
+    id = StringField(
+        'URL identifying this type of data',
+        validators=[validators.Optional(), EmailOrURL])
+    label = StringField(
+        'Descriptor for this type of data',
+        validators=[validators.InputRequired()])
 
 
 def get_data_db():
@@ -995,6 +1062,66 @@ def edit_record(series, number):
     return render_template(
         f"edit-{record.series}.html", form=form, doc_id=number, version=None,
         idSchemes=list(), safe_tags=allowed_tags, **params)
+
+
+@bp.route('/edit/datatype<int:number>',
+          methods=['GET', 'POST'])
+@login_required
+def edit_datatype(number):
+    # Look up record to edit, or get new:
+    record = Datatype.load(number)
+
+    # If number is wrong, we reinforce the point by redirecting to 0:
+    if record.doc_id != number:
+        flash("You are trying to update a record that doesn't exist."
+              "Try filling out this new one instead.", 'error')
+        return redirect(url_for('main.edit_datatype', number=0))
+
+    # Instantiate edit form
+    form = record.get_form()
+
+    # Processing the request
+    if request.method == 'POST' and form.validate():
+        form_data = form.data
+        # Save form data to database
+        error = record.save_gui_input(form_data)
+        if record.doc_id:
+            # Editing an existing record
+            if error:
+                flash(error, 'error')
+                return redirect(
+                    url_for('main.edit_datatype', number=number))
+            else:
+                flash('Successfully updated record.', 'success')
+                return redirect(url_for('hello'))
+        else:
+            # Adding a new record
+            if error:
+                flash(error, 'error')
+                return redirect(
+                    url_for('main.edit_datatype', number=number))
+            else:
+                number = record.doc_id
+                flash('Successfully added record.', 'success')
+                return redirect(url_for('hello'))
+    if form.errors:
+        flash('Could not save changes as there {:/was an error/were N errors}.'
+              ' See below for details.'.format(Pluralizer(len(form.errors))),
+              'error')
+        for field, errors in form.errors.items():
+            if len(errors) > 0:
+                if isinstance(errors[0], dict):
+                    # Subform
+                    for subform in errors:
+                        for subfield, suberrors in subform.items():
+                            for f in form[field]:
+                                f[subfield].errors = clean_error_list(f[subfield])
+                else:
+                    # Simple field
+                    form[field].errors = clean_error_list(form[field])
+    return render_template(
+        f"edit-datatype.html", form=form, doc_id=number, version=None,
+        idSchemes=list())
 
 
 @bp.route('/msc/<string(length=1):series><int:number>')

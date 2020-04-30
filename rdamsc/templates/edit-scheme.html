@@ -54,40 +54,12 @@
           <a href="http://vocabularies.unesco.org/browser/thesaurus/en/" target="_blank">UNESCO Thesaurus</a>.</li>
       </ul>
     </div>
-    </fieldset>
-    <fieldset>
-    <legend>{{ form.dataTypes.label.text }}</legend>
-    <datalist id="dataTypeLabel-list">
-      {% for item in dataTypeLabels %}
-      <option>{{ item }}</option>
-      {% endfor %}
-    </datalist>
-    <datalist id="dataTypeURL-list">
-      {% for item in dataTypeLabels %}
-      <option>{{ item }}</option>
-      {% endfor %}
-    </datalist>
     <div class="form-group">
-      <ol class="form-list">
-        {% for f in form.dataTypes %}
-        <li>
-        <div class="{{ state(f['label']) }}">
-        {{ f['label'].label(class="control-label") }}
-        {{ f['label'](list="dataTypeLabel-list", class="form-control", style="width:auto;") }}
-        {{ errors(f['label']) }}
-        </div>
-        <div class="{{ state(f.url) }}">
-        {{ f.url.label(class="control-label") }}
-        {{ f.url(list="dataTypeURL-list", class="form-control") }}
-        {{ errors(f.url) }}
-        </div>
-        </li>
-        {% endfor %}
-      </ol>
+      {{ form.dataTypes.label(class="control-label") }}
+      {{ form.dataTypes(class="form-control") }}
       <ul class="help-block">
         <li>Provide types of data which this scheme is usually used to describe.</li>
-        <li>You can provide either a link to a definition in a data type registry, or a plain term, but preferably both.</li>
-        <li>To give several terms, save after adding each one.</li>
+        <li>You can add new types from the home page.</li>
       </ul>
     </div>
     </fieldset>

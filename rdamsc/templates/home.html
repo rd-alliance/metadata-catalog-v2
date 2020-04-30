@@ -25,5 +25,8 @@
     <li><a href="{{ url_for('main.edit_record', series='g', number=0) }}">Add organization</a></li>
     <li><a href="{{ url_for('main.edit_record', series='e', number=0) }}">Add endorsement</a></li>
   </ul>
+  <ul>
+    <li><a href="{{ url_for('main.edit_datatype', number=0) }}">Add data type</a></li>
+  </ul>
   {% endif %}
 {% endblock %}
