@@ -4,6 +4,7 @@
 # --------
 import json
 import re
+import os
 from typing import (
     List,
     Mapping,
@@ -621,12 +622,8 @@ class Scheme(Record):
         form.parent_schemes.omit_mscid(self.mscid)
         form.child_schemes.omit_mscid(self.mscid)
         form.dataTypes.choices = Datatype.get_choices()
-        scheme_locations = [
-            ('', ''), ('document', 'document'), ('website', 'website'),
-            ('RDA-MIG', 'RDA MIG Schema'), ('DTD', 'XML/SGML DTD'),
-            ('XSD', 'XML Schema'), ('RDFS', 'RDF Schema')]
         for f in form.locations:
-            f['type'].choices = scheme_locations
+            f['type'].choices = Location.get_choices(self.__class__)
 
         return form
 
@@ -730,8 +727,6 @@ class Endorsement(Record):
 
 
 class Datatype(Record):
-    '''Abstract class with common methods for the helper classes
-    for different types of vocabulary terms.'''
     table = 'datatype'
     series = 'datatype'
 
@@ -781,6 +776,82 @@ class Datatype(Record):
                     " Please make it distinct in some way."))
 
         return form
+
+
+class VocabTerm(Document):
+    '''Abstract class with common methods for the helper classes
+    for different types of vocabulary terms.'''
+    @classmethod
+    def get_db(cls):
+        return get_term_db()
+
+    @classmethod
+    def get_choices(cls, filter: Type[Record]=None):
+        '''Returns choices as tuples.'''
+        choices = [('', '')]
+
+        if filter:
+            Q = Query()
+            records = cls.search(Q.applies.any(filter.series))
+            records.sort(key=lambda k: k.doc_id)
+            for record in records:
+                choices.append(
+                    (record['id'], record['label']))
+        else:
+            records = cls.all()
+            records.sort(key=lambda k: k.doc_id)
+            for record in records:
+                choices.append(
+                    (record['id'], record['label']))
+
+        return choices
+
+    @classmethod
+    def populate(cls):
+        db = cls.get_db()
+        tables = db.tables()
+        missing_tables = list()
+
+        for subcls in cls.__subclasses__():
+            if subcls.table not in tables:
+                missing_tables.append(subcls.table)
+
+        if missing_tables:
+            moddir = os.path.dirname(__file__)
+            data_file = os.path.join(
+                moddir, 'data', 'vocabulary.json')
+            if not os.path.isfile(data_file):
+                return
+
+            with open(data_file, 'r') as f:
+                data = json.load(f)
+            for table in missing_tables:
+                terms = data.get(table)
+                if terms:
+                    tb = db.table(table)
+                    with transaction(tb) as t:
+                        for term in terms:
+                            t.insert(term)
+
+
+class Location(VocabTerm, Record):
+    '''Abstract class with common methods for the helper classes
+    for different types of vocabulary terms.'''
+    table = 'location'
+    series = 'location'
+
+    def __init__(self, value: Mapping, doc_id: int):
+        super().__init__(value, doc_id, self.table)
+
+
+class EntityType(VocabTerm, Record):
+    '''Abstract class with common methods for the helper classes
+    for different types of vocabulary terms.'''
+    table = 'type'
+    series = 'type'
+
+    def __init__(self, value: Mapping, doc_id: int):
+        super().__init__(value, doc_id, self.table)
 
 
 # Form components
@@ -984,6 +1055,15 @@ def get_data_db():
             ensure_ascii=False)
 
     return g.data_db
+
+
+def get_term_db():
+    if 'term_db' not in g:
+        g.term_db = TinyDB(
+            current_app.config['TERM_DATABASE_PATH'],
+            ensure_ascii=False)
+
+    return g.term_db
 
 
 @bp.route('/edit/<string(length=1):series><int:number>',

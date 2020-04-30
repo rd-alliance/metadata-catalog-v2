@@ -1,0 +1,317 @@
+{
+ "location": [
+  {
+   "id": "website",
+   "label": "website",
+   "applies": [
+    "scheme",
+    "organization",
+    "tool"
+   ]
+  },
+  {
+   "id": "email",
+   "label": "contact email address",
+   "applies": [
+    "organization"
+   ]
+  },
+  {
+   "id": "document",
+   "label": "specification document",
+   "applies": [
+    "scheme",
+    "mapping"
+   ]
+  },
+  {
+   "id": "document",
+   "label": "documentation",
+   "applies": [
+    "tool"
+   ]
+  },
+  {
+   "id": "document",
+   "label": "document",
+   "applies": [
+    "endorsement"
+   ]
+  },
+  {
+   "id": "DTD",
+   "label": "XML/SGML DTD",
+   "applies": [
+    "scheme"
+   ]
+  },
+  {
+   "id": "XSD",
+   "label": "XML Schema",
+   "applies": [
+    "scheme"
+   ]
+  },
+  {
+   "id": "RDFS",
+   "label": "RDF Schema",
+   "applies": [
+    "scheme"
+   ]
+  },
+  {
+   "id": "JSON",
+   "label": "JSON Schema",
+   "applies": [
+    "scheme"
+   ]
+  },
+  {
+   "id": "RDA-MIG",
+   "label": "RDA MIG Schema",
+   "applies": [
+    "scheme"
+   ]
+  },
+  {
+   "id": "application",
+   "label": "application",
+   "applies": [
+    "tool"
+   ]
+  },
+  {
+   "id": "service",
+   "label": "service endpoint",
+   "applies": [
+    "tool"
+   ]
+  },
+  {
+   "id": "library (C)",
+   "label": "library (C)",
+   "applies": [
+    "mapping"
+   ]
+  },
+  {
+   "id": "library (C#)",
+   "label": "library (C#)",
+   "applies": [
+    "mapping"
+   ]
+  },
+  {
+   "id": "library (C++)",
+   "label": "library (C++)",
+   "applies": [
+    "mapping"
+   ]
+  },
+  {
+   "id": "library (Java)",
+   "label": "library (Java)",
+   "applies": [
+    "mapping"
+   ]
+  },
+  {
+   "id": "library (JavaScript)",
+   "label": "library (JavaScript)",
+   "applies": [
+    "mapping"
+   ]
+  },
+  {
+   "id": "library (Objective-C)",
+   "label": "library (Objective-C)",
+   "applies": [
+    "mapping"
+   ]
+  },
+  {
+   "id": "library (PHP)",
+   "label": "library (PHP)",
+   "applies": [
+    "mapping"
+   ]
+  },
+  {
+   "id": "library (Python)",
+   "label": "library (Python)",
+   "applies": [
+    "mapping"
+   ]
+  },
+  {
+   "id": "library (Ruby)",
+   "label": "library (Ruby)",
+   "applies": [
+    "mapping"
+   ]
+  },
+  {
+   "id": "library (Shell)",
+   "label": "library (Shell)",
+   "applies": [
+    "mapping"
+   ]
+  },
+  {
+   "id": "library (XML)",
+   "label": "library (XML)",
+   "applies": [
+    "mapping"
+   ]
+  },
+  {
+   "id": "executable (Windows)",
+   "label": "executable (Windows)",
+   "applies": [
+    "mapping"
+   ]
+  },
+  {
+   "id": "executable (Mac OS X)",
+   "label": "executable (Mac OS X)",
+   "applies": [
+    "mapping"
+   ]
+  },
+  {
+   "id": "executable (Linux)",
+   "label": "executable (Linux)",
+   "applies": [
+    "mapping"
+   ]
+  },
+  {
+   "id": "executable (BSD)",
+   "label": "executable (BSD)",
+   "applies": [
+    "mapping"
+   ]
+  },
+  {
+   "id": "executable (cross-platform)",
+   "label": "executable (cross-platform)",
+   "applies": [
+    "mapping"
+   ]
+  }
+ ],
+ "type": [
+  {
+   "id": "standards body",
+   "label": "standards body",
+   "applies": [
+    "organization"
+   ]
+  },
+  {
+   "id": "archive",
+   "label": "archive",
+   "applies": [
+    "organization"
+   ]
+  },
+  {
+   "id": "professional group",
+   "label": "professional group",
+   "applies": [
+    "organization"
+   ]
+  },
+  {
+   "id": "coordination group",
+   "label": "coordination group",
+   "applies": [
+    "organization"
+   ]
+  },
+  {
+   "id": "web application",
+   "label": "web application",
+   "applies": [
+    "tool"
+   ]
+  },
+  {
+   "id": "web service",
+   "label": "web service",
+   "applies": [
+    "tool"
+   ]
+  },
+  {
+   "id": "terminal (Windows)",
+   "label": "terminal (Windows)",
+   "applies": [
+    "tool"
+   ]
+  },
+  {
+   "id": "graphical (Windows)",
+   "label": "graphical (Windows)",
+   "applies": [
+    "tool"
+   ]
+  },
+  {
+   "id": "terminal (Mac OS X)",
+   "label": "terminal (Mac OS X)",
+   "applies": [
+    "tool"
+   ]
+  },
+  {
+   "id": "graphical (Mac OS X)",
+   "label": "graphical (Mac OS X)",
+   "applies": [
+    "tool"
+   ]
+  },
+  {
+   "id": "terminal (Linux)",
+   "label": "terminal (Linux)",
+   "applies": [
+    "tool"
+   ]
+  },
+  {
+   "id": "graphical (Linux)",
+   "label": "graphical (Linux)",
+   "applies": [
+    "tool"
+   ]
+  },
+  {
+   "id": "terminal (BSD)",
+   "label": "terminal (BSD)",
+   "applies": [
+    "tool"
+   ]
+  },
+  {
+   "id": "graphical (BSD)",
+   "label": "graphical (BSD)",
+   "applies": [
+    "tool"
+   ]
+  },
+  {
+   "id": "terminal (cross-platform)",
+   "label": "terminal (cross-platform)",
+   "applies": [
+    "tool"
+   ]
+  },
+  {
+   "id": "graphical (cross-platform)",
+   "label": "graphical (cross-platform)",
+   "applies": [
+    "tool"
+   ]
+  }
+ ]
+}

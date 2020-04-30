@@ -16,6 +16,7 @@ from flask_login import current_user
 # Local
 # -----
 from .utils import *
+from .records import VocabTerm
 
 
 def create_app(test_config=None):
@@ -32,6 +33,8 @@ def create_app(test_config=None):
             app.instance_path, 'data', 'db.json'),
         VOCAB_DATABASE_PATH=os.path.join(
             app.instance_path, 'data', 'vocab.json'),
+        TERM_DATABASE_PATH=os.path.join(
+            app.instance_path, 'data', 'terms.json'),
         USER_DATABASE_PATH=os.path.join(
             app.instance_path, 'users', 'db.json'),
         OAUTH_DATABASE_PATH=os.path.join(
@@ -57,6 +60,7 @@ def create_app(test_config=None):
     # Make sure all these directories exist:
     for path in [os.path.dirname(app.config['MAIN_DATABASE_PATH']),
                  os.path.dirname(app.config['VOCAB_DATABASE_PATH']),
+                 os.path.dirname(app.config['TERM_DATABASE_PATH']),
                  os.path.dirname(app.config['USER_DATABASE_PATH']),
                  os.path.dirname(app.config['OAUTH_DATABASE_PATH']),
                  app.config['OPENID_FS_STORE_PATH']]:
@@ -69,6 +73,10 @@ def create_app(test_config=None):
     # Template option settings:
     app.jinja_env.trim_blocks = True
     app.jinja_env.lstrip_blocks = True
+
+    # Initialise controlled terms:
+    with app.app_context():
+        VocabTerm.populate()
 
     # PAGES
     # =====
