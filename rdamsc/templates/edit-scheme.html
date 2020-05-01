@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "macros-forms.html" import state, errors %}
-{% block title %}{% if doc_id == 0 %}Add new metadata scheme{% else %}Edit record msc:m{{ doc_id }}{% endif %}{% if version %}, version {{ version }}{% endif %}{% endblock %}
+{% block title %}{% if doc_id == 0 %}Add new metadata scheme{% else %}Edit record msc:m{{ doc_id }}{% endif %}{% endblock %}
 {% block main %}
   <form action="{{ url_for('main.edit_record', series='m', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
     {{ form.hidden_tag() }}
@@ -88,29 +88,6 @@
     </div>
     </fieldset>
     <fieldset>
-    <legend>{{ form.samples.label.text }}</legend>
-    <div class="form-group">
-      <ol class="form-list">
-      {% for f in form.samples %}
-        <li>
-          <div>
-          {{ f.title.label(class="control-label") }}
-          {{ f.title(class="form-control") }}
-          </div>
-          <div class="{{ state(f.url) }}">
-          {{ f.url.label(class="control-label") }}
-          {{ f.url(placeholder="URL e.g. https://www...", class="form-control") }}
-          {{ errors(f.url) }}
-          </div>
-        </li>
-      {% endfor %}
-      </ol>
-      <ul class="help-block">
-        <li>To give several samples, save after adding each one.</li>
-      </ul>
-    </div>
-    </fieldset>
-    <fieldset>
     <legend>{{ form.identifiers.label.text }}</legend>
     <datalist id="id-schemes">
       {% for idScheme in idSchemes %}
@@ -129,14 +106,9 @@
       {% endfor %}
       </ol>
       <ul class="help-block">
-        {% if version %}
-        <li>Provide an identifier, if known, for this particular version of the
-          scheme.</li>
-        {% else %}
         <li>Provide an identifier, if known, for the scheme across all versions.
           To identify individual versions, provide details under the version instead.</li>
-        {% endif %}
-        <li>You do not need to repeat the internal Catalog identifier here.</li>
+        <li>Do not need repeat the internal Catalog identifier here.</li>
         <li>To give several identifiers, save after adding each one.</li>
       </ul>
     </div>
@@ -186,87 +158,9 @@
     </p>
     {% endif %}
     </fieldset>
-    {#
-    {% if version %}
-    <input type="hidden" name="version" value="{{ version }}">
-    {% else %}
-    <fieldset>
-    <legend>{{ form.versions.label.text }}</legend>
-    <div class="form-group">
-      <ol class="form-list">
-      {% for f in form.versions %}
-        <li>
-          <div class="form-group{{ state(f.number) }}">
-            {{ f.number.label(class="control-label") }}
-            <div class="form-inline">
-              {{ f.number(class="form-control", style="width:auto;") }}
-              {% if f.number_old.data %}
-              {{ f.number_old() }}
-              <a href="{{ url_for('main.edit_record', series='m', number=doc_id) }}?version={{ f.number_old.data }}" target="_blank" class="btn btn-warning">Add version-specific details</a>
-              {% endif %}
-            </div>
-            {{ errors(f.number) }}
-            {% if loop.last %}
-            <ul class="help-block">
-              <li>Do not preface the version number with "version" or "v".</li>
-            </ul>
-            {% endif %}
-          </div>
-          <div class="form-group{{ state(f.issued) }}">
-            {{ f.issued.label(class="control-label") }}
-            {{ f.issued(class="form-control", style="width:auto;") }}
-            {{ errors(f.issued) }}
-            {% if loop.last %}
-            <ul class="help-block">
-              <li>In most cases, the only date you need to provide is "date published".</li>
-            </ul>
-            {% endif %}
-          </div>
-          <div class="form-group{{ state(f.available) }}">
-            {{ f.available.label(class="control-label") }}
-            {{ f.available(class="form-control", style="width:auto;") }}
-            {{ errors(f.available) }}
-            {% if loop.last %}
-            <ul class="help-block">
-              <li>If the version has not been released in its final version,
-              please provide the date when the draft was first released. You do not need to
-              remove this information when the final version is published.</li>
-            </ul>
-            {% endif %}
-          </div>
-          <div class="form-group">
-            <span class="{{ state(f.valid_from) }}">{{ f.valid_from.label(class="control-label") }}</span>
-            <div class="form-inline">
-              <span class="{{ state(f.valid_from) }}">{{ f.valid_from(class="form-control") }}</span>
-              <span class="{{ state(f.valid_to) }}">{{ f.valid_to.label(class="control-label") }}
-              {{ f.valid_to(class="form-control") }}</span>
-            </div>
-            {{ errors(f.valid_from) }}
-            {{ errors(f.valid_to) }}
-            {% if loop.last %}
-            <ul class="help-block">
-              <li>Use "date considered current" only for cases where two or
-            more versions are considered current at the same time.</li>
-            </ul>
-            {% endif %}
-          </div>
-        </li>
-        {% endfor %}
-      </ol>
-      <ul class="help-block">
-        <li>To give several versions, save after adding each one.</li>
-        <li>Once you have saved, you will be able to add version-specific
-          overrides to the other information given on this page.</li>
-      </ul>
-    </div>
-    </fieldset>
-    {% endif %}
-    #}
     <div class="form-group">
       <button class="btn btn-primary">Save changes</button>
-      {% if version %}
-      <a href="{{ url_for('main.edit_record', series='m', number=doc_id) }}" class="btn btn-default">Cancel &amp; edit main record</a>
-      {% elif doc_id == 0 %}
+      {% if doc_id == 0 %}
       <a href="{{ url_for('hello') }}" class="btn btn-default">Cancel</a>
       {% else %}
       <a href="{{ url_for('main.display', series='m', number=doc_id) }}" class="btn btn-default">Cancel &amp; view record</a>

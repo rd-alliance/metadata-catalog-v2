@@ -514,6 +514,41 @@ class Record(Document):
         # Update relations
         return self._save_relations(forward, inverted)
 
+    def save_gui_vinput(self, formdata: Mapping, index: int=None):
+        '''Processes form input and saves it. Returns error message if a problem
+        arises.'''
+
+        # Get list of fields we can iterate over:
+        fields = self.vform()
+
+        # Sanitize HTML input:
+        for field in fields:
+            if field.type != 'TextHTMLField':
+                continue
+            html_in = formdata.get(field.name)
+            if not html_in:
+                continue
+            # TODO: apply filtering
+            html_safe = html_in
+            formdata[field.name] = html_safe
+
+        alldata = dict(self)
+
+        if index is None:
+            if 'versions' not in self:
+                alldata['versions'] = list()
+            alldata['versions'].append(formdata)
+        elif index < 0 or index >= len(self['versions']):
+            return ("You tried to edit a version that does not exist in the"
+                    " database yet.")
+        else:
+            alldata['versions'][index] = formdata
+
+        # Save the main record:
+        error = self._save(alldata)
+        if error:
+            return error
+
 
 class Scheme(Record):
     table = 'm'
@@ -531,8 +566,10 @@ class Scheme(Record):
 
         th = get_thesaurus()
         vocabs['subjects'] = th.get_choices()
-        vocabs['dataTypeURLs'] = list()
-        vocabs['dataTypeLabels'] = list()
+        vocabs['idSchemes'] = list()
+        for tuple in IDScheme.get_choices(cls):
+            if tuple[0]:
+                vocabs['idSchemes'].append(tuple[0])
 
         return vocabs
 
@@ -556,6 +593,10 @@ class Scheme(Record):
         if self.name:
             return to_file_slug(self.name)
         return None
+
+    @property
+    def vform(self):
+        return SchemeVersionForm
 
     def get_form(self):
         # Get data from database:
@@ -622,6 +663,40 @@ class Scheme(Record):
         form.parent_schemes.omit_mscid(self.mscid)
         form.child_schemes.omit_mscid(self.mscid)
         form.dataTypes.choices = Datatype.get_choices()
+        for f in form.locations:
+            f['type'].choices = Location.get_choices(self.__class__)
+
+        return form
+
+    def get_vform(self, index: int=None):
+        # Get data from database:
+        main_data = json.loads(json.dumps(self))
+
+        # Strip out version info, this is handled separately:
+        data = dict()
+        if index is not None:
+            try:
+                data = main_data.get('versions', list())[index]
+            except IndexError:
+                index = None
+                pass
+
+        # Populate form:
+        form = self.vform(data=data)
+        for field in form:
+            if field.type == 'FieldList' and field.name in data:
+                last_entry = data[field.name][-1]
+                if not last_entry:
+                    continue
+                if isinstance(last_entry, dict):
+                    for value in last_entry.values():
+                        if value:
+                            break
+                    else:
+                        continue
+                field.append_entry()
+
+        # Assign validators to current choices:
         for f in form.locations:
             f['type'].choices = Location.get_choices(self.__class__)
 
@@ -854,6 +929,16 @@ class EntityType(VocabTerm, Record):
         super().__init__(value, doc_id, self.table)
 
 
+class IDScheme(VocabTerm, Record):
+    '''Abstract class with common methods for the helper classes
+    for different types of vocabulary terms.'''
+    table = 'id_scheme'
+    series = 'id_scheme'
+
+    def __init__(self, value: Mapping, doc_id: int):
+        super().__init__(value, doc_id, self.table)
+
+
 # Form components
 # ===============
 # Custom validators
@@ -940,7 +1025,6 @@ class TextHTMLField(TextAreaField):
 # Reusable subforms
 # -----------------
 class NativeDateField(StringField):
-    widget = widgets.Input(input_type='date')
     validators = [validators.Optional(), W3CDate]
 
 
@@ -964,21 +1048,9 @@ class IdentifierForm(Form):
     scheme = StringField('ID scheme')
 
 
-class VersionForm(Form):
-    number = StringField('Version number', validators=[
-        RequiredIf(['issued', 'available', 'valid_from']), validators.Length(max=20)])
-    number_old = HiddenField(validators=[validators.Length(max=20)])
-    issued = NativeDateField('Date published')
-    available = NativeDateField('Date released as draft/proposal')
-    valid_from = NativeDateField('Date considered current')
-    valid_to = NativeDateField('until')
-
-
-#class SchemeVersionForm(Form):
-    #scheme_choices = Scheme.get_choices()
-
-    #id = SelectField('Metadata scheme', choices=scheme_choices)
-    #version = StringField('Version')
+class DateRangeForm(Form):
+    start = NativeDateField('from')
+    end = NativeDateField('until')
 
 
 class CreatorForm(Form):
@@ -1001,9 +1073,6 @@ class SchemeForm(FlaskForm):
         'Types of data described by this scheme')
     locations = FieldList(
         FormField(LocationForm), 'Relevant links', min_entries=1)
-    samples = FieldList(
-        FormField(SampleForm), 'Sample records conforming to this scheme',
-        min_entries=1)
     identifiers = FieldList(
         FormField(IdentifierForm), 'Identifiers for this scheme',
         min_entries=1)
@@ -1035,6 +1104,25 @@ class SchemeForm(FlaskForm):
         'Endorsements of this scheme', Endorsement,
         description='endorsed scheme', inverse=True)
     old_relations = HiddenField()
+
+
+class SchemeVersionForm(FlaskForm):
+    number = StringField(
+        'Version number',
+        validators=[validators.Length(max=20)])
+    title = StringField('Name of metadata scheme')
+    note = TextHTMLField('Note')
+    issued = NativeDateField('Date published')
+    available = NativeDateField('Date released as draft/proposal')
+    valid = FormField(DateRangeForm, 'Date considered current', separator='_')
+    locations = FieldList(
+        FormField(LocationForm), 'Relevant links', min_entries=1)
+    samples = FieldList(
+        FormField(SampleForm), 'Sample records conforming to this scheme',
+        min_entries=1)
+    identifiers = FieldList(
+        FormField(IdentifierForm), 'Identifiers for this scheme',
+        min_entries=1)
 
 
 class DatatypeForm(FlaskForm):
@@ -1141,7 +1229,95 @@ def edit_record(series, number):
                     form[field].errors = clean_error_list(form[field])
     return render_template(
         f"edit-{record.series}.html", form=form, doc_id=number, version=None,
-        idSchemes=list(), safe_tags=allowed_tags, **params)
+        safe_tags=allowed_tags, **params)
+
+
+@bp.route('/edit/<string(length=1):series><int:number>/<int:index>',
+          methods=['GET', 'POST'])
+@bp.route('/edit/<string(length=1):series><int:number>/add',
+          methods=['GET', 'POST'])
+@login_required
+def edit_version(series, number, index=None):
+    # Look up record to edit, or get new:
+    record = Record.load(number, series)
+
+    # Abort if series was wrong:
+    if not hasattr(record, 'vform'):
+        abort(404)
+    if record is None:
+        abort(404)
+
+    # If number is wrong, we reinforce the point by redirecting to 0:
+    if record.doc_id != number:
+        flash("You are trying to update a record that doesn't exist."
+              "Try filling out this new one instead.", 'error')
+        return redirect(url_for('main.edit_record', series=series, number=0))
+
+    # Instantiate edit form
+    form = record.get_vform(index)
+
+    # Form-specific value lists
+    params = record.get_vocabs()
+    params['index'] = index
+    vno = form.number.data
+    if vno:
+        params['version'] = vno
+
+    # Processing the request
+    if request.method == 'POST' and form.validate():
+        form_data = form.data
+        if series == 'e':
+            # Here is where we automatically insert the URL type
+            filtered_locations = list()
+            for f in form.locations:
+                if f.url.data:
+                    location = {'url': f.url.data, 'type': 'document'}
+                    filtered_locations.append(location)
+            form_data['locations'] = filtered_locations
+        # Save form data to database
+        error = record.save_gui_vinput(form_data)
+        if record.doc_id:
+            # Editing an existing record
+            if error:
+                flash(error, 'error')
+                return redirect(
+                    url_for('main.edit_version', series=series, number=number,
+                            index=index))
+            else:
+                flash('Successfully updated version.', 'success')
+                return redirect(
+                    url_for('main.display', series=series, number=number))
+        else:
+            # Adding a new record
+            if error:
+                flash(error, 'error')
+                return redirect(
+                    url_for('main.edit_version', series=series, number=number,
+                            index=index))
+            else:
+                number = record.doc_id
+                flash('Successfully added version.', 'success')
+                return redirect(
+                    url_for('main.display', series=series, number=number))
+    if form.errors:
+        flash('Could not save changes as there {:/was an error/were N errors}.'
+              ' See below for details.'.format(Pluralizer(len(form.errors))),
+              'error')
+        for field, errors in form.errors.items():
+            if len(errors) > 0:
+                print(f"DEBUG edit_version: field: {field}, errors: {errors}.")
+                if isinstance(errors[0], dict):
+                    # Subform
+                    for subform in errors:
+                        for subfield, suberrors in subform.items():
+                            for f in form[field]:
+                                f[subfield].errors = clean_error_list(f[subfield])
+                else:
+                    # Simple field
+                    form[field].errors = clean_error_list(form[field])
+    return render_template(
+        f"edit-{record.series}-version.html", form=form, doc_id=number,
+        safe_tags=allowed_tags, **params)
 
 
 @bp.route('/edit/datatype<int:number>',
@@ -1200,8 +1376,7 @@ def edit_datatype(number):
                     # Simple field
                     form[field].errors = clean_error_list(form[field])
     return render_template(
-        f"edit-datatype.html", form=form, doc_id=number, version=None,
-        idSchemes=list())
+        f"edit-datatype.html", form=form, doc_id=number)
 
 
 @bp.route('/msc/<string(length=1):series><int:number>')
@@ -1233,38 +1408,47 @@ def display(series, number, field=None, api=False):
     versions = None
     if 'versions' in record:
         versions = list()
+        # Give each version an index of where it comes in the database
+        for index in range(len(record['versions'])):
+            record['versions'][index]['index'] = index
         for v in record['versions']:
             if 'number' not in v:
                 continue
             this_version = v
             this_version['status'] = ''
-            #if 'issued' in v:
-                #this_version['date'] = v['issued']
-                #if 'valid' in v:
-                    #date_range = parse_date_range(v['valid'])
-                    #if date_range[1]:
-                        #this_version['status'] = (
-                            #'deprecated on {}'.format(date_range[1]))
-                    #else:
-                        #this_version['status'] = 'current'
-            #elif 'valid' in v:
-                #date_range = parse_date_range(v['valid'])
-                #this_version['date'] = date_range[0]
-                #if date_range[1]:
-                    #this_version['status'] = (
-                        #'deprecated on {}'.format(date_range[1]))
-                #else:
-                    #this_version['status'] = 'current'
-            #elif 'available' in v:
-                #this_version['date'] = v['available']
-                #this_version['status'] = 'proposed'
+            if 'issued' in v:
+                this_version['date'] = v['issued']
+                if 'valid' in v:
+                    valid_end = v['valid'].get('end')
+                    if valid_end:
+                        this_version['status'] = (
+                            'deprecated on {}'.format(valid_end))
+                    else:
+                        this_version['status'] = 'current'
+            elif 'valid' in v:
+                valid_start = v['valid'].get('start')
+                valid_end = v['valid'].get('end')
+                if valid_start:
+                    this_version['date'] = valid_start
+                if valid_end:
+                    this_version['status'] = (
+                        'deprecated on {}'.format(valid_end))
+                else:
+                    this_version['status'] = 'current'
+            elif 'available' in v:
+                this_version['date'] = v['available']
+                this_version['status'] = 'proposed'
             versions.append(this_version)
         try:
             versions.sort(key=lambda k: k['date'], reverse=True)
         except KeyError:
             print('WARNING: Record {}{} has missing version date.'
                   .format(mscid))
-            versions.sort(key=lambda k: k['number'], reverse=True)
+            try:
+                versions.sort(key=lambda k: k['number'], reverse=True)
+            except KeyError:
+                # Leave in order of entry
+                pass
         for version in versions:
             if version['status'] == 'current':
                 break

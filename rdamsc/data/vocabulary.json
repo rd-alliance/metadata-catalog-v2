@@ -313,5 +313,35 @@
     "tool"
    ]
   }
+ ],
+ "id_scheme": [
+  {
+   "id": "DOI",
+   "label": "DOI",
+   "applies": [
+    "scheme",
+    "organization",
+    "tool",
+    "mapping",
+    "endorsement"
+   ]
+  },
+  {
+   "id": "Handle",
+   "label": "Handle",
+   "applies": [
+    "scheme",
+    "tool",
+    "mapping",
+    "endorsement"
+   ]
+  },
+  {
+   "id": "ROR",
+   "label": "ROR",
+   "applies": [
+    "organization"
+   ]
+  }
  ]
 }

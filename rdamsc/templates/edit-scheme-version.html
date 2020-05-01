@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% from "macros-forms.html" import state, errors %}
+{% block title %}{% if doc_id == 0 %}Add new metadata scheme{% else %}Edit record msc:m{{ doc_id }}{% endif %}{% if version %}, version {{ version }}{% endif %}{% endblock %}
+{% block main %}
+  <form action="{{ url_for('main.edit_version', series='m', number=doc_id, index=index) }}" method="post"  accept-charset="utf-8" class="form-block">
+    {{ form.hidden_tag() }}
+    <fieldset>
+    <div class="form-group{{ state(form.number) }}">
+      {{ form.number.label(class="control-label") }}
+      <div class="form-inline">
+        {{ form.number(class="form-control", style="width:auto;") }}
+      </div>
+      {{ errors(form.number) }}
+      <ul class="help-block">
+        <li>Do not preface the version number with "version" or "v".</li>
+      </ul>
+    </div>
+    <div class="form-group">
+      {{ form.title.label(class="control-label") }}
+      {{ form.title(placeholder="Name of scheme", class="form-control") }}
+      <ul class="help-block">
+        <li>Only provide a title here if the version has a different title from
+          the main scheme.</li>
+        <li>If the scheme is known by an abbreviation, put this at the start of
+          the name, then give the expanded form in parentheses, e.g. “SDMX
+          (Statistical Data and Metadata Exchange)”.</li>
+        <li>If the title is in English, use title case, i.e. give each
+          significant word a capital letter. Do not use an irregular case to
+          indicate how an abbreviation was defined, e.g. do not write
+          “Statistical Data and Metadata eXchange”.</li>
+      </ul>
+    </div>
+    <div class="form-group">
+      {{ form.note.label(class="control-label") }}
+      {{ form.note(class="form-control") }}
+      <ul class="help-block">
+        <li>If this version requires some explanation, give it here.</li>
+      </ul>
+    </div>
+    <div class="form-group{{ state(form.issued) }}">
+      {{ form.issued.label(class="control-label") }}
+      {{ form.issued(class="form-control", style="width:auto;") }}
+      {{ errors(form.issued) }}
+      <ul class="help-block">
+        <li>Give the date as yyyy, or yyyy-mm, or yyyy-mm-dd.</li>
+        <li>In most cases, the only date you need to provide is "date published".</li>
+      </ul>
+    </div>
+    <div class="form-group{{ state(form.available) }}">
+      {{ form.available.label(class="control-label") }}
+      {{ form.available(class="form-control", style="width:auto;") }}
+      {{ errors(form.available) }}
+      <ul class="help-block">
+        <li>Give the date as yyyy, or yyyy-mm, or yyyy-mm-dd.</li>
+        <li>If the version has not been released in its final version,
+        please provide the date when the draft was first released. You do not need to
+        remove this information when the final version is published.</li>
+      </ul>
+    </div>
+    <div class="form-group">
+      {{ form.valid.label(class="control-label") }}
+      <div class="form-inline">
+        <span class="{{ state(form.valid.start) }}">{{ form.valid.start.label(class="control-label") }}{{ form.valid.start(class="form-control") }}</span>
+        <span class="{{ state(form.valid.end) }}">{{ form.valid.end.label(class="control-label") }}
+        {{ form.valid.end(class="form-control") }}</span>
+      </div>
+      {{ errors(form.valid.start) }}
+      {{ errors(form.valid.end) }}
+      <ul class="help-block">
+        <li>Give the date as yyyy, or yyyy-mm, or yyyy-mm-dd.</li>
+        <li>Use "date considered current" only for cases where two or
+          more versions are considered current at the same time.</li>
+      </ul>
+    </div>
+    </fieldset>
+    <fieldset>
+    <legend>{{ form.locations.label.text }}</legend>
+    <div class="form-group">
+      <ol class="form-list">
+        {% for f in form.locations %}
+        <li>
+          <div class="{{ state(f.url) }}">
+          {{ f.url.label(class="control-label") }}
+          {{ f.url(placeholder="URL e.g. https://www...", class="form-control") }}
+          {{ errors(f.url) }}
+          </div>
+          <div class="{{ state(f['type']) }}">
+          {{ f['type'].label(class="control-label") }}
+          {{ f['type'](class="form-control", style="width:auto;") }}
+          {{ errors(f['type']) }}
+          </div>
+        </li>
+        {% endfor %}
+      </ol>
+      <ul class="help-block">
+        <li>To give several locations, save after adding each one.</li>
+      </ul>
+    </div>
+    </fieldset>
+    <fieldset>
+    <legend>{{ form.samples.label.text }}</legend>
+    <div class="form-group">
+      <ol class="form-list">
+      {% for f in form.samples %}
+        <li>
+          <div>
+          {{ f.title.label(class="control-label") }}
+          {{ f.title(class="form-control") }}
+          </div>
+          <div class="{{ state(f.url) }}">
+          {{ f.url.label(class="control-label") }}
+          {{ f.url(placeholder="URL e.g. https://www...", class="form-control") }}
+          {{ errors(f.url) }}
+          </div>
+        </li>
+      {% endfor %}
+      </ol>
+      <ul class="help-block">
+        <li>To give several samples, save after adding each one.</li>
+      </ul>
+    </div>
+    </fieldset>
+    <fieldset>
+    <legend>{{ form.identifiers.label.text }}</legend>
+    <datalist id="id-schemes">
+      {% for idScheme in idSchemes %}
+      <option>{{ idScheme }}</option>
+      {% endfor %}
+    </datalist>
+    <div class="form-group">
+      <ol class="form-list">
+      {% for f in form.identifiers %}
+        <li>
+        {{ f['id'].label(class="control-label") }}
+        {{ f['id'](placeholder="e.g. 10.001/1234", class="form-control") }}
+        {{ f.scheme.label(class="control-label") }}
+        {{ f.scheme(class="form-control", list="id-schemes", style="width:auto;") }}
+        </li>
+      {% endfor %}
+      </ol>
+      <ul class="help-block">
+        <li>Provide an identifier, if known, for this particular version of the
+          scheme.</li>
+        <li>You do not need to repeat the internal Catalog identifier here.</li>
+        <li>To give several identifiers, save after adding each one.</li>
+      </ul>
+    </div>
+    </fieldset>
+    <div class="form-group">
+      <button class="btn btn-primary">Save changes</button>
+      <a href="{{ url_for('main.display', series='m', number=doc_id) }}" class="btn btn-default">Cancel &amp; view record</a>
+    </div>
+  </form>
+{% endblock %}
