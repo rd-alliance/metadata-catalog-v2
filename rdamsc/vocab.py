@@ -234,6 +234,14 @@ class Thesaurus(object):
             return entry.get('uri')
         return None
 
+    def get_valid(self):
+        values = list()
+        for kw in self.entries:
+            values.append(kw['label'])
+            if kw['long_label'] != kw['label']:
+                values.append(kw['long_label'])
+        return values
+
 
 def get_thesaurus():
     if 'thesaurus' not in g:

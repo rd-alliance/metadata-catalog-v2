@@ -122,11 +122,6 @@
     </fieldset>
     <fieldset>
     <legend>{{ form.identifiers.label.text }}</legend>
-    <datalist id="id-schemes">
-      {% for idScheme in idSchemes %}
-      <option>{{ idScheme }}</option>
-      {% endfor %}
-    </datalist>
     <div class="form-group">
       <ol class="form-list">
       {% for f in form.identifiers %}

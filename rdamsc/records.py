@@ -254,6 +254,12 @@ class Record(Document):
         return get_data_db()
 
     @classmethod
+    def get_vocabs(cls):
+        '''Gets controlled vocabularies for use as hints in unconstrained
+        StringFields.'''
+        raise NotImplementedError
+
+    @classmethod
     def load(cls, doc_id: int, table: str=None):
         '''Returns an instance of the Record subclass that corresponds to the
         given table, either blank or the existing record with the given doc_id.
@@ -324,6 +330,10 @@ class Record(Document):
         self.table = table
 
     @property
+    def form(self):
+        raise NotImplementedError
+
+    @property
     def mscid(self):
         return f"{mscid_prefix}{self.table}{self.doc_id}"
 
@@ -334,6 +344,10 @@ class Record(Document):
     @property
     def slug(self):
         return self.get('slug')
+
+    @property
+    def vform(self):
+        raise NotImplementedError
 
     def _save(self, value: Mapping):
         '''Saves record to database. Returns error message if a problem
@@ -400,6 +414,12 @@ class Record(Document):
         rel.remove(deletions)
 
         return ''
+
+    def get_form(self):
+        raise NotImplementedError
+
+    def get_vform(self):
+        raise NotImplementedError
 
     def save_gui_input(self, formdata: Mapping):
         '''Processes form input and saves it. Returns error message if a problem
@@ -555,13 +575,9 @@ class Scheme(Record):
     series = 'scheme'
 
     @classmethod
-    def get_thesaurus_terms(cls):
-        th = get_thesaurus()
-        return th.get_choices()
-
-    @classmethod
     def get_vocabs(cls):
-        '''Gets controlled vocabularies for use in form autocompletion.'''
+        '''Gets controlled vocabularies for use as hints in unconstrained
+        StringFields.'''
         vocabs = dict()
 
         th = get_thesaurus()
@@ -658,13 +674,15 @@ class Scheme(Record):
             if len(field.validators) == 1:
                 field.validators.append(
                     validators.AnyOf(
-                        th.get_choices(),
+                        th.get_valid(),
                         'Value must be drawn from the UNESCO Thesaurus.'))
         form.parent_schemes.omit_mscid(self.mscid)
         form.child_schemes.omit_mscid(self.mscid)
         form.dataTypes.choices = Datatype.get_choices()
         for f in form.locations:
             f['type'].choices = Location.get_choices(self.__class__)
+        for f in form.identifiers:
+            f.scheme.choices = IDScheme.get_choices(self.__class__)
 
         return form
 
@@ -699,6 +717,8 @@ class Scheme(Record):
         # Assign validators to current choices:
         for f in form.locations:
             f['type'].choices = Location.get_choices(self.__class__)
+        for f in form.identifiers:
+            f.scheme.choices = IDScheme.get_choices(self.__class__)
 
         return form
 
@@ -1045,7 +1065,7 @@ class SampleForm(Form):
 
 class IdentifierForm(Form):
     id = StringField('ID')
-    scheme = StringField('ID scheme')
+    scheme = SelectField('ID scheme')
 
 
 class DateRangeForm(Form):
