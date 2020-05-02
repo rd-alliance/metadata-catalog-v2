@@ -732,6 +732,10 @@ class Tool(Record):
         super().__init__(value, doc_id, self.table)
 
     @property
+    def form(self):
+        return ToolForm
+
+    @property
     def name(self):
         return self.get('title')
 
@@ -744,6 +748,10 @@ class Tool(Record):
             return to_file_slug(self.name)
         return None
 
+    @property
+    def vform(self):
+        return ToolVersionForm
+
 
 class Crosswalk(Record):
     table = 'c'
@@ -752,6 +760,10 @@ class Crosswalk(Record):
     '''Object representing a mapping.'''
     def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
+
+    @property
+    def form(self):
+        return CrosswalkForm
 
     @property
     def name(self):
@@ -765,6 +777,10 @@ class Crosswalk(Record):
         if self.name:
             return to_file_slug(self.name)
         return None
+
+    @property
+    def vform(self):
+        return CrosswalkVersionForm
 
 
 class Group(Record):
@@ -784,6 +800,10 @@ class Group(Record):
     '''Object representing an organization.'''
     def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
+
+    @property
+    def form(self):
+        return GroupForm
 
     @property
     def name(self):
@@ -806,6 +826,10 @@ class Endorsement(Record):
     '''Object representing an endorsement.'''
     def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
+
+    @property
+    def form(self):
+        return EndorsementForm
 
     @property
     def name(self):
@@ -1182,6 +1206,137 @@ class SchemeVersionForm(FlaskForm):
     identifiers = FieldList(
         FormField(IdentifierForm), 'Identifiers for this scheme',
         min_entries=1)
+
+
+class ToolForm(FlaskForm):
+    title = StringField('Name of tool')
+    description = TextAreaField('Description')
+    types = SelectMultipleField(
+        'Type of tool')
+    locations = FieldList(
+        FormField(LocationForm), 'Links to this tool', min_entries=1)
+    identifiers = FieldList(
+        FormField(IdentifierForm), 'Identifiers for this tool', min_entries=1)
+    creators = FieldList(
+        FormField(CreatorForm), 'People responsible for this tool',
+        min_entries=1)
+    supported_schemes = SelectMultipleField(
+        'Metadata scheme(s) supported by this tool')
+    maintainers = SelectRelatedField(
+        'Organizations that maintain this tool', Group,
+        description='maintainer')
+    funders = SelectRelatedField(
+        'Organizations that funded this tool', Group,
+        description='funder')
+
+
+class ToolVersionForm(FlaskForm):
+    number = StringField(
+        'Version number',
+        validators=[validators.Length(max=20)])
+    title = StringField('Name of tool')
+    note = TextHTMLField('Note')
+    issued = NativeDateField('Date published')
+    locations = FieldList(
+        FormField(LocationForm), 'Relevant links', min_entries=1)
+    identifiers = FieldList(
+        FormField(IdentifierForm), 'Identifiers for this scheme',
+        min_entries=1)
+
+
+class CrosswalkForm(FlaskForm):
+    name = StringField('Name or descriptor for mapping')
+    description = TextAreaField('Description')
+    locations = FieldList(
+        FormField(FreeLocationForm), 'Links to this mapping', min_entries=1)
+    identifiers = FieldList(
+        FormField(IdentifierForm), 'Identifiers for this mapping',
+        min_entries=1)
+    creators = FieldList(
+        FormField(CreatorForm), 'People responsible for this mapping',
+        min_entries=1)
+    input_schemes = SelectRelatedField(
+        'Input metadata scheme(s)', Scheme,
+        description='input scheme')
+    output_schemes = SelectRelatedField(
+        'Output metadata scheme(s)', Scheme,
+        description='output scheme')
+    maintainers = SelectRelatedField(
+        'Organizations that maintain this mapping', Group,
+        description='maintainer')
+    funders = SelectRelatedField(
+        'Organizations that funded this mapping', Group,
+        description='funder')
+
+
+class CrosswalkVersionForm(FlaskForm):
+    number = StringField(
+        'Version number',
+        validators=[validators.Length(max=20)])
+    note = TextHTMLField('Note')
+    issued = NativeDateField('Date published')
+    locations = FieldList(
+        FormField(LocationForm), 'Relevant links', min_entries=1)
+    identifiers = FieldList(
+        FormField(IdentifierForm), 'Identifiers for this scheme',
+        min_entries=1)
+
+
+class GroupForm(FlaskForm):
+    name = StringField('Name of organization')
+    description = TextAreaField('Description')
+    types = SelectMultipleField(
+        'Type of organization')
+    locations = FieldList(
+        FormField(LocationForm), 'Relevant links', min_entries=1)
+    identifiers = FieldList(
+        FormField(IdentifierForm), 'Identifiers for this organization',
+        min_entries=1)
+    maintained_schemes = SelectRelatedField(
+        'Schemes maintained by this organization', Scheme,
+        description='maintainer', inverse=True)
+    maintained_tools = SelectRelatedField(
+        'Tools maintained by this organization', Tool,
+        description='maintainer', inverse=True)
+    maintained_crosswalks = SelectRelatedField(
+        'Mappings maintained by this organization', Crosswalk,
+        description='maintainer', inverse=True)
+    funded_schemes = SelectRelatedField(
+        'Schemes funded by this organization', Scheme,
+        description='funder', inverse=True)
+    funded_tools = SelectRelatedField(
+        'Tools funded by this organization', Tool,
+        description='funder', inverse=True)
+    funded_crosswalks = SelectRelatedField(
+        'Mappings funded by this organization', Crosswalk,
+        description='funder', inverse=True)
+    used_schemes = SelectRelatedField(
+        'Schemes used by this organization', Scheme,
+        description='user', inverse=True)
+    endorsements = SelectRelatedField(
+        'Endorsements made by this organization', Endorsement,
+        description='originator', inverse=True)
+
+
+class EndorsementForm(FlaskForm):
+    title = StringField('Title')
+    creators = FieldList(
+        FormField(CreatorForm), 'Authors of the endorsement document',
+        min_entries=1)
+    publication = StringField('Other bibliographic information')
+    issued = NativeDateField('Endorsement date')
+    valid = FormField(DateRangeForm, 'Date considered current', separator='_')
+    locations = FieldList(
+        FormField(LocationForm), 'Links to this endorsement', min_entries=1)
+    identifiers = FieldList(
+        FormField(IdentifierForm), 'Identifiers for this endorsement',
+        min_entries=1)
+    endorsed_schemes = SelectRelatedField(
+        'Endorsed schemes', Scheme,
+        description='endorsed scheme')
+    originators = SelectRelatedField(
+        'Endorsing organizations', Group,
+        description='originator')
 
 
 class DatatypeForm(FlaskForm):
