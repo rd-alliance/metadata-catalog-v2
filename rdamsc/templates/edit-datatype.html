@@ -2,7 +2,7 @@
 {% from "macros-forms.html" import state, errors %}
 {% block title %}{% if doc_id == 0 %}Add new datatype{% else %}Edit record msc:datatype{{ doc_id }}{% endif %}{% endblock %}
 {% block main %}
-  <form action="{{ url_for('main.edit_datatype', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
+  <form action="{{ url_for('main.edit_vocabterm', vocab='datatype', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
     {{ form.hidden_tag() }}
     <fieldset>
     <div class="form-group">

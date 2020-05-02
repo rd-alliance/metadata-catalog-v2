@@ -2,7 +2,7 @@
 {% from "macros-forms.html" import state, errors %}
 {% block title %}{% if doc_id == 0 %}Add new endorsement{% else %}Edit endorsement msc:e{{ doc_id }}{% endif %}{% endblock %}
 {% block main %}
-  <form action="{{ url_for('main.edit_record', series='e', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
+  <form action="{{ url_for('main.edit_record', table='e', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
     {{ form.hidden_tag() }}
     <div class="form-group">
       {{ form.citation.label(class="control-label") }}
@@ -16,7 +16,7 @@
       the following link.
     </p>
     <div class="form-group">
-      <a href="{{ url_for('main.edit_record', series='g', number=0) }}" target="_blank" class="btn btn-warning">Add organization</a>
+      <a href="{{ url_for('main.edit_record', table='g', number=0) }}" target="_blank" class="btn btn-warning">Add organization</a>
     </div>
     <div class="form-group">
       {{ form.originators.label(class="control-label") }}
@@ -54,7 +54,7 @@
       the following link.
     </p>
     <div class="form-group">
-      <a href="{{ url_for('main.edit_record', series='m', number=0) }}" target="_blank" class="btn btn-warning">Add scheme</a>
+      <a href="{{ url_for('main.edit_record', table='m', number=0) }}" target="_blank" class="btn btn-warning">Add scheme</a>
     </div>
     <fieldset>
     <legend>{{ form.endorsed_schemes.label.text }}</legend>

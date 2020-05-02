@@ -57,7 +57,7 @@
           <li><a class="btn btn-special" href="{% if location['type'] == 'email' %}mailto:{% endif %}{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
         {% endfor %}
         {% if current_user.is_authenticated %}
-          <li><a class="btn btn-default" href="{{ url_for('main.edit_record', series='g', number=org.doc_id) }}">Edit record</a></li>
+          <li><a class="btn btn-default" href="{{ url_for('main.edit_record', table='g', number=org.doc_id) }}">Edit record</a></li>
         {% endif %}
         </ul>
       {% endif %}
@@ -72,7 +72,7 @@
           <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
         {% endfor %}
         {% if current_user.is_authenticated %}
-          <li><a class="btn btn-default" href="{{ url_for('main.edit_record', series='g', number=org.doc_id) }}">Edit record</a></li>
+          <li><a class="btn btn-default" href="{{ url_for('main.edit_record', table='g', number=org.doc_id) }}">Edit record</a></li>
         {% endif %}
         </ul>
       {% endif %}
@@ -92,7 +92,7 @@
   <div class="identifiers">
     <h2>Identifiers</h2>
     <dl class="dl-horizontal">
-      <dt>Internal MSC ID</dt><dd><a href="{{ url_for('main.display', series='m', number=record.doc_id) }}">msc:m{{ record.doc_id }}</a></dd>
+      <dt>Internal MSC ID</dt><dd><a href="{{ url_for('main.display', table='m', number=record.doc_id) }}">msc:m{{ record.doc_id }}</a></dd>
     {% for identifier in record['identifiers'] %}
       {% if identifier['scheme'] == 'DOI' %}
       <dt>DOI</dt><dd><a href="https://doi.org/{{ identifier['id'] }}">{{ identifier['id'] }}</a></dd>
@@ -139,7 +139,7 @@
           {% endif %}
         {% endfor %}
         {% if current_user.is_authenticated %}
-          <li><a class="btn btn-warning" href="{{ url_for('main.edit_version', series='m', number=record.doc_id, index=version['index']) }}">Edit version</a></li>
+          <li><a class="btn btn-warning" href="{{ url_for('main.edit_version', table='m', number=record.doc_id, index=version['index']) }}">Edit version</a></li>
         {% endif %}
         </ul>
         {% endif %}
@@ -153,14 +153,14 @@
     <h2>Relationships to other metadata standards</h2>
     <ul>
     {% for parent in relations['parent_schemes'] %}
-      <li><p>This scheme is a profile of <a href="{{ url_for('main.display', series='m', number=parent.doc_id) }}">{{ parent['title'] }}</a>.</p></li>
+      <li><p>This scheme is a profile of <a href="{{ url_for('main.display', table='m', number=parent.doc_id) }}">{{ parent['title'] }}</a>.</p></li>
     {% endfor %}
     {% for child in relations['child_schemes'] %}
-      <li><p><a href="{{ url_for('main.display', series='m', number=child.doc_id) }}">{{ child['title'] }}</a> is a profile of this scheme.</p></li>
+      <li><p><a href="{{ url_for('main.display', table='m', number=child.doc_id) }}">{{ child['title'] }}</a> is a profile of this scheme.</p></li>
     {% endfor %}
     {% for mapping in relations['input_to_mappings'] %}
       <li class="mappings">
-        <p>This scheme can be mapped to {% for scheme in mapping['input_to_mappings'] %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}<a href="{{ url_for('main.display', series='m', number=scheme.doc_id) }}">{{ scheme['title'] }}</a>{% endfor %}.</p>
+        <p>This scheme can be mapped to {% for scheme in mapping['input_to_mappings'] %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}<a href="{{ url_for('main.display', table='m', number=scheme.doc_id) }}">{{ scheme['title'] }}</a>{% endfor %}.</p>
         {% if 'description' in mapping %}
         <div class="description">{{ mapping['description']|safe }}</div>
         {% endif %}
@@ -168,16 +168,16 @@
         <ul class="locations list-inline">
         {% for location in mapping['locations'] %}
           <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'document' %}View documentation{% else %}Download {{ location['type'] }}{% endif %}</a></li>
-        {% endfor %}{{ url_for('main.edit_version', series='m', number=record.doc_id) }}
+        {% endfor %}{{ url_for('main.edit_version', table='m', number=record.doc_id) }}
         {% if current_user.is_authenticated %}
-          <li><a class="btn btn-default" href="{{ url_for('main.edit_record', series='c', number=mapping.doc_id) }}">Edit record</a></li>
+          <li><a class="btn btn-default" href="{{ url_for('main.edit_record', table='c', number=mapping.doc_id) }}">Edit record</a></li>
         {% endif %}
         </ul>
         {% endif %}
     {% endfor %}
     {% for mapping in relations['output_from_mappings'] %}
       <li class="mappings">
-        <p>This scheme can be generated from {% for scheme in mapping['output_from_mappings'] %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}<a href="{{ url_for('main.display', series='m', number=scheme.doc_id) }}">{{ scheme['title'] }}</a>{% endfor %}.</p>
+        <p>This scheme can be generated from {% for scheme in mapping['output_from_mappings'] %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}<a href="{{ url_for('main.display', table='m', number=scheme.doc_id) }}">{{ scheme['title'] }}</a>{% endfor %}.</p>
         {% if 'description' in mapping %}
         <div class="description">{{ mapping['description']|safe }}</div>
         {% endif %}
@@ -187,7 +187,7 @@
           <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'document' %}View documentation{% else %}Download {{ location['type'] }}{% endif %}</a></li>
         {% endfor %}
         {% if current_user.is_authenticated %}
-          <li><a class="btn btn-default" href="{{ url_for('main.edit_record', series='c', number=mapping.doc_id) }}">Edit record</a></li>
+          <li><a class="btn btn-default" href="{{ url_for('main.edit_record', table='c', number=mapping.doc_id) }}">Edit record</a></li>
         {% endif %}
         </ul>
         {% endif %}
@@ -201,7 +201,7 @@
     <ul>
     {% for tool in relations['tools'] %}
       <li>
-        <p><a href="{{ url_for('main.display', series='t', number=tool.doc_id) }}">{{ tool['title'] }}</a></p>
+        <p><a href="{{ url_for('main.display', table='t', number=tool.doc_id) }}">{{ tool['title'] }}</a></p>
         {% if 'description' in tool %}
         <div class="description">{{ tool['description']|safe }}</div>
         {% endif %}
@@ -226,7 +226,7 @@
           <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
         {% endfor %}
         {% if current_user.is_authenticated %}
-          <li><a class="btn btn-default" href="{{ url_for('main.edit_record', series='g', number=user.doc_id) }}">Edit record</a></li>
+          <li><a class="btn btn-default" href="{{ url_for('main.edit_record', table='g', number=user.doc_id) }}">Edit record</a></li>
         {% endif %}
         </ul>
       {% endif %}
@@ -259,7 +259,7 @@
           <li><a class="btn btn-special" href="{{ location['url'] }}">View endorsement</a></li>
         {% endfor %}
         {% if current_user.is_authenticated %}
-          <li><a class="btn btn-default" href="{{ url_for('main.edit_record', series='e', number=endorsement.doc_id) }}">Edit record</a></li>
+          <li><a class="btn btn-default" href="{{ url_for('main.edit_record', table='e', number=endorsement.doc_id) }}">Edit record</a></li>
         {% endif %}
         </ul>
         {% endif %}
@@ -270,11 +270,11 @@
   {% if current_user.is_authenticated %}
   <aside>
     <div class="form-group">
-      <a href="{{ url_for('main.edit_record', series='m', number=record.doc_id) }}" class="btn btn-default">Edit this record</a>
+      <a href="{{ url_for('main.edit_record', table='m', number=record.doc_id) }}" class="btn btn-default">Edit this record</a>
       {% if versions %}
-      <a href="{{ url_for('main.edit_version', series='m', number=record.doc_id) }}" class="btn btn-default">Add another version</a>
+      <a href="{{ url_for('main.edit_version', table='m', number=record.doc_id) }}" class="btn btn-default">Add another version</a>
       {% else %}
-      <a href="{{ url_for('main.edit_version', series='m', number=record.doc_id) }}" class="btn btn-default">Add version information</a>
+      <a href="{{ url_for('main.edit_version', table='m', number=record.doc_id) }}" class="btn btn-default">Add version information</a>
       {% endif %}
     </div>
   </aside>

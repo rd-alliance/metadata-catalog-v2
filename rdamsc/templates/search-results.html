@@ -4,7 +4,7 @@
   {% for result in results %}
   <div class="panel panel-default">
     <div class="panel-heading">
-      <p class="panel-title"><a href="{{ url_for('main.display', series='m', number=result.doc_id) }}">{{ result['title'] }}</a></p>
+      <p class="panel-title"><a href="{{ url_for('main.display', table='m', number=result.doc_id) }}">{{ result['title'] }}</a></p>
     </div>
     {% if 'description' in result %}
     <div class="panel-body">

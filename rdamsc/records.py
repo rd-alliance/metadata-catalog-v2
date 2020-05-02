@@ -872,6 +872,15 @@ class Datatype(Record):
 
         return form
 
+    def save_gui_input(self, formdata: Mapping):
+        '''Processes form input and saves it. Returns error message if a problem
+        arises.'''
+
+        # Save the main record:
+        error = self._save(formdata)
+        if error:
+            return error
+
 
 class VocabTerm(Document):
     '''Abstract class with common methods for the helper classes
@@ -928,6 +937,32 @@ class VocabTerm(Document):
                         for term in terms:
                             t.insert(term)
 
+    def get_form(self):
+        # Get data from database:
+        data = json.loads(json.dumps(self))
+
+        # Populate form:
+        form = self.form(data=data)
+
+        if self.doc_id != 0:
+            form.id
+
+        return form
+
+    def save_gui_input(self, formdata: Mapping):
+        '''Processes form input and saves it. Returns error message if a problem
+        arises.'''
+
+        # Override id
+        old_id = self.get('id')
+        if old_id:
+            formdata['id'] = old_id
+
+        # Save the main record:
+        error = self._save(formdata)
+        if error:
+            return error
+
 
 class Location(VocabTerm, Record):
     '''Abstract class with common methods for the helper classes
@@ -937,6 +972,10 @@ class Location(VocabTerm, Record):
 
     def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
+
+    @property
+    def form(self):
+        return VocabLocationForm
 
 
 class EntityType(VocabTerm, Record):
@@ -1154,6 +1193,23 @@ class DatatypeForm(FlaskForm):
         validators=[validators.InputRequired()])
 
 
+class VocabLocationForm(FlaskForm):
+    id = StringField(
+        'Database value',
+        validators=[validators.InputRequired()])
+    label = StringField(
+        'Displayed value',
+        validators=[validators.InputRequired()])
+    applies = SelectMultipleField(
+        choices=[
+            (Scheme.series, Scheme.series),
+            (Tool.series, Tool.series),
+            (Crosswalk.series, Crosswalk.series),
+            (Endorsement.series, Endorsement.series),
+            (Group.series, Group.series)],
+        render_kw={'size': 5})
+
+
 def get_data_db():
     if 'data_db' not in g:
         g.data_db = TinyDB(
@@ -1174,12 +1230,12 @@ def get_term_db():
     return g.term_db
 
 
-@bp.route('/edit/<string(length=1):series><int:number>',
+@bp.route('/edit/<string(length=1):table><int:number>',
           methods=['GET', 'POST'])
 @login_required
-def edit_record(series, number):
+def edit_record(table, number):
     # Look up record to edit, or get new:
-    record = Record.load(number, series)
+    record = Record.load(number, table)
 
     # Abort if series was wrong:
     if record is None:
@@ -1189,7 +1245,7 @@ def edit_record(series, number):
     if record.doc_id != number:
         flash("You are trying to update a record that doesn't exist."
               "Try filling out this new one instead.", 'error')
-        return redirect(url_for('main.edit_record', series=series, number=0))
+        return redirect(url_for('main.edit_record', series=table, number=0))
 
     # Instantiate edit form
     form = record.get_form()
@@ -1200,7 +1256,7 @@ def edit_record(series, number):
     # Processing the request
     if request.method == 'POST' and form.validate():
         form_data = form.data
-        if series == 'e':
+        if table == 'e':
             # Here is where we automatically insert the URL type
             filtered_locations = list()
             for f in form.locations:
@@ -1215,22 +1271,22 @@ def edit_record(series, number):
             if error:
                 flash(error, 'error')
                 return redirect(
-                    url_for('main.edit_record', series=series, number=number))
+                    url_for('main.edit_record', series=table, number=number))
             else:
                 flash('Successfully updated record.', 'success')
                 return redirect(
-                    url_for('main.display', series=series, number=number))
+                    url_for('main.display', series=table, number=number))
         else:
             # Adding a new record
             if error:
                 flash(error, 'error')
                 return redirect(
-                    url_for('main.edit_record', series=series, number=number))
+                    url_for('main.edit_record', series=table, number=number))
             else:
                 number = record.doc_id
                 flash('Successfully added record.', 'success')
                 return redirect(
-                    url_for('main.display', series=series, number=number))
+                    url_for('main.display', series=table, number=number))
     if form.errors:
         flash('Could not save changes as there {:/was an error/were N errors}.'
               ' See below for details.'.format(Pluralizer(len(form.errors))),
@@ -1252,14 +1308,14 @@ def edit_record(series, number):
         safe_tags=allowed_tags, **params)
 
 
-@bp.route('/edit/<string(length=1):series><int:number>/<int:index>',
+@bp.route('/edit/<string(length=1):table><int:number>/<int:index>',
           methods=['GET', 'POST'])
-@bp.route('/edit/<string(length=1):series><int:number>/add',
+@bp.route('/edit/<string(length=1):table><int:number>/add',
           methods=['GET', 'POST'])
 @login_required
-def edit_version(series, number, index=None):
+def edit_version(table, number, index=None):
     # Look up record to edit, or get new:
-    record = Record.load(number, series)
+    record = Record.load(number, table)
 
     # Abort if series was wrong:
     if not hasattr(record, 'vform'):
@@ -1271,7 +1327,7 @@ def edit_version(series, number, index=None):
     if record.doc_id != number:
         flash("You are trying to update a record that doesn't exist."
               "Try filling out this new one instead.", 'error')
-        return redirect(url_for('main.edit_record', series=series, number=0))
+        return redirect(url_for('main.edit_record', series=table, number=0))
 
     # Instantiate edit form
     form = record.get_vform(index)
@@ -1286,7 +1342,7 @@ def edit_version(series, number, index=None):
     # Processing the request
     if request.method == 'POST' and form.validate():
         form_data = form.data
-        if series == 'e':
+        if table == 'e':
             # Here is where we automatically insert the URL type
             filtered_locations = list()
             for f in form.locations:
@@ -1301,24 +1357,24 @@ def edit_version(series, number, index=None):
             if error:
                 flash(error, 'error')
                 return redirect(
-                    url_for('main.edit_version', series=series, number=number,
+                    url_for('main.edit_version', series=table, number=number,
                             index=index))
             else:
                 flash('Successfully updated version.', 'success')
                 return redirect(
-                    url_for('main.display', series=series, number=number))
+                    url_for('main.display', series=table, number=number))
         else:
             # Adding a new record
             if error:
                 flash(error, 'error')
                 return redirect(
-                    url_for('main.edit_version', series=series, number=number,
+                    url_for('main.edit_version', series=table, number=number,
                             index=index))
             else:
                 number = record.doc_id
                 flash('Successfully added version.', 'success')
                 return redirect(
-                    url_for('main.display', series=series, number=number))
+                    url_for('main.display', series=table, number=number))
     if form.errors:
         flash('Could not save changes as there {:/was an error/were N errors}.'
               ' See below for details.'.format(Pluralizer(len(form.errors))),
@@ -1340,18 +1396,18 @@ def edit_version(series, number, index=None):
         safe_tags=allowed_tags, **params)
 
 
-@bp.route('/edit/datatype<int:number>',
+@bp.route('/edit/<any(datatype, location, type, id_scheme):vocab><int:number>',
           methods=['GET', 'POST'])
 @login_required
-def edit_datatype(number):
+def edit_vocabterm(vocab, number):
     # Look up record to edit, or get new:
-    record = Datatype.load(number)
+    record = Record.load(number, vocab)
 
     # If number is wrong, we reinforce the point by redirecting to 0:
     if record.doc_id != number:
         flash("You are trying to update a record that doesn't exist."
               "Try filling out this new one instead.", 'error')
-        return redirect(url_for('main.edit_datatype', number=0))
+        return redirect(url_for('main.edit_vocabterm', vocab=vocab, number=0))
 
     # Instantiate edit form
     form = record.get_form()
@@ -1366,7 +1422,7 @@ def edit_datatype(number):
             if error:
                 flash(error, 'error')
                 return redirect(
-                    url_for('main.edit_datatype', number=number))
+                    url_for('main.edit_vocabterm', vocab=vocab, number=number))
             else:
                 flash('Successfully updated record.', 'success')
                 return redirect(url_for('hello'))
@@ -1375,7 +1431,7 @@ def edit_datatype(number):
             if error:
                 flash(error, 'error')
                 return redirect(
-                    url_for('main.edit_datatype', number=number))
+                    url_for('main.edit_vocabterm', vocab=vocab, number=number))
             else:
                 number = record.doc_id
                 flash('Successfully added record.', 'success')
@@ -1396,14 +1452,14 @@ def edit_datatype(number):
                     # Simple field
                     form[field].errors = clean_error_list(form[field])
     return render_template(
-        f"edit-datatype.html", form=form, doc_id=number)
+        f"edit-{vocab}.html", form=form, doc_id=number)
 
 
-@bp.route('/msc/<string(length=1):series><int:number>')
-@bp.route('/msc/<string(length=1):series><int:number>/<field>')
-def display(series, number, field=None, api=False):
+@bp.route('/msc/<string(length=1):table><int:number>')
+@bp.route('/msc/<string(length=1):table><int:number>/<field>')
+def display(table, number, field=None, api=False):
     # Look up record to edit, or get new:
-    record = Record.load(number, series)
+    record = Record.load(number, table)
 
     # Abort if series or number was wrong:
     if record is None or record.doc_id == 0:
@@ -1502,7 +1558,7 @@ def display(series, number, field=None, api=False):
     # This is only relevant in Scheme views, since relations to other schemes
     # are grouped under a single heading.
     hasRelatedSchemes = False
-    if series == 'm':
+    if table == 'm':
         for field in scheme_scheme_fields:
             if field in relations:
                 hasRelatedSchemes = True

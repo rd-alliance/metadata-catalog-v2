@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "macros-forms.html" import state, errors %}
+{% block title %}{% if doc_id == 0 %}Add new link type{% else %}Edit link type {{ form.id.data }}{% endif %}{% endblock %}
+{% block main %}
+  <form action="{{ url_for('main.edit_vocabterm', vocab='location', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
+    {{ form.hidden_tag() }}
+    <fieldset>
+    <div class="form-group">
+      {{ form.id.label(class="control-label") }}
+      {% if doc_id == 0 %}
+      {{ form.id(placeholder="Value", class="form-control") }}
+      {% else %}
+      {{ form.id(disabled=True, class="form-control") }}
+      {% endif %}
+      <ul class="help-block">
+        <li>The value for this link type to use in the database (cannot be
+          changed once set).</li>
+      </ul>
+    </div>
+    <div class="form-group">
+      {{ form.label.label(class="control-label") }}
+      {{ form.label(placeholder="Link type", class="form-control") }}
+      <ul class="help-block">
+        <li>The type of link as you would like it displayed.</li>
+      </ul>
+    </div>
+    <div class="form-group">
+      {{ form.applies.label(class="control-label") }}
+      {{ form.applies(class="form-control") }}
+      <ul class="help-block">
+        <li>The types of record for which this link type is valid.</li>
+      </ul>
+    </div>
+    </fieldset>
+    <div class="form-group">
+      <button class="btn btn-primary">Save changes</button>
+      <a href="{{ url_for('hello') }}" class="btn btn-default">Cancel</a>
+    </div>
+  </form>
+{% endblock %}
