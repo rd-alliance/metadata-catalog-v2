@@ -1380,6 +1380,8 @@ def get_term_db():
     if 'term_db' not in g:
         g.term_db = TinyDB(
             current_app.config['TERM_DATABASE_PATH'],
+            storage=JSONStorageWithGit,
+            indent=2,
             ensure_ascii=False)
 
     return g.term_db
