@@ -5,16 +5,18 @@
   <form action="{{ url_for('main.edit_vocabterm', vocab='datatype', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
     {{ form.hidden_tag() }}
     <fieldset>
-    <div class="form-group">
+    <div class="form-group{{ state(form.label) }}">
       {{ form.label.label(class="control-label") }}
       {{ form.label(placeholder="Type of data", class="form-control") }}
+      {{ errors(form.label) }}
       <ul class="help-block">
         <li>The type of data as you would like it displayed. Must be unique.</li>
       </ul>
     </div>
-    <div class="form-group">
+    <div class="form-group{{ state(form.id) }}">
       {{ form.id.label(class="control-label") }}
       {{ form.id(placeholder="https://...", class="form-control") }}
+      {{ errors(form.id) }}
       <ul class="help-block">
         <li>This should be the URL that would be used to identify the type in
           Linked Data, if known.</li>

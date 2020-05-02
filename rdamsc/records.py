@@ -937,6 +937,10 @@ class VocabTerm(Document):
                         for term in terms:
                             t.insert(term)
 
+    @property
+    def form(self):
+        return VocabForm
+
     def get_form(self):
         # Get data from database:
         data = json.loads(json.dumps(self))
@@ -972,10 +976,6 @@ class Location(VocabTerm, Record):
 
     def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
-
-    @property
-    def form(self):
-        return VocabLocationForm
 
 
 class EntityType(VocabTerm, Record):
@@ -1193,14 +1193,14 @@ class DatatypeForm(FlaskForm):
         validators=[validators.InputRequired()])
 
 
-class VocabLocationForm(FlaskForm):
+class VocabForm(FlaskForm):
     id = StringField(
-        'Database value',
-        validators=[validators.InputRequired()])
+        'Database value')
     label = StringField(
         'Displayed value',
         validators=[validators.InputRequired()])
     applies = SelectMultipleField(
+        'Applies to',
         choices=[
             (Scheme.series, Scheme.series),
             (Tool.series, Tool.series),
@@ -1412,6 +1412,9 @@ def edit_vocabterm(vocab, number):
     # Instantiate edit form
     form = record.get_form()
 
+    if number == 0:
+        form['id'].validators.append(validators.InputRequired())
+
     # Processing the request
     if request.method == 'POST' and form.validate():
         form_data = form.data
@@ -1440,6 +1443,7 @@ def edit_vocabterm(vocab, number):
         flash('Could not save changes as there {:/was an error/were N errors}.'
               ' See below for details.'.format(Pluralizer(len(form.errors))),
               'error')
+        print(f"DEBUG edit_vocabterm: {form.errors}.")
         for field, errors in form.errors.items():
             if len(errors) > 0:
                 if isinstance(errors[0], dict):
