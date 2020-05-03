@@ -256,8 +256,8 @@ class Record(Document):
     @classmethod
     def get_vocabs(cls):
         '''Gets controlled vocabularies for use as hints in unconstrained
-        StringFields.'''
-        raise NotImplementedError
+        StringFields. Most of these have been removed since MSC v.1.'''
+        return dict()
 
     @classmethod
     def load(cls, doc_id: int, table: str=None):
@@ -421,6 +421,55 @@ class Record(Document):
     def get_vform(self):
         raise NotImplementedError
 
+    def insert_relations(self, data: Mapping):
+        rel = Relation()
+        rel_summary = dict()
+        for field in self.form():
+            if field.type != 'SelectRelatedField':
+                continue
+            predicate = field.description
+            mscids = list()
+            if field.flags.inverse:
+                object = self.mscid
+                mscids.extend(rel.subjects(
+                    predicate=predicate, object=object))
+            else:
+                subject = self.mscid
+                mscids.extend(rel.objects(
+                    subject=subject, predicate=predicate))
+            rel_summary[field.name] = mscids
+
+        for key, value in rel_summary.items():
+            if value:
+                data[key] = value
+
+        data['old_relations'] = json.dumps(rel_summary)
+
+        return data
+
+    def populate_form(self, data: Mapping, is_version=False):
+        form = self.vform(data=data) if is_version else self.form(data=data)
+        for field in form:
+            if field.type == 'FieldList' and field.name in data:
+                last_entry = data[field.name][-1]
+                if not last_entry:
+                    continue
+                if isinstance(last_entry, dict):
+                    for value in last_entry.values():
+                        if value:
+                            break
+                    else:
+                        continue
+                field.append_entry()
+
+        # Assign validators to current choices (these are in all the forms):
+        for f in form.locations:
+            f['type'].choices = Location.get_choices(self.__class__)
+        for f in form.identifiers:
+            f.scheme.choices = IDScheme.get_choices(self.__class__)
+
+        return form
+
     def save_gui_input(self, formdata: Mapping):
         '''Processes form input and saves it. Returns error message if a problem
         arises.'''
@@ -582,10 +631,6 @@ class Scheme(Record):
 
         th = get_thesaurus()
         vocabs['subjects'] = th.get_choices()
-        vocabs['idSchemes'] = list()
-        for tuple in IDScheme.get_choices(cls):
-            if tuple[0]:
-                vocabs['idSchemes'].append(tuple[0])
 
         return vocabs
 
@@ -623,28 +668,7 @@ class Scheme(Record):
             del data['versions']
 
         # Populate with relevant relations
-        rel = Relation()
-        rel_summary = dict()
-        for field in self.form():
-            if field.type != 'SelectRelatedField':
-                continue
-            predicate = field.description
-            mscids = list()
-            if field.flags.inverse:
-                object = self.mscid
-                mscids.extend(rel.subjects(
-                    predicate=predicate, object=object))
-            else:
-                subject = self.mscid
-                mscids.extend(rel.objects(
-                    subject=subject, predicate=predicate))
-            rel_summary[field.name] = mscids
-
-        for key, value in rel_summary.items():
-            if value:
-                data[key] = value
-
-        data['old_relations'] = json.dumps(rel_summary)
+        data = self.insert_relations(data)
 
         # Translate keywords from URI to string
         th = get_thesaurus()
@@ -655,21 +679,9 @@ class Scheme(Record):
             data['keywords'] = keywords
 
         # Populate form:
-        form = self.form(data=data)
-        for field in form:
-            if field.type == 'FieldList' and field.name in data:
-                last_entry = data[field.name][-1]
-                if not last_entry:
-                    continue
-                if isinstance(last_entry, dict):
-                    for value in last_entry.values():
-                        if value:
-                            break
-                    else:
-                        continue
-                field.append_entry()
+        form = self.populate_form(data)
 
-        # Assign validators to current choices:
+        # Scheme-specific form settings:
         for field in form.keywords:
             if len(field.validators) == 1:
                 field.validators.append(
@@ -679,10 +691,6 @@ class Scheme(Record):
         form.parent_schemes.omit_mscid(self.mscid)
         form.child_schemes.omit_mscid(self.mscid)
         form.dataTypes.choices = Datatype.get_choices()
-        for f in form.locations:
-            f['type'].choices = Location.get_choices(self.__class__)
-        for f in form.identifiers:
-            f.scheme.choices = IDScheme.get_choices(self.__class__)
 
         return form
 
@@ -700,25 +708,7 @@ class Scheme(Record):
                 pass
 
         # Populate form:
-        form = self.vform(data=data)
-        for field in form:
-            if field.type == 'FieldList' and field.name in data:
-                last_entry = data[field.name][-1]
-                if not last_entry:
-                    continue
-                if isinstance(last_entry, dict):
-                    for value in last_entry.values():
-                        if value:
-                            break
-                    else:
-                        continue
-                field.append_entry()
-
-        # Assign validators to current choices:
-        for f in form.locations:
-            f['type'].choices = Location.get_choices(self.__class__)
-        for f in form.identifiers:
-            f.scheme.choices = IDScheme.get_choices(self.__class__)
+        form = self.populate_form(data, is_version=True)
 
         return form
 
@@ -751,6 +741,43 @@ class Tool(Record):
     @property
     def vform(self):
         return ToolVersionForm
+
+    def get_form(self):
+        # Get data from database:
+        data = json.loads(json.dumps(self))
+
+        # Strip out version info, this is handled separately:
+        if 'versions' in data:
+            del data['versions']
+
+        # Populate with relevant relations
+        data = self.insert_relations(data)
+
+        # Populate form:
+        form = self.populate_form(data)
+
+        # Tool-specific form settings:
+        form.types.choices = EntityType.get_choices(self.__class__)
+
+        return form
+
+    def get_vform(self, index: int=None):
+        # Get data from database:
+        main_data = json.loads(json.dumps(self))
+
+        # Strip out version info, this is handled separately:
+        data = dict()
+        if index is not None:
+            try:
+                data = main_data.get('versions', list())[index]
+            except IndexError:
+                index = None
+                pass
+
+        # Populate form:
+        form = self.populate_form(data, is_version=True)
+
+        return form
 
 
 class Crosswalk(Record):
@@ -1212,7 +1239,7 @@ class ToolForm(FlaskForm):
     title = StringField('Name of tool')
     description = TextAreaField('Description')
     types = SelectMultipleField(
-        'Type of tool')
+        'Type of tool', render_kw={'size': 5})
     locations = FieldList(
         FormField(LocationForm), 'Links to this tool', min_entries=1)
     identifiers = FieldList(
@@ -1220,8 +1247,9 @@ class ToolForm(FlaskForm):
     creators = FieldList(
         FormField(CreatorForm), 'People responsible for this tool',
         min_entries=1)
-    supported_schemes = SelectMultipleField(
-        'Metadata scheme(s) supported by this tool')
+    supported_schemes = SelectRelatedField(
+        'Metadata scheme(s) supported by this tool', Scheme,
+        description="supported scheme")
     maintainers = SelectRelatedField(
         'Organizations that maintain this tool', Group,
         description='maintainer')

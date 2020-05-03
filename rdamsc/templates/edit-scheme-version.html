@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% from "macros-forms.html" import state, errors %}
-{% block title %}{% if doc_id == 0 %}Add new metadata scheme{% else %}Edit record msc:m{{ doc_id }}{% endif %}{% if version %}, version {{ version }}{% endif %}{% endblock %}
+{% block title %}{% if index is None %}Add new version{% else %}Edit version {{ form.number.data }}{% endif %}{% endblock %}
 {% block main %}
-  <form action="{{ url_for('main.edit_version', series='m', number=doc_id, index=index) }}" method="post"  accept-charset="utf-8" class="form-block">
+  <form action="{{ url_for('main.edit_version', table='m', number=doc_id, index=index) }}" method="post"  accept-charset="utf-8" class="form-block">
     {{ form.hidden_tag() }}
     <fieldset>
     <div class="form-group{{ state(form.number) }}">

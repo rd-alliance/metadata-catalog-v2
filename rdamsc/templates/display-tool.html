@@ -105,7 +105,7 @@
           {% else %}
           <dt>Other identifier</dt><dd>{{ identifier['id'] }}</dd>
           {% endif %}
-          {% if 'locations' in version %}
+          {% if 'locations' in version or current_user.is_authenticated %}
           <ul class="locations list-inline">
           {% for location in version['locations'] %}
             {% if location['type'] == 'website' %}
@@ -118,6 +118,9 @@
             <li><a class="btn btn-sm btn-special" href="{{ location['url'] }}">Service endpoint</a></li>
             {% endif %}
           {% endfor %}
+          {% if current_user.is_authenticated %}
+            <li><a class="btn btn-warning" href="{{ url_for('main.edit_version', table='t', number=record.doc_id, index=version['index']) }}">Edit version</a></li>
+          {% endif %}
           </ul>
           {% endif %}
         {% endfor %}
@@ -143,6 +146,11 @@
   <aside>
     <p>
       <a href="{{ url_for('main.edit_record', table='t', number=record.doc_id) }}" class="btn btn-default">Edit this record</a>
+      {% if versions %}
+      <a href="{{ url_for('main.edit_version', table='t', number=record.doc_id) }}" class="btn btn-default">Add another version</a>
+      {% else %}
+      <a href="{{ url_for('main.edit_version', table='t', number=record.doc_id) }}" class="btn btn-default">Add version information</a>
+      {% endif %}
     </p>
   </aside>
   {% endif %}

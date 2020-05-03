@@ -5,9 +5,10 @@
   <form action="{{ url_for('main.edit_record', table='m', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
     {{ form.hidden_tag() }}
     <fieldset>
-    <div class="form-group">
+    <div class="form-group{{ state(form.title) }}">
       {{ form.title.label(class="control-label") }}
       {{ form.title(placeholder="Name of scheme", class="form-control") }}
+      {{ errors(form.title) }}
       <ul class="help-block">
         <li>If the scheme is known by an abbreviation, put this at the start of
           the name, then give the expanded form in parentheses, e.g. “SDMX
@@ -18,9 +19,10 @@
           “Statistical Data and Metadata eXchange”.</li>
       </ul>
     </div>
-    <div class="form-group">
+    <div class="form-group{{ state(form.description) }}">
       {{ form.description.label(class="control-label") }}
       {{ form.description(class="form-control") }}
+      {{ errors(form.description) }}
       <ul class="help-block">
         <li>This could indicate if the scheme is used to create standalone metadata
           records, or insert metadata into data files, or is in fact a data format
@@ -54,9 +56,10 @@
           <a href="http://vocabularies.unesco.org/browser/thesaurus/en/" target="_blank">UNESCO Thesaurus</a>.</li>
       </ul>
     </div>
-    <div class="form-group">
+    <div class="form-group{{ state(form.dataTypes) }}">
       {{ form.dataTypes.label(class="control-label") }}
       {{ form.dataTypes(class="form-control") }}
+      {{ errors(form.dataTypes) }}
       <ul class="help-block">
         <li>Provide types of data which this scheme is usually used to describe.</li>
         <li>You can add new types from the home page.</li>
@@ -93,10 +96,16 @@
       <ol class="form-list">
       {% for f in form.identifiers %}
         <li>
-        {{ f['id'].label(class="control-label") }}
-        {{ f['id'](placeholder="e.g. 10.001/1234", class="form-control") }}
-        {{ f.scheme.label(class="control-label") }}
-        {{ f.scheme(class="form-control", list="id-schemes", style="width:auto;") }}
+          <div class="{{ state(f['id']) }}">
+            {{ f['id'].label(class="control-label") }}
+            {{ f['id'](placeholder="e.g. 10.001/1234", class="form-control") }}
+            {{ errors(f['id']) }}
+          </div>
+          <div class="{{ state(f.scheme) }}">
+            {{ f.scheme.label(class="control-label") }}
+            {{ f.scheme(class="form-control", list="id-schemes", style="width:auto;") }}
+            {{ errors(f.scheme) }}
+          </div>
         </li>
       {% endfor %}
       </ol>
@@ -110,48 +119,55 @@
     </fieldset>
     <fieldset>
     <legend>Relationships to other records</legend>
-    <div class="form-group">
+    <div class="form-group{{ state(form.parent_schemes) }}">
       {{ form.parent_schemes.label(class="control-label") }}
       {{ form.parent_schemes(class="form-control") }}
+      {{ errors(form.parent_schemes) }}
     </div>
-    <div class="form-group">
+    <div class="form-group{{ state(form.child_schemes) }}">
       {{ form.child_schemes.label(class="control-label") }}
       {{ form.child_schemes(class="form-control") }}
+      {{ errors(form.child_schemes) }}
     </div>
-    <div class="form-group">
+    <div class="form-group{{ state(form.input_to_mappings) }}">
       {{ form.input_to_mappings.label(class="control-label") }}
       {{ form.input_to_mappings(class="form-control") }}
+      {{ errors(form.input_to_mappings) }}
     </div>
-    <div class="form-group">
+    <div class="form-group{{ state(form.output_from_mappings) }}">
       {{ form.output_from_mappings.label(class="control-label") }}
       {{ form.output_from_mappings(class="form-control") }}
+      {{ errors(form.output_from_mappings) }}
     </div>
-    <div class="form-group">
+    <div class="form-group{{ state(form.maintainers) }}">
       {{ form.maintainers.label(class="control-label") }}
       {{ form.maintainers(class="form-control") }}
+      {{ errors(form.maintainers) }}
     </div>
-    <div class="form-group">
+    <div class="form-group{{ state(form.funders) }}">
       {{ form.funders.label(class="control-label") }}
       {{ form.funders(class="form-control") }}
+      {{ errors(form.funders) }}
     </div>
-    <div class="form-group">
+    <div class="form-group{{ state(form.users) }}">
       {{ form.users.label(class="control-label") }}
       {{ form.users(class="form-control") }}
+      {{ errors(form.users) }}
     </div>
-    <div class="form-group">
+    <div class="form-group{{ state(form.tools) }}">
       {{ form.tools.label(class="control-label") }}
       {{ form.tools(class="form-control") }}
+      {{ errors(form.tools) }}
     </div>
-    <div class="form-group">
+    <div class="form-group{{ state(form.endorsements) }}">
       {{ form.endorsements.label(class="control-label") }}
       {{ form.endorsements(class="form-control") }}
+      {{ errors(form.endorsements) }}
     </div>
-    {% if doc_id != 0 %}
     <p class="help-block">
       If the record you need isn't listed, save this one and create the other
       record: you will be able to add the relationship from the other record.
     </p>
-    {% endif %}
     </fieldset>
     <div class="form-group">
       <button class="btn btn-primary">Save changes</button>
