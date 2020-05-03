@@ -30,7 +30,7 @@ def get_scheme_tree(records: List[Scheme]) -> Mapping[str, str]:
         node = {
             'name': record.name,
             'url': url_for(
-                'main.display', series=record.table, number=record.doc_id),
+                'main.display', table=record.table, number=record.doc_id),
             'children': get_scheme_tree(children)
             }
         tree.append(node)
@@ -73,7 +73,7 @@ def record_index(series=None):
             tree = [{
                 'name': record.name,
                 'url': url_for(
-                    'main.display', series=record.table, number=record.doc_id)
+                    'main.display', table=record.table, number=record.doc_id)
                 } for record in records]
             return render_template(
                 'contents.html', title=f'Index of {series}s', tree=tree)

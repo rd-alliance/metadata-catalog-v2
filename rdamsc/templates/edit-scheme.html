@@ -45,12 +45,12 @@
         <option>{{ item }}</option>
         {% endfor %}
       </datalist>
+      <div>
       {% for f in form.keywords %}
       <span class="{{ state(f) }}">{{ f(list="keyword-list", class="form-control") }}</span>
-      {% endfor %}
-      {% for f in form.keywords %}
       {{ errors(f) }}
       {% endfor %}
+      </div>
       <ul class="help-block">
         <li>Use domains, micro-thesaurus names or concepts from the
           <a href="http://vocabularies.unesco.org/browser/thesaurus/en/" target="_blank">UNESCO Thesaurus</a>.</li>

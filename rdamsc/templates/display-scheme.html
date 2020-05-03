@@ -22,7 +22,7 @@
       {% if 'label' in type %}
       <li><a class="btn btn-special" href="{{ url_for('dataType', dataType=toURLSlug(type['label'])) }}">{{ type['label'] }}</a></li>
       {% else %}
-      <li><a class="btn btn-special" href="{{ url_for('dataType', dataType=toURLSlug(type['url'])) }}">{{ abbrevURL(type['url']) }}</a></li>
+      <li><a class="btn btn-special" href="{{ url_for('dataType', dataType=toURLSlug(type['id'])) }}">{{ abbrevURL(type['id']) }}</a></li>
       {% endif %}
     {% endfor %}
     </ul>
@@ -111,7 +111,7 @@
     {% for version in versions %}
       <dt id="v{{ version['number'] }}">{{ version['date'] }}</dt>
       <dd>
-        <p>version {{ version['number'] }}{% if version['status'] %} ({{ version['status'] }}){% endif %}
+        <p>{% if 'number' in version %}version {{ version['number'] }}{% else %}(unnumbered version){% endif %}{% if version['status'] %} ({{ version['status'] }}){% endif %}
           {% if 'title' in version %} &ndash; {{ version['title'] }}{% endif %}</p>
         {% if 'description' in version %}
         <div class="description">{{ version['description']|safe }}</div>
@@ -160,7 +160,7 @@
     {% endfor %}
     {% for mapping in relations['input_to_mappings'] %}
       <li class="mappings">
-        <p>This scheme can be mapped to {% for scheme in mapping['input_to_mappings'] %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}<a href="{{ url_for('main.display', table='m', number=scheme.doc_id) }}">{{ scheme['title'] }}</a>{% endfor %}.</p>
+        <p>This scheme can be mapped to {% for scheme in mapping['output_schemes'] %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}<a href="{{ url_for('main.display', table='m', number=scheme.doc_id) }}">{{ scheme['title'] }}</a>{% endfor %}.</p>
         {% if 'description' in mapping %}
         <div class="description">{{ mapping['description']|safe }}</div>
         {% endif %}
@@ -168,7 +168,7 @@
         <ul class="locations list-inline">
         {% for location in mapping['locations'] %}
           <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'document' %}View documentation{% else %}Download {{ location['type'] }}{% endif %}</a></li>
-        {% endfor %}{{ url_for('main.edit_version', table='m', number=record.doc_id) }}
+        {% endfor %}
         {% if current_user.is_authenticated %}
           <li><a class="btn btn-default" href="{{ url_for('main.edit_record', table='c', number=mapping.doc_id) }}">Edit record</a></li>
         {% endif %}
@@ -177,7 +177,7 @@
     {% endfor %}
     {% for mapping in relations['output_from_mappings'] %}
       <li class="mappings">
-        <p>This scheme can be generated from {% for scheme in mapping['output_from_mappings'] %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}<a href="{{ url_for('main.display', table='m', number=scheme.doc_id) }}">{{ scheme['title'] }}</a>{% endfor %}.</p>
+        <p>This scheme can be generated from {% for scheme in mapping['input_schemes'] %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}<a href="{{ url_for('main.display', table='m', number=scheme.doc_id) }}">{{ scheme['title'] }}</a>{% endfor %}.</p>
         {% if 'description' in mapping %}
         <div class="description">{{ mapping['description']|safe }}</div>
         {% endif %}

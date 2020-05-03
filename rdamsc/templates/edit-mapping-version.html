@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% from "macros-forms.html" import state, errors %}
-{% block title %}{% if index is none() %}Add new version{% else %}Edit version {{ form.number.data }}{% endif %}{% endblock %}
+{% block title %}{% if index is none() %}Add new version{% else %}Edit {% if number in form %}version {{ form.number.data }}{% else %}unnumbered version{% endif %}{% endif %}{% endblock %}
 {% block main %}
-  <form action="{{ url_for('main.edit_version', table='t', number=doc_id, index=index) }}" method="post"  accept-charset="utf-8" class="form-block">
+  <form action="{{ url_for('main.edit_version', table='c', number=doc_id, index=index) }}" method="post"  accept-charset="utf-8" class="form-block">
     {{ form.hidden_tag() }}
     <fieldset>
     <div class="form-group{{ state(form.number) }}">
@@ -13,14 +13,6 @@
       {{ errors(form.number) }}
       <ul class="help-block">
         <li>Do not preface the version number with "version" or "v".</li>
-      </ul>
-    </div>
-    <div class="form-group">
-      {{ form.title.label(class="control-label") }}
-      {{ form.title(placeholder="Name of tool", class="form-control") }}
-      <ul class="help-block">
-        <li>Only provide a title here if this version has a different one from the
-          that given in the main record.</li>
       </ul>
     </div>
     <div class="form-group">
@@ -78,7 +70,7 @@
       </ol>
       <ul class="help-block">
         <li>Provide an identifier, if known, for this particular version of the
-          tool.</li>
+          mapping.</li>
         <li>You do not need to repeat the internal Catalog identifier here.</li>
         <li>To give several identifiers, save after adding each one.</li>
       </ul>
@@ -86,7 +78,7 @@
     </fieldset>
     <div class="form-group">
       <button class="btn btn-primary">Save changes</button>
-      <a href="{{ url_for('main.display', table='t', number=doc_id) }}" class="btn btn-default">Cancel &amp; view record</a>
+      <a href="{{ url_for('main.display', table='c', number=doc_id) }}" class="btn btn-default">Cancel &amp; view record</a>
     </div>
   </form>
 {% endblock %}

@@ -303,6 +303,8 @@ class Record(Document):
             + r'(#v(?P<version>.*))?$')
         m = mscid_format.match(mscid)
         if m:
+            if hasattr(cls, 'table'):
+                return cls.load(int(m.group('doc_id')))
             return cls.load(int(m.group('doc_id')), m.group('table'))
         return None
 
@@ -343,7 +345,7 @@ class Record(Document):
 
     @property
     def slug(self):
-        return self.get('slug')
+        return self.get_slug()
 
     @property
     def vform(self):
@@ -418,6 +420,9 @@ class Record(Document):
     def get_form(self):
         raise NotImplementedError
 
+    def get_slug(self, formdata: Mapping=None):
+        return self.get('slug')
+
     def get_vform(self):
         raise NotImplementedError
 
@@ -475,7 +480,7 @@ class Record(Document):
         arises.'''
 
         # Insert slug:
-        formdata['slug'] = self.slug
+        formdata['slug'] = self.get_slug(formdata)
 
         # Restore version information:
         formdata['versions'] = self.get('versions', list())
@@ -524,7 +529,7 @@ class Record(Document):
         # Previously stored relationships (falling back to databases if not
         # available from form data):
         rel = Relation()
-        old_relations = dict
+        old_relations = dict()
         old_relation_json = formdata.get('old_relations')
         if old_relation_json:
             try:
@@ -647,15 +652,6 @@ class Scheme(Record):
         return self.get('title', "Untitled")
 
     @property
-    def slug(self):
-        slug = self.get('slug')
-        if slug:
-            return slug
-        if self.name:
-            return to_file_slug(self.name)
-        return None
-
-    @property
     def vform(self):
         return SchemeVersionForm
 
@@ -694,6 +690,15 @@ class Scheme(Record):
 
         return form
 
+    def get_slug(self, formdata: Mapping=None):
+        slug = self.get('slug')
+        if slug:
+            return slug
+        name = formdata.get('title') if formdata else self.get('title')
+        if name:
+            return to_file_slug(name, self.search)
+        return None
+
     def get_vform(self, index: int=None):
         # Get data from database:
         main_data = json.loads(json.dumps(self))
@@ -727,16 +732,7 @@ class Tool(Record):
 
     @property
     def name(self):
-        return self.get('title')
-
-    @property
-    def slug(self):
-        slug = self.get('slug')
-        if slug:
-            return slug
-        if self.name:
-            return to_file_slug(self.name)
-        return None
+        return self.get('title', "Untitled")
 
     @property
     def vform(self):
@@ -760,6 +756,15 @@ class Tool(Record):
         form.types.choices = EntityType.get_choices(self.__class__)
 
         return form
+
+    def get_slug(self, formdata: Mapping=None):
+        slug = self.get('slug')
+        if slug:
+            return slug
+        name = formdata.get('title') if formdata else self.get('title')
+        if name:
+            return to_file_slug(name, self.search)
+        return None
 
     def get_vform(self, index: int=None):
         # Get data from database:
@@ -794,20 +799,98 @@ class Crosswalk(Record):
 
     @property
     def name(self):
-        return self.get('name')
+        name = self.get('name')
+        if name:
+            return name
 
-    @property
-    def slug(self):
-        slug = self.get('slug')
-        if slug:
-            return slug
-        if self.name:
-            return to_file_slug(self.name)
-        return None
+        rel = Relation()
+        inputs = rel.object_records(
+            subject=self.mscid, predicate="input scheme")
+        outputs = rel.object_records(
+            subject=self.mscid, predicate="output scheme")
+
+        if inputs and outputs:
+            return f"{inputs[0].name} to {outputs[0].name}"
+
+        return "Unnamed"
 
     @property
     def vform(self):
         return CrosswalkVersionForm
+
+    def get_form(self):
+        # Get data from database:
+        data = json.loads(json.dumps(self))
+
+        # Strip out version info, this is handled separately:
+        if 'versions' in data:
+            del data['versions']
+
+        # Populate with relevant relations
+        data = self.insert_relations(data)
+
+        # Populate form:
+        form = self.populate_form(data)
+
+        return form
+
+    def get_slug(self, formdata: Mapping=None):
+        slug = self.get('slug')
+        if slug:
+            return slug
+
+        name = formdata.get('name') if formdata else self.get('name')
+        if name:
+            return to_file_slug(name, self.search)
+
+        inputs = list()
+        outputs = list()
+        if formdata:
+            for mscid in formdata.get('input_schemes', list()):
+                inputs.append(Record.load_by_mscid(mscid))
+                break
+            for mscid in formdata.get('output_schemes', list()):
+                outputs.append(Record.load_by_mscid(mscid))
+                break
+        else:
+            rel = Relation()
+            inputs.extend(rel.object_records(
+                subject=self.mscid, predicate="input scheme"))
+            outputs.extend(rel.object_records(
+                subject=self.mscid, predicate="output scheme"))
+
+        if inputs and outputs:
+            slug = "{}_TO_{}".format(
+                '-'.join(inputs[0].slug.split('-')[:3]),
+                '-'.join(outputs[0].slug.split('-')[:3]))
+            i = ''
+            while self.search(Query().slug == (slug + str(i))):
+                if i == '':
+                    i = 1
+                else:
+                    i += 1
+            else:
+                return slug
+
+        return None
+
+    def get_vform(self, index: int=None):
+        # Get data from database:
+        main_data = json.loads(json.dumps(self))
+
+        # Strip out version info, this is handled separately:
+        data = dict()
+        if index is not None:
+            try:
+                data = main_data.get('versions', list())[index]
+            except IndexError:
+                index = None
+                pass
+
+        # Populate form:
+        form = self.populate_form(data, is_version=True)
+
+        return form
 
 
 class Group(Record):
@@ -836,13 +919,28 @@ class Group(Record):
     def name(self):
         return self.get('name')
 
-    @property
-    def slug(self):
+    def get_form(self):
+        # Get data from database:
+        data = json.loads(json.dumps(self))
+
+        # Populate with relevant relations
+        data = self.insert_relations(data)
+
+        # Populate form:
+        form = self.populate_form(data)
+
+        # Group-specific form settings:
+        form.types.choices = EntityType.get_choices(self.__class__)
+
+        return form
+
+    def get_slug(self, formdata: Mapping=None):
         slug = self.get('slug')
         if slug:
             return slug
-        if self.name:
-            return to_file_slug(self.name)
+        name = formdata.get('name') if formdata else self.get('name')
+        if name:
+            return to_file_slug(name, self.search)
         return None
 
 
@@ -862,13 +960,25 @@ class Endorsement(Record):
     def name(self):
         return self.get('title')
 
-    @property
-    def slug(self):
+    def get_form(self):
+        # Get data from database:
+        data = json.loads(json.dumps(self))
+
+        # Populate with relevant relations
+        data = self.insert_relations(data)
+
+        # Populate form:
+        form = self.populate_form(data)
+
+        return form
+
+    def get_slug(self, formdata: Mapping=None):
         slug = self.get('slug')
         if slug:
             return slug
-        if self.name:
-            return to_file_slug(self.name)
+        name = formdata.get('title') if formdata else self.get('title')
+        if name:
+            return to_file_slug(name, self.search)
         return None
 
 
@@ -1258,6 +1368,7 @@ class ToolForm(FlaskForm):
     funders = SelectRelatedField(
         'Organizations that funded this tool', Group,
         description='funder')
+    old_relations = HiddenField()
 
 
 class ToolVersionForm(FlaskForm):
@@ -1278,7 +1389,7 @@ class CrosswalkForm(FlaskForm):
     name = StringField('Name or descriptor for mapping')
     description = TextAreaField('Description')
     locations = FieldList(
-        FormField(FreeLocationForm), 'Links to this mapping', min_entries=1)
+        FormField(LocationForm), 'Links to this mapping', min_entries=1)
     identifiers = FieldList(
         FormField(IdentifierForm), 'Identifiers for this mapping',
         min_entries=1)
@@ -1297,6 +1408,7 @@ class CrosswalkForm(FlaskForm):
     funders = SelectRelatedField(
         'Organizations that funded this mapping', Group,
         description='funder')
+    old_relations = HiddenField()
 
 
 class CrosswalkVersionForm(FlaskForm):
@@ -1346,6 +1458,7 @@ class GroupForm(FlaskForm):
     endorsements = SelectRelatedField(
         'Endorsements made by this organization', Endorsement,
         description='originator', inverse=True)
+    old_relations = HiddenField()
 
 
 class EndorsementForm(FlaskForm):
@@ -1367,6 +1480,7 @@ class EndorsementForm(FlaskForm):
     originators = SelectRelatedField(
         'Endorsing organizations', Group,
         description='originator')
+    old_relations = HiddenField()
 
 
 class DatatypeForm(FlaskForm):
@@ -1432,7 +1546,7 @@ def edit_record(table, number):
     if record.doc_id != number:
         flash("You are trying to update a record that doesn't exist."
               "Try filling out this new one instead.", 'error')
-        return redirect(url_for('main.edit_record', series=table, number=0))
+        return redirect(url_for('main.edit_record', table=table, number=0))
 
     # Instantiate edit form
     form = record.get_form()
@@ -1453,27 +1567,19 @@ def edit_record(table, number):
             form_data['locations'] = filtered_locations
         # Save form data to database
         error = record.save_gui_input(form_data)
-        if record.doc_id:
-            # Editing an existing record
-            if error:
-                flash(error, 'error')
-                return redirect(
-                    url_for('main.edit_record', series=table, number=number))
-            else:
-                flash('Successfully updated record.', 'success')
-                return redirect(
-                    url_for('main.display', series=table, number=number))
+        if error:
+            flash(error, 'error')
+            return redirect(
+                url_for('main.edit_record', table=table, number=number))
         else:
-            # Adding a new record
-            if error:
-                flash(error, 'error')
-                return redirect(
-                    url_for('main.edit_record', series=table, number=number))
+            if number:
+                # Editing an existing record
+                flash('Successfully updated record.', 'success')
             else:
-                number = record.doc_id
+                # Adding a new record
                 flash('Successfully added record.', 'success')
-                return redirect(
-                    url_for('main.display', series=table, number=number))
+            return redirect(
+                url_for('main.display', table=table, number=record.doc_id))
     if form.errors:
         flash('Could not save changes as there {:/was an error/were N errors}.'
               ' See below for details.'.format(Pluralizer(len(form.errors))),
@@ -1514,7 +1620,7 @@ def edit_version(table, number, index=None):
     if record.doc_id != number:
         flash("You are trying to update a record that doesn't exist."
               "Try filling out this new one instead.", 'error')
-        return redirect(url_for('main.edit_record', series=table, number=0))
+        return redirect(url_for('main.edit_record', table=table, number=0))
 
     # Instantiate edit form
     form = record.get_vform(index)
@@ -1549,7 +1655,7 @@ def edit_version(table, number, index=None):
             else:
                 flash('Successfully updated version.', 'success')
                 return redirect(
-                    url_for('main.display', series=table, number=number))
+                    url_for('main.display', table=table, number=number))
         else:
             # Adding a new record
             if error:
@@ -1561,7 +1667,7 @@ def edit_version(table, number, index=None):
                 number = record.doc_id
                 flash('Successfully added version.', 'success')
                 return redirect(
-                    url_for('main.display', series=table, number=number))
+                    url_for('main.display', table=table, number=number))
     if form.errors:
         flash('Could not save changes as there {:/was an error/were N errors}.'
               ' See below for details.'.format(Pluralizer(len(form.errors))),
@@ -1671,6 +1777,15 @@ def display(table, number, field=None, api=False):
                 print(f"DEBUG display: No keyword for {keyword_uri}.")
         record['keywords'] = keywords
 
+    # Objectify data types:
+    if 'dataTypes' in record:
+        datatypes = list()
+        for mscid in record['dataTypes']:
+            datatype = Datatype.load_by_mscid(mscid)
+            if datatype:
+                datatypes.append(datatype)
+        record['dataTypes'] = datatypes
+
     # If the record has version information, interpret the associated dates.
     versions = None
     if 'versions' in record:
@@ -1679,8 +1794,6 @@ def display(table, number, field=None, api=False):
         for index in range(len(record['versions'])):
             record['versions'][index]['index'] = index
         for v in record['versions']:
-            if 'number' not in v:
-                continue
             this_version = v
             this_version['status'] = ''
             if 'issued' in v:
@@ -1743,6 +1856,14 @@ def display(table, number, field=None, api=False):
         else:
             others = rel.object_records(
                 subject=record.mscid, predicate=field.description)
+        if field.description == 'input scheme':
+            for mapping in others:
+                mapping['output_schemes'] = rel.object_records(
+                    subject=mapping.mscid, predicate='output scheme')
+        elif field.description == 'output scheme':
+            for mapping in others:
+                mapping['input_schemes'] = rel.object_records(
+                    subject=mapping.mscid, predicate='input scheme')
         if others:
             relations[field.name] = others
 

@@ -228,6 +228,8 @@ class Thesaurus(object):
 
     def get_uri(self, label: str) -> str:
         '''Translates long or short label into term URI.'''
+        if label is None:
+            return None
         field = 'long_label' if '<' in label else 'label'
         entry = self.terms.get(Query()[field] == label)
         if entry:

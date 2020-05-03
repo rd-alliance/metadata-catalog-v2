@@ -3,8 +3,14 @@
 # Standard
 # --------
 import re
+from typing import Callable, List
 import unicodedata
 import urllib.parse
+
+# Non-standard
+# ------------
+# See http://tinydb.readthedocs.io/
+from tinydb import Query
 
 
 # General data handling
@@ -64,7 +70,7 @@ def parse_date_range(string):
 
 # Utilities used in data
 # ======================
-def to_file_slug(string):
+def to_file_slug(string: str, callback: Callable[[Query], List]):
     """Transforms string into slug for use when decomposing the database to
     individual files.
     """
@@ -80,4 +86,13 @@ def to_file_slug(string):
     slug = re.sub(r'-+', '-', slug)
     # Truncate
     slug = slug[:71]
-    return slug
+
+    # Ensure uniqueness within table
+    i = ''
+    while callback(Query().slug == (slug + str(i))):
+        if i == '':
+            i = 1
+        else:
+            i += 1
+    else:
+        return slug

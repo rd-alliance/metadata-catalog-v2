@@ -1,17 +1,24 @@
 {% extends "base.html" %}
-{% block title %}{{ record['title'] }}{% endblock %}
+{% block title %}{{ record.name }}{% endblock %}
 {% block main %}
   {% if 'description' in record %}
   <div class="description">{{ record['description']|safe }}</div>
   {% endif %}
-  {% if 'types' in record %}
-  <div class="types">
-    <dl class="dl-horizontal">
-      <dt>Tool type</dt>
-      {% for type in record['types'] %}
-      <dd>{{ type }}</dd>
-      {% endfor %}
-    </dl>
+  {% if 'input_schemes' in relations and 'output_schemes' in relations %}
+  <div class="related_schemes">
+    <h2>Supported metadata standards</h2>
+    <p>This mapping can be used to convert records in the following metadata schemes&hellip;</p>
+    <ul>
+    {% for scheme in relations['input_schemes'] %}
+      <li><a href="{{ url_for('main.display', table='m', number=scheme.doc_id) }}">{{ scheme['title'] }}</a></li>
+    {% endfor %}
+    </ul>
+    <p>&hellip;into records that comply with the following metadata schemes:</p>
+    <ul>
+    {% for scheme in relations['output_schemes'] %}
+      <li><a href="{{ url_for('main.display', table='m', number=scheme.doc_id) }}">{{ scheme['title'] }}</a></li>
+    {% endfor %}
+    </ul>
   </div>
   {% endif %}
   {% if 'locations' in record %}
@@ -105,51 +112,40 @@
           {% else %}
           <dt>Other identifier</dt><dd>{{ identifier['id'] }}</dd>
           {% endif %}
-          {% if 'locations' in version or current_user.is_authenticated %}
-          <ul class="locations list-inline">
-          {% for location in version['locations'] %}
-            {% if location['type'] == 'website' %}
-            <li><a class="btn btn-sm btn-special" href="{{ location['url'] }}">Visit website</a></li>
-            {% elif location['type'] == 'document' %}
-            <li><a class="btn btn-sm btn-special" href="{{ location['url'] }}">View documentation</a></li>
-            {% elif location['type'] == 'application' %}
-            <li><a class="btn btn-sm btn-special" href="{{ location['url'] }}">Use tool online</a></li>
-            {% elif location['type'] == 'service' %}
-            <li><a class="btn btn-sm btn-special" href="{{ location['url'] }}">Service endpoint</a></li>
-            {% endif %}
-          {% endfor %}
-          {% if current_user.is_authenticated %}
-            <li><a class="btn btn-warning" href="{{ url_for('main.edit_version', table='t', number=record.doc_id, index=version['index']) }}">Edit version</a></li>
-          {% endif %}
-          </ul>
-          {% endif %}
         {% endfor %}
         </dl>
+        {% endif %}
+        {% if 'locations' in version or current_user.is_authenticated %}
+        <ul class="locations list-inline">
+        {% for location in version['locations'] %}
+        {% if location['type'] == 'website' %}
+        <li><a class="btn btn-sm btn-special" href="{{ location['url'] }}">Visit website</a></li>
+        {% elif location['type'] == 'document' %}
+        <li><a class="btn btn-sm btn-special" href="{{ location['url'] }}">View documentation</a></li>
+        {% elif location['type'] == 'application' %}
+        <li><a class="btn btn-sm btn-special" href="{{ location['url'] }}">Use tool online</a></li>
+        {% elif location['type'] == 'service' %}
+        <li><a class="btn btn-sm btn-special" href="{{ location['url'] }}">Service endpoint</a></li>
+        {% endif %}
+        {% endfor %}
+        {% if current_user.is_authenticated %}
+        <li><a class="btn btn-warning" href="{{ url_for('main.edit_version', table='c', number=record.doc_id, index=version['index']) }}">Edit version</a></li>
+        {% endif %}
+        </ul>
         {% endif %}
       </dd>
     {% endfor %}
     </dl>
   </div>
   {% endif %}
-  {% if 'supported_schemes' in relations %}
-  <div class="related_schemes">
-    <h2>Supported metadata standards</h2>
-    <p>This tool is used with the following schemes:</p>
-    <ul>
-    {% for scheme in relations['supported_schemes'] %}
-      <li><a href="{{ url_for('main.display', table='m', number=scheme.doc_id) }}">{{ scheme['title'] }}</a></li>
-    {% endfor %}
-    </ul>
-  </div>
-  {% endif %}
   {% if current_user.is_authenticated %}
   <aside>
     <p>
-      <a href="{{ url_for('main.edit_record', table='t', number=record.doc_id) }}" class="btn btn-default">Edit this record</a>
+      <a href="{{ url_for('main.edit_record', table='c', number=record.doc_id) }}" class="btn btn-default">Edit this record</a>
       {% if versions %}
-      <a href="{{ url_for('main.edit_version', table='t', number=record.doc_id) }}" class="btn btn-default">Add another version</a>
+      <a href="{{ url_for('main.edit_version', table='c', number=record.doc_id) }}" class="btn btn-default">Add another version</a>
       {% else %}
-      <a href="{{ url_for('main.edit_version', table='t', number=record.doc_id) }}" class="btn btn-default">Add version information</a>
+      <a href="{{ url_for('main.edit_version', table='c', number=record.doc_id) }}" class="btn btn-default">Add version information</a>
       {% endif %}
     </p>
   </aside>

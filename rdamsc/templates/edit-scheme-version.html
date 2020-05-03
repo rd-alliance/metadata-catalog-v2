@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "macros-forms.html" import state, errors %}
-{% block title %}{% if index is None %}Add new version{% else %}Edit version {{ form.number.data }}{% endif %}{% endblock %}
+{% block title %}{% if index is none() %}Add new version{% else %}Edit version {{ form.number.data }}{% endif %}{% endblock %}
 {% block main %}
   <form action="{{ url_for('main.edit_version', table='m', number=doc_id, index=index) }}" method="post"  accept-charset="utf-8" class="form-block">
     {{ form.hidden_tag() }}
