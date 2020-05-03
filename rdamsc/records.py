@@ -999,8 +999,10 @@ class VocabTerm(Document):
         # Populate form:
         form = self.form(data=data)
 
-        if self.doc_id != 0:
-            form.id
+        if self.doc_id == 0:
+            form.id.validators.append(
+                validators.InputRequired())
+            form.id.render_kw = {'required': True}
 
         return form
 
