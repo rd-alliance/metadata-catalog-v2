@@ -107,6 +107,12 @@ def create_app(test_config=None):
     def dataType(dataType):
         pass
 
+    @app.route('/funder/g<int:funder>')
+    @app.route('/maintainer/g<int:maintainer>')
+    @app.route('/user/g<int:user>')
+    def group(funder=None, maintainer=None, user=None):
+        pass
+
     from . import auth
     auth.oid.init_app(app)
     auth.lm.init_app(app)

@@ -130,10 +130,11 @@ class Relation(object):
                 t.update(relation, doc_ids=[relation.doc_id])
         return removed_relations
 
-    def subjects(self, predicate=None, object=None):
+    def subjects(self, predicate=None, object=None, filter=None):
         '''Returns list of MSCIDs for all records that are subjects in the
         relations database, optionally filtered by predicate and object.'''
         mscids = set()
+        prefix = f"{mscid_prefix}{filter.table}" if filter else None
         Q = Query()
         if object is None:
             if predicate is None:
@@ -143,24 +144,33 @@ class Relation(object):
             for relation in relations:
                 if len(relation.keys()) == 1:
                     continue
-                mscids.add(relation.get('@id'))
+                mscid = relation.get('@id')
+                if prefix is None or mscid.startswith(prefix):
+                    mscids.add(relation.get(mscid))
         else:
             if predicate is None:
                 relations = self.tb.all()
                 for relation in relations:
                     for objects in relation.values():
                         if isinstance(objects, list) and object in objects:
-                            mscids.add(relation.get('@id'))
+                            mscid = relation.get('@id')
+                            if prefix is None or mscid.startswith(prefix):
+                                mscids.add(relation.get(mscid))
             else:
                 relations = self.tb.search(Q[predicate].any(object))
-                mscids = [relation.get('@id') for relation in relations]
+                all_mscids = [relation.get('@id') for relation in relations]
+                print(f"DEBUG: {prefix} => {all_mscids}")
+                if prefix:
+                    mscids = [m for m in all_mscids if m.startswith(prefix)]
+                else:
+                    mscids = all_mscids
         n = len(mscid_prefix) + 1
         return sorted(mscids, key=lambda k: k[:n] + k[n:].zfill(5))
 
-    def subject_records(self, predicate=None, object=None):
+    def subject_records(self, predicate=None, object=None, filter=None):
         '''Returns list of Records that are subjects in the relations database,
         optionally filtered by predicate and object.'''
-        mscids = self.subjects(predicate, object)
+        mscids = self.subjects(predicate, object, filter)
         return [Record.load_by_mscid(mscid) for mscid in mscids]
 
     def objects(self, subject=None, predicate=None):
@@ -336,6 +346,10 @@ class Record(Document):
         raise NotImplementedError
 
     @property
+    def has_versions(self):
+        return False
+
+    @property
     def mscid(self):
         return f"{mscid_prefix}{self.table}{self.doc_id}"
 
@@ -437,7 +451,8 @@ class Record(Document):
             if field.flags.inverse:
                 object = self.mscid
                 mscids.extend(rel.subjects(
-                    predicate=predicate, object=object))
+                    predicate=predicate, object=object,
+                    filter=field.flags.cls))
             else:
                 subject = self.mscid
                 mscids.extend(rel.objects(
@@ -648,6 +663,10 @@ class Scheme(Record):
         return SchemeForm
 
     @property
+    def has_versions(self):
+        return True
+
+    @property
     def name(self):
         return self.get('title', "Untitled")
 
@@ -731,6 +750,10 @@ class Tool(Record):
         return ToolForm
 
     @property
+    def has_versions(self):
+        return True
+
+    @property
     def name(self):
         return self.get('title', "Untitled")
 
@@ -796,6 +819,10 @@ class Crosswalk(Record):
     @property
     def form(self):
         return CrosswalkForm
+
+    @property
+    def has_versions(self):
+        return True
 
     @property
     def name(self):
@@ -1233,6 +1260,7 @@ class SelectRelatedField(SelectMultipleField):
         super(SelectMultipleField, self).__init__(
             label, choices=choices, **kwargs)
         setattr(self.flags, 'inverse', inverse)
+        setattr(self.flags, 'cls', record)
 
     def omit_mscid(self, mscid: str):
         filtered_choices = [choice for choice in self.choices
@@ -1580,10 +1608,18 @@ def edit_record(table, number):
                 flash('Successfully added record.', 'success')
             return redirect(
                 url_for('main.display', table=table, number=record.doc_id))
+    elif record.has_versions:
+        flash("Fill out information here that applies to all versions."
+              " You can add/edit information about specific versions after"
+              " saving your changes.", 'info')
     if form.errors:
-        flash('Could not save changes as there {:/was an error/were N errors}.'
-              ' See below for details.'.format(Pluralizer(len(form.errors))),
-              'error')
+        if 'csrf_token' in form.errors.keys():
+            msg = ('Could not save changes as your form session has expired.'
+                   ' Please try again.')
+        else:
+            msg = ('Could not save changes as there {:/was an error/were N'
+                   ' errors}. See below for details.'
+                   .format(Pluralizer(len(form.errors))))
         for field, errors in form.errors.items():
             if len(errors) > 0:
                 print(f"DEBUG edit_record: field: {field}, errors: {errors}.")
@@ -1669,9 +1705,14 @@ def edit_version(table, number, index=None):
                 return redirect(
                     url_for('main.display', table=table, number=number))
     if form.errors:
-        flash('Could not save changes as there {:/was an error/were N errors}.'
-              ' See below for details.'.format(Pluralizer(len(form.errors))),
-              'error')
+        if 'csrf_token' in form.errors.keys():
+            msg = ('Could not save changes as your form session has expired.'
+                   ' Please try again.')
+        else:
+            msg = ('Could not save changes as there {:/was an error/were N'
+                   ' errors}. See below for details.'
+                   .format(Pluralizer(len(form.errors))))
+        flash(msg, 'error')
         for field, errors in form.errors.items():
             if len(errors) > 0:
                 print(f"DEBUG edit_version: field: {field}, errors: {errors}.")
@@ -1733,9 +1774,13 @@ def edit_vocabterm(vocab, number):
                 flash('Successfully added record.', 'success')
                 return redirect(url_for('hello'))
     if form.errors:
-        flash('Could not save changes as there {:/was an error/were N errors}.'
-              ' See below for details.'.format(Pluralizer(len(form.errors))),
-              'error')
+        if 'csrf_token' in form.errors.keys():
+            msg = ('Could not save changes as your form session has expired.'
+                   ' Please try again.')
+        else:
+            msg = ('Could not save changes as there {:/was an error/were N'
+                   ' errors}. See below for details.'
+                   .format(Pluralizer(len(form.errors))))
         print(f"DEBUG edit_vocabterm: {form.errors}.")
         for field, errors in form.errors.items():
             if len(errors) > 0:
@@ -1852,34 +1897,85 @@ def display(table, number, field=None, api=False):
             scheme_scheme_fields.append(field.name)
         if field.flags.inverse:
             others = rel.subject_records(
-                predicate=field.description, object=record.mscid)
+                predicate=field.description, object=record.mscid,
+                filter=field.flags.cls)
         else:
             others = rel.object_records(
                 subject=record.mscid, predicate=field.description)
-        if field.description == 'input scheme':
-            for mapping in others:
-                mapping['output_schemes'] = rel.object_records(
-                    subject=mapping.mscid, predicate='output scheme')
-        elif field.description == 'output scheme':
-            for mapping in others:
-                mapping['input_schemes'] = rel.object_records(
-                    subject=mapping.mscid, predicate='input scheme')
         if others:
+            if field.name == 'input_to_mappings':
+                for crosswalk in others:
+                    crosswalk['output_schemes'] = rel.object_records(
+                        subject=crosswalk.mscid, predicate='output scheme')
+            elif field.name == 'output_from_mappings':
+                for crosswalk in others:
+                    crosswalk['input_schemes'] = rel.object_records(
+                        subject=crosswalk.mscid, predicate='input scheme')
+            elif field.name == 'originator' and field.flags.inverse:
+                for endorsement in others:
+                    endorsement['endorsed_schemes'] = rel.object_records(
+                        subject=endorsement.mscid, predicate='endorsed scheme')
             relations[field.name] = others
 
-    # This is only relevant in Scheme views, since relations to other schemes
-    # are grouped under a single heading.
-    hasRelatedSchemes = False
+    # We add some helper logic where relations to other schemes are grouped
+    # under a single heading.
+    params = dict()
     if table == 'm':
         for field in scheme_scheme_fields:
             if field in relations:
-                hasRelatedSchemes = True
+                params['hasRelatedSchemes'] = True
                 break
+        else:
+            params['hasRelatedSchemes'] = False
+    elif table == 'c':
+        params['hasRelatedGroups'] = (
+            'maintainers' in relations or 'funders' in relations or
+            'creators' in record)
+    elif table == 'g':
+        records_seen = {
+            'schemes': dict(), 'tools': dict(), 'crosswalks': dict()}
+        relrec = dict()
+        relids = dict()
+        for ser in records_seen.keys():
+            for relation, records in relations.items():
+                if relation.endswith(ser):
+                    for r in records:
+                        records_seen[ser][r.mscid] = r
+                relids[relation] = [k.mscid for k in records]
+            relrec[ser] = dict()
+            for id, r in records_seen[ser].items():
+                key = None
+                if id in relids.get(f'funded_{ser}', list()):
+                    if id in relids.get(f'maintained_{ser}', list()):
+                        if id in relids.get(f'used_{ser}', list()):
+                            key = 'funds, maintains, and uses'
+                        else:
+                            key = 'funds and maintains'
+                    elif id in relids.get(f'used_{ser}', list()):
+                        key = 'funds and uses'
+                    else:
+                        key = 'funds'
+                else:
+                    if id in relids.get(f'maintained_{ser}', list()):
+                        if id in relids.get(f'used_{ser}', list()):
+                            key = 'maintains and uses'
+                        else:
+                            key = 'maintains'
+                    elif id in relids.get(f'used_{ser}', list()):
+                        key = 'uses'
+                if key:
+                    if key not in relrec[ser]:
+                        relrec[ser][key] = list()
+                    relrec[ser][key].append(r)
+        for ser in relrec.keys():
+            for key in relrec[ser].keys():
+                relrec[ser][key].sort(key=lambda k: k.name)
+            params[f'related_{ser}'] = relrec[ser]
 
     # We are ready to display the information.
     return render_template(
         f"display-{record.series}.html", record=record, versions=versions,
-        relations=relations, hasRelatedSchemes=hasRelatedSchemes)
+        relations=relations, **params)
 
 
 def clean_error_list(field):
