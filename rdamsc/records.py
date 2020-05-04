@@ -146,7 +146,7 @@ class Relation(object):
                     continue
                 mscid = relation.get('@id')
                 if prefix is None or mscid.startswith(prefix):
-                    mscids.add(relation.get(mscid))
+                    mscids.add(mscid)
         else:
             if predicate is None:
                 relations = self.tb.all()
@@ -155,7 +155,7 @@ class Relation(object):
                         if isinstance(objects, list) and object in objects:
                             mscid = relation.get('@id')
                             if prefix is None or mscid.startswith(prefix):
-                                mscids.add(relation.get(mscid))
+                                mscids.add(mscid)
             else:
                 relations = self.tb.search(Q[predicate].any(object))
                 all_mscids = [relation.get('@id') for relation in relations]
