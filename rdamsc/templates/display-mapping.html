@@ -50,11 +50,11 @@
     {% endfor %}
     {% for org in relations['maintainers'] %}
       <li>
-        <p>Maintainer: {{ org['name'] }}</p>
+        <p>Maintainer: <a href="{{ url_for('main.display', table='g', number=org.doc_id) }}">{{ org.name }}</a></p>
       {% if 'locations' in org %}
-        <ul class="locations">
+        <ul class="locations list-inline">
         {% for location in org['locations'] %}
-          <li><a href="{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
+          <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
         {% endfor %}
         </ul>
       {% endif %}
@@ -62,11 +62,11 @@
     {% endfor %}
     {% for org in relations['funders'] %}
       <li>
-        <p>Funder: {{ org['name'] }}</p>
+        <p>Funder: <a href="{{ url_for('main.display', table='g', number=org.doc_id) }}">{{ org.name }}</a></p>
       {% if 'locations' in org %}
-        <ul class="locations">
+        <ul class="locations list-inline">
         {% for location in org['locations'] %}
-          <li><a href="{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
+          <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
         {% endfor %}
         </ul>
       {% endif %}
@@ -81,7 +81,7 @@
       <dt>Internal MSC ID</dt><dd><a href="{{ url_for('main.display', table='c', number=record.doc_id) }}">msc:c{{ record.doc_id }}</a></dd>
     {% for identifier in record['identifiers'] %}
       {% if identifier['scheme'] == 'DOI' %}
-      <dt>DOI</dt><dd><a href="https://doi.org/{{ identifier['id'][4:] }}">{{ identifier['id'] }}</a></dd>
+      <dt>DOI</dt><dd><a href="https://doi.org/{{ identifier['id'] }}">{{ identifier['id'] }}</a></dd>
       {% elif identifier['scheme'] %}
       <dt>{{ identifier['scheme'] }}</dt><dd>{{ identifier['id'] }}</dd>
       {% else %}
@@ -106,7 +106,7 @@
         <dl class="dl-horizontal">
         {% for identifier in version['identifiers'] %}
           {% if identifier['scheme'] == 'DOI' %}
-          <dt>DOI</dt><dd><a href="https://doi.org/{{ identifier['id'][4:] }}">{{ identifier['id'] }}</a></dd>
+          <dt>DOI</dt><dd><a href="https://doi.org/{{ identifier['id'] }}">{{ identifier['id'] }}</a></dd>
           {% elif identifier['scheme'] %}
           <dt>{{ identifier['scheme'] }}</dt><dd>{{ identifier['id'] }}</dd>
           {% else %}

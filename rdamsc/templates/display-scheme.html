@@ -50,30 +50,24 @@
     <ul>
     {% for org in relations['maintainers'] %}
       <li>
-        <p>Maintainer: <a href="{{ url_for('group', maintainer=org.doc_id) }}">{{ org['name'] }}</a></p>
+        <p>Maintainer: <a href="{{ url_for('main.display', table='g', number=org.doc_id) }}">{{ org.name }}</a></p>
       {% if 'locations' in org %}
         <ul class="locations list-inline">
         {% for location in org['locations'] %}
-          <li><a class="btn btn-special" href="{% if location['type'] == 'email' %}mailto:{% endif %}{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
+          <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
         {% endfor %}
-        {% if current_user.is_authenticated %}
-          <li><a class="btn btn-default" href="{{ url_for('main.edit_record', table='g', number=org.doc_id) }}">Edit record</a></li>
-        {% endif %}
         </ul>
       {% endif %}
       </li>
     {% endfor %}
     {% for org in relations['funders'] %}
       <li>
-        <p>Funder: <a href="{{ url_for('group', funder=org.doc_id) }}">{{ org['name'] }}</a></p>
+        <p>Funder: <a href="{{ url_for('main.display', table='g', number=org.doc_id) }}">{{ org.name }}</a></p>
       {% if 'locations' in org %}
         <ul class="locations list-inline">
         {% for location in org['locations'] %}
           <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
         {% endfor %}
-        {% if current_user.is_authenticated %}
-          <li><a class="btn btn-default" href="{{ url_for('main.edit_record', table='g', number=org.doc_id) }}">Edit record</a></li>
-        {% endif %}
         </ul>
       {% endif %}
       </li>
@@ -164,7 +158,7 @@
         {% if 'description' in mapping %}
         <div class="description">{{ mapping['description']|safe }}</div>
         {% endif %}
-        {% if 'locations' in mapping %}
+        {% if 'locations' in mapping or current_user.is_authenticated %}
         <ul class="locations list-inline">
         {% for location in mapping['locations'] %}
           <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'document' %}View documentation{% else %}Download {{ location['type'] }}{% endif %}</a></li>
@@ -205,6 +199,21 @@
         {% if 'description' in tool %}
         <div class="description">{{ tool['description']|safe }}</div>
         {% endif %}
+        {% if 'locations' in tool %}
+        <ul class="locations list-inline">
+        {% for location in tool['locations'] %}
+          {% if location['type'] == 'website' %}
+          <li><a class="btn btn-special" href="{{ location['url'] }}">Visit website</a></li>
+          {% elif location['type'] == 'document' %}
+          <li><a class="btn btn-special" href="{{ location['url'] }}">View documentation</a></li>
+          {% elif location['type'] == 'application' %}
+          <li><a class="btn btn-special" href="{{ location['url'] }}">Use tool online</a></li>
+          {% elif location['type'] == 'service' %}
+          <li><a class="btn btn-special" href="{{ location['url'] }}">Service endpoint</a></li>
+          {% endif %}
+        {% endfor %}
+        </ul>
+        {% endif %}
       </li>
     {% endfor %}
     </ul>
@@ -216,7 +225,7 @@
     <ul>
     {% for user in relations['users'] %}
       <li>
-        <p><a href="{{ url_for('group', user=user.doc_id) }}">{{ user['name'] }}</a></p>
+        <p><a href="{{ url_for('main.display', table='g', number=user.doc_id) }}">{{ user.name }}</a></p>
         {% if 'description' in user %}
         <div class="description">{{ user['description']|safe }}</div>
         {% endif %}
@@ -225,9 +234,6 @@
         {% for location in user['locations'] %}
           <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
         {% endfor %}
-        {% if current_user.is_authenticated %}
-          <li><a class="btn btn-default" href="{{ url_for('main.edit_record', table='g', number=user.doc_id) }}">Edit record</a></li>
-        {% endif %}
         </ul>
       {% endif %}
       </li>
@@ -241,19 +247,25 @@
     <ul>
     {% for endorsement in relations['endorsements'] %}
       <li>
-        {% if 'citation' in endorsement %}
-        <p>{{ endorsement['citation'] }}</p>
-        {% elif 'originators' in endorsement %}
-        {% for originator in endorsement['originators'] %}
-        <p>{{ originator['name'] }}</p>
-        {% endfor %}
-        {% endif %}
-        {% if 'valid_from' in endorsement %}
-        <p>Endorsed {% if 'valid_until' in endorsement %}between {{ endorsement['valid_from'] }} and {{ endorsement['valid_until'] }}{% else %}since {{ endorsement['valid_from'] }}{% endif %}</p>
-        {% elif 'issued' in endorsement %}
-        <p>Endorsed on {{ endorsement['issued'] }}</p>
-        {% endif %}
-        {% if 'locations' in endorsement %}
+        <p>Endorsed {% if 'valid' in endorsement -%}
+            {%- if 'end' in endorsement['valid'] -%}
+              between {{ endorsement['valid']['start'] }} and {{ endorsement['valid']['end'] }}
+            {%- else -%}
+              since {{ endorsement['valid']['start'] }}
+            {%- endif -%}
+          {%- elif 'issued' in endorsement -%}
+            {%- if hasDay(endorsement['issued']) -%}
+              on
+            {%- else -%}
+              in
+            {%- endif %} {{ endorsement['issued'] }}
+          {%- endif -%}
+          {%- if 'originators' in endorsement %} by {% for r in endorsement['originators'] %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}<a href="{{ url_for('main.display', table='g', number=r.doc_id) }}">{{ r.name }}</a>{% endfor %}{% endif -%}.</p>
+        <p>{% for creator in endorsement['creators'] %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}{%if 'fullName' in creator %}{{ creator['fullName'] }}{% else %}{{ creator.get('givenName') }} {{ creator.get('familyName') }}{% endif %}{% endfor %}.
+          {% if 'title' in endorsement %}<a href="{{ url_for('main.display', table='e', number=endorsement.doc_id) }}">{{ endorsement['title'] }}</a>.{% endif %}
+          {% if 'publication' in endorsement %} {{ endorsement['publication']|safe }}.{% endif %}
+          {% for identifier in endorsement.get('identifiers') %}{% if identifier['scheme'] == 'DOI' %} DOI: <a href="https://doi.org/{{ identifier['id'] }}">{{ identifier['id'] }}</a>.{% endif %}{% endfor %}</p>
+        {% if 'locations' in endorsement or current_user.is_authenticated %}
         <ul class="locations list-inline">
         {% for location in endorsement['locations'] %}
           <li><a class="btn btn-special" href="{{ location['url'] }}">View endorsement</a></li>

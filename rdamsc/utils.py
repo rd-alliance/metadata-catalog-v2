@@ -49,24 +49,9 @@ def from_url_slug(slug):
     return string
 
 
-def abbrev_url(url):
-    """Extracts last component of URL path. Useful for datatype URLs."""
-    url_tuple = urllib.parse.urlparse(url)
-    path = url_tuple.path
-    if not path:
-        return url
-    path_fragments = path.split("/")
-    if not path_fragments[-1] and len(path_fragments) > 1:
-        return path_fragments[-2]
-    return path_fragments[-1]
-
-
-def parse_date_range(string):
-    date_split = string.partition('/')
-    if date_split[2]:
-        return (date_split[0], date_split[2])
-    return (string, None)
-
+def has_day(isodate: str):
+    """Returns true if ISO date has a day component."""
+    return isodate.count('-') == 2
 
 # Utilities used in data
 # ======================

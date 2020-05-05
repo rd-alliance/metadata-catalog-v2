@@ -46,7 +46,7 @@
       <dt>Internal MSC ID</dt><dd><a href="{{ url_for('main.display', table='e', number=record.doc_id) }}">msc:g{{ record.doc_id }}</a></dd>
     {% for identifier in record['identifiers'] %}
       {% if identifier['scheme'] == 'DOI' %}
-      <dt>DOI</dt><dd><a href="https://doi.org/{{ identifier['id'][4:] }}">{{ identifier['id'] }}</a></dd>
+      <dt>DOI</dt><dd><a href="https://doi.org/{{ identifier['id'] }}">{{ identifier['id'] }}</a></dd>
       {% elif identifier['scheme'] %}
       <dt>{{ identifier['scheme'] }}</dt><dd>{{ identifier['id'] }}</dd>
       {% else %}

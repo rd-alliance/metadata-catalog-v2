@@ -129,7 +129,6 @@ def create_app(test_config=None):
         return {
             'toURLSlug': to_url_slug,
             'fromURLSlug': from_url_slug,
-            'abbrevURL': abbrev_url,
-            'parseDateRange': parse_date_range}
+            'hasDay': has_day}
 
     return app

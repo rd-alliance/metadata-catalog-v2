@@ -1897,6 +1897,7 @@ def display(table, number, field=None, api=False):
             others = rel.object_records(
                 subject=record.mscid, predicate=field.description)
         if others:
+            # In some cases we need information about further relationships:
             if field.name == 'input_to_mappings':
                 for crosswalk in others:
                     crosswalk['output_schemes'] = rel.object_records(
@@ -1905,10 +1906,15 @@ def display(table, number, field=None, api=False):
                 for crosswalk in others:
                     crosswalk['input_schemes'] = rel.object_records(
                         subject=crosswalk.mscid, predicate='input scheme')
-            elif field.name == 'originator' and field.flags.inverse:
-                for endorsement in others:
-                    endorsement['endorsed_schemes'] = rel.object_records(
-                        subject=endorsement.mscid, predicate='endorsed scheme')
+            elif field.name == 'endorsements':
+                if field.description == 'originator':
+                    for endorsement in others:
+                        endorsement['endorsed_schemes'] = rel.object_records(
+                            subject=endorsement.mscid, predicate='endorsed scheme')
+                elif field.description == 'endorsed scheme':
+                    for endorsement in others:
+                        endorsement['originators'] = rel.object_records(
+                            subject=endorsement.mscid, predicate='originator')
             relations[field.name] = others
 
     # We add some helper logic where relations to other schemes are grouped

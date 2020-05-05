@@ -65,13 +65,23 @@
     <ul>
     {% for endorsement in relations['endorsements'] %}
       <li>
-        <p>{{ endorsement.name }}</p>
-        {% if 'valid_from' in endorsement %}
-        <p>{% for r in endorsement.get('endorsed scheme') %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}<a href="{{ url_for('main.display', table='t', number=r.doc_id) }}">{{ r.name }}</a>{% endfor %} endorsed {% if 'valid_until' in endorsement %}between {{ endorsement['valid_from'] }} and {{ endorsement['valid_until'] }}{% else %}since {{ endorsement['valid_from'] }}{% endif %}</p>
-        {% elif 'issued' in endorsement %}
-        <p>Endorsed on {{ endorsement['issued'] }}</p>
-        {% endif %}
-        {% if 'locations' in endorsement %}
+        <p>Endorsed {% if 'endorsed_schemes' in endorsement %}{% for r in endorsement['endorsed_schemes'] %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}<a href="{{ url_for('main.display', table='m', number=r.doc_id) }}">{{ r.name }}</a>{% endfor %}{% endif -%}
+          {%- if 'valid' in endorsement %} {% if 'end' in endorsement['valid'] -%}
+              between {{ endorsement['valid']['start'] }} and {{ endorsement['valid']['end'] }}
+            {%- else -%}
+              since {{ endorsement['valid']['start'] }}
+            {%- endif -%}
+          {%- elif 'issued' in endorsement %} {% if hasDay(endorsement['issued']) -%}
+              on
+            {%- else -%}
+              in
+            {%- endif %} {{ endorsement['issued'] }}
+          {%- endif %}.</p>
+        <p>{% for creator in endorsement['creators'] %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}{%if 'fullName' in creator %}{{ creator['fullName'] }}{% else %}{{ creator.get('givenName') }} {{ creator.get('familyName') }}{% endif %}{% endfor %}.
+          {% if 'title' in endorsement %}<a href="{{ url_for('main.display', table='e', number=endorsement.doc_id) }}">{{ endorsement['title'] }}</a>.{% endif %}
+          {% if 'publication' in endorsement %} {{ endorsement['publication']|safe }}.{% endif %}
+          {% for identifier in endorsement.get('identifiers') %}{% if identifier['scheme'] == 'DOI' %} DOI: <a href="https://doi.org/{{ identifier['id'] }}">{{ identifier['id'] }}</a>.{% endif %}{% endfor %}</p>
+        {% if 'locations' in endorsement or current_user.is_authenticated %}
         <ul class="locations list-inline">
         {% for location in endorsement['locations'] %}
           <li><a class="btn btn-special" href="{{ location['url'] }}">View endorsement</a></li>
@@ -91,7 +101,7 @@
       <dt>Internal MSC ID</dt><dd><a href="{{ url_for('main.display', table='g', number=record.doc_id) }}">msc:g{{ record.doc_id }}</a></dd>
     {% for identifier in record['identifiers'] %}
       {% if identifier['scheme'] == 'DOI' %}
-      <dt>DOI</dt><dd><a href="https://doi.org/{{ identifier['id'][4:] }}">{{ identifier['id'] }}</a></dd>
+      <dt>DOI</dt><dd><a href="https://doi.org/{{ identifier['id'] }}">{{ identifier['id'] }}</a></dd>
       {% elif identifier['scheme'] %}
       <dt>{{ identifier['scheme'] }}</dt><dd>{{ identifier['id'] }}</dd>
       {% else %}
