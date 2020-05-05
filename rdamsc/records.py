@@ -159,7 +159,6 @@ class Relation(object):
             else:
                 relations = self.tb.search(Q[predicate].any(object))
                 all_mscids = [relation.get('@id') for relation in relations]
-                print(f"DEBUG: {prefix} => {all_mscids}")
                 if prefix:
                     mscids = [m for m in all_mscids if m.startswith(prefix)]
                 else:
@@ -471,7 +470,7 @@ class Record(Document):
         form = self.vform(data=data) if is_version else self.form(data=data)
         for field in form:
             if field.type == 'FieldList' and field.name in data:
-                last_entry = data[field.name][-1]
+                last_entry = field.data[-1]
                 if not last_entry:
                     continue
                 if isinstance(last_entry, dict):
@@ -1283,9 +1282,9 @@ class LocationForm(Form):
     type = SelectField('Type', validators=[RequiredIf(['url'])], default='')
 
 
-class FreeLocationForm(Form):
-    url = StringField('URL', validators=[RequiredIf(['type']), EmailOrURL])
-    type = StringField('Type', validators=[RequiredIf(['url'])], default='')
+class EndorsementLocationForm(Form):
+    url = StringField('URL', validators=[validators.Optional(), EmailOrURL])
+    type = HiddenField('document')
 
 
 class SampleForm(Form):
@@ -1494,11 +1493,11 @@ class EndorsementForm(FlaskForm):
     creators = FieldList(
         FormField(CreatorForm), 'Authors of the endorsement document',
         min_entries=1)
-    publication = StringField('Other bibliographic information')
+    publication = StringField('Other bibliographic information (excluding date)')
     issued = NativeDateField('Endorsement date')
     valid = FormField(DateRangeForm, 'Date considered current', separator='_')
     locations = FieldList(
-        FormField(LocationForm), 'Links to this endorsement', min_entries=1)
+        FormField(EndorsementLocationForm), 'Links to this endorsement', min_entries=1)
     identifiers = FieldList(
         FormField(IdentifierForm), 'Identifiers for this endorsement',
         min_entries=1)
@@ -1620,6 +1619,7 @@ def edit_record(table, number):
             msg = ('Could not save changes as there {:/was an error/were N'
                    ' errors}. See below for details.'
                    .format(Pluralizer(len(form.errors))))
+        flash(msg, 'error')
         for field, errors in form.errors.items():
             if len(errors) > 0:
                 print(f"DEBUG edit_record: field: {field}, errors: {errors}.")
@@ -1671,14 +1671,7 @@ def edit_version(table, number, index=None):
     # Processing the request
     if request.method == 'POST' and form.validate():
         form_data = form.data
-        if table == 'e':
-            # Here is where we automatically insert the URL type
-            filtered_locations = list()
-            for f in form.locations:
-                if f.url.data:
-                    location = {'url': f.url.data, 'type': 'document'}
-                    filtered_locations.append(location)
-            form_data['locations'] = filtered_locations
+
         # Save form data to database
         error = record.save_gui_vinput(form_data)
         if record.doc_id:
@@ -1781,6 +1774,7 @@ def edit_vocabterm(vocab, number):
             msg = ('Could not save changes as there {:/was an error/were N'
                    ' errors}. See below for details.'
                    .format(Pluralizer(len(form.errors))))
+        flash(msg, 'error')
         print(f"DEBUG edit_vocabterm: {form.errors}.")
         for field, errors in form.errors.items():
             if len(errors) > 0:

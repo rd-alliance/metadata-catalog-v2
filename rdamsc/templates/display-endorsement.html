@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}{{ record.name }}{% endblock %}
+{% block main %}
+  <div class="citation">
+    <p>{% for creator in record['creators'] %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}{%if 'fullName' in creator %}{{ creator['fullName'] }}{% else %}{{ creator.get('givenName') }} {{ creator.get('familyName') }}{% endif %}{% endfor %}.
+      {% if 'title' in record %}{{ record['title'] }}.{% endif %}
+      {% if 'publication' in record %} {{ record['publication']|safe }}.{% endif %}</p>
+  </div>
+  {% if 'locations' in record %}
+  <div class="locations">
+    <h2>Links</h2>
+    <ul class="locations list-inline">
+    {% for location in record['locations'] %}
+      <li><a class="btn btn-special" href="{{ location['url'] }}">View document</a></li>
+    {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% if 'endorsed_schemes' in relations %}
+  <div class="schemes">
+    <h2>Endorsed metadata standards</h2>
+    <ul>
+    {% for r in relations['endorsed_schemes'] %}
+      <li>
+        <p><a href="{{ url_for('main.display', table='m', number=r.doc_id) }}">{{ r.name }}</a>.</p>
+      </li>
+    {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% if 'originators' in relations %}
+  <div class="endorsements">
+    <h2>Endorsing organizations</h2>
+    <p>This endorsement was made by the following organizations:
+    <ul>
+    {% for r in relations['originators'] %}
+      <li>
+        <p><a href="{{ url_for('main.display', table='g', number=r.doc_id) }}">{{ r.name }}</a>.</p>
+      </li>
+    {% endfor %}</ul>
+  </div>
+  {% endif %}
+  <div class="identifiers">
+    <h2>Identifiers</h2>
+    <dl class="dl-horizontal">
+      <dt>Internal MSC ID</dt><dd><a href="{{ url_for('main.display', table='e', number=record.doc_id) }}">msc:g{{ record.doc_id }}</a></dd>
+    {% for identifier in record['identifiers'] %}
+      {% if identifier['scheme'] == 'DOI' %}
+      <dt>DOI</dt><dd><a href="https://doi.org/{{ identifier['id'][4:] }}">{{ identifier['id'] }}</a></dd>
+      {% elif identifier['scheme'] %}
+      <dt>{{ identifier['scheme'] }}</dt><dd>{{ identifier['id'] }}</dd>
+      {% else %}
+      <dt>Other identifier</dt><dd>{{ identifier['id'] }}</dd>
+      {% endif %}
+    {% endfor %}
+    </dl>
+  </div>
+  {% if current_user.is_authenticated %}
+  <aside>
+    <p>
+      <a href="{{ url_for('main.edit_record', table='e', number=record.doc_id) }}" class="btn btn-default">Edit this record</a>
+    </p>
+  </aside>
+  {% endif %}
+{% endblock %}

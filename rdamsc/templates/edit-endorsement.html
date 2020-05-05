@@ -4,26 +4,60 @@
 {% block main %}
   <form action="{{ url_for('main.edit_record', table='e', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
     {{ form.hidden_tag() }}
+    <formset>
     <div class="form-group">
-      {{ form.citation.label(class="control-label") }}
-      {{ form.citation(placeholder="Full, formatted citation", class="form-control") }}
+      {{ form.title.label(class="control-label") }}
+      {{ form.title(placeholder="Title of document", class="form-control") }}
       <ul class="help-block">
-        <li>APA format is preferred, but you can use another format if desired.</li>
+        <li>Give the title in sentence case.</li>
       </ul>
     </div>
-    <p class="help-block">
-      If the organization you need is not listed, you can add it using
-      the following link.
-    </p>
+    </formset>
+    <fieldset>
+    <legend>{{ form.creators.label.text }}</legend>
     <div class="form-group">
-      <a href="{{ url_for('main.edit_record', table='g', number=0) }}" target="_blank" class="btn btn-warning">Add organization</a>
-    </div>
-    <div class="form-group">
-      {{ form.originators.label(class="control-label") }}
-      {{ form.originators(class="form-control", style="width:auto;") }}
+      <ol class="form-list">
+      {% for f in form.creators %}
+        <li>
+          <div class="{{ state(f.givenName) }}">
+            {{ f.givenName.label(class="control-label") }}
+            {{ f.givenName(class="form-control") }}
+            {{ errors(f.givenName) }}
+          </div>
+          <div class="{{ state(f.familyName) }}">
+            {{ f.familyName.label(class="control-label") }}
+            {{ f.familyName(class="form-control") }}
+            {{ errors(f.familyName) }}
+          </div>
+          <div class="{{ state(f.fullName) }}">
+            {{ f.fullName.label(class="control-label") }}
+            {{ f.fullName(class="form-control") }}
+            {{ errors(f.fullName) }}
+          </div>
+        </li>
+      {% endfor %}
+      </ol>
       <ul class="help-block">
-        <li>Note that schemes are assumed to be endorsed by their maintaining
-          organizations; do not record such endorsements here.</li>
+        <li>Give the individual or corporate authors that would appear in a
+          citation</li>
+        <li>For preference, provide the given name(s) and family name.</li>
+        <li>Use "full name" to override the assumed given&ndash;family name
+          order, or if you are not sure how the name breaks down into given
+          and family.</li>
+      </ul>
+    </div>
+    </fieldset>
+    <fieldset>
+    <legend>Publication information</legend>
+    <div class="form-group{{ state(form.publication) }}">
+      {{ form.publication.label(class="control-label") }}
+      {{ form.publication(class="form-control") }}
+      {{ errors(form.publication) }}
+      <ul class="help-block">
+        <li>For a journal article, give the journal name, volume, issue, and
+          page range/article number, e.g. <code>&lt;i&gt;IEEE MultiMedia&lt;/i&gt;, 13(2), 84-88</code>.</li>
+        <li>For a report, give the location (if applicable) and publisher, e.g.
+          <code>London: British Library</code>.</li>
       </ul>
     </div>
     <div class="form-group{{ state(form.issued) }}">
@@ -31,44 +65,27 @@
       {{ form.issued(class="form-control", style="width:auto;") }}
       {{ errors(form.issued) }}
       <ul class="help-block">
-        <li>Use "endorsement date" if the endorsement was a one-off (i.e. it is
-          not reviewed periodically).</li>
-      </ul>
-    </div>
-    <div class="form-group">
-      <span class="{{ state(form.valid_from) }}">{{ form.valid_from.label(class="control-label") }}</span>
-      <div class="form-inline">
-        <span class="{{ state(form.valid_from) }}">{{ form.valid_from(class="form-control") }}</span>
-        <span class="{{ state(form.valid_to) }}">{{ form.valid_to.label(class="control-label") }}
-        {{ form.valid_to(class="form-control") }}</span>
-      </div>
-      {{ errors(form.valid_from) }}
-      {{ errors(form.valid_to) }}
-      <ul class="help-block">
-        <li>Use "endorsement period" if the endorsement has been or may be
+        <li>Give the date as yyyy, or yyyy-mm, or yyyy-mm-dd.</li>
+        <li>Use "endorsement date" if the endorsement has been or may be
           withdrawn at some point.</li>
+        <li>If the endorsement is kept under review and may be (or has been)
+          withdrawn, give it under "date considered current" instead.</li>
       </ul>
     </div>
-    <p class="help-block">
-      If the scheme you need is not listed, you can add it using
-      the following link.
-    </p>
     <div class="form-group">
-      <a href="{{ url_for('main.edit_record', table='m', number=0) }}" target="_blank" class="btn btn-warning">Add scheme</a>
-    </div>
-    <fieldset>
-    <legend>{{ form.endorsed_schemes.label.text }}</legend>
-    <div class="form-group">
-      <ol class="form-list">
-      {% for f in form.endorsed_schemes %}
-        <li>
-          {{ f['id'].label(class="control-label") }}
-          {{ f['id'](class="form-control") }}
-          {{ f.version.label(class="control-label") }}
-          {{ f.version(class="form-control", style="width:auto;") }}
-        </li>
-      {% endfor %}
-      </ol>
+      {{ form.valid.label(class="control-label") }}
+      <div class="form-inline">
+        <span class="{{ state(form.valid.start) }}">{{ form.valid.start.label(class="control-label") }}{{ form.valid.start(class="form-control") }}</span>
+        <span class="{{ state(form.valid.end) }}">{{ form.valid.end.label(class="control-label") }}
+        {{ form.valid.end(class="form-control") }}</span>
+      </div>
+      {{ errors(form.valid.start) }}
+      {{ errors(form.valid.end) }}
+      <ul class="help-block">
+        <li>Give the date as yyyy, or yyyy-mm, or yyyy-mm-dd.</li>
+        <li>Use "date considered current" if the endorsement is kept under
+          review and may be (or has been) withdrawn.</li>
+      </ul>
     </div>
     </fieldset>
     <fieldset>
@@ -96,18 +113,45 @@
       <ol class="form-list">
       {% for f in form.identifiers %}
         <li>
-        {{ f['id'].label(class="control-label") }}
-        {{ f['id'](placeholder="e.g. 10.001/1234", class="form-control") }}
-        {{ f.scheme.label(class="control-label") }}
-        {{ f.scheme(class="form-control", style="width:auto;") }}
+          <div class="{{ state(f['id']) }}">
+            {{ f['id'].label(class="control-label") }}
+            {{ f['id'](placeholder="e.g. 10.001/1234", class="form-control") }}
+            {{ errors(f['id']) }}
+          </div>
+          <div class="{{ state(f.scheme) }}">
+            {{ f.scheme.label(class="control-label") }}
+            {{ f.scheme(class="form-control", style="width:auto;") }}
+            {{ errors(f.scheme) }}
+          </div>
         </li>
       {% endfor %}
       </ol>
     </div>
     </fieldset>
+    <fieldset>
+    <legend>Relationships to other records</legend>
+    <div class="form-group{{ state(form.endorsed_schemes) }}">
+      {{ form.endorsed_schemes.label(class="control-label") }}
+      {{ form.endorsed_schemes(class="form-control") }}
+      {{ errors(form.endorsed_schemes) }}
+    </div>
+    <div class="form-group{{ state(form.originators) }}">
+      {{ form.originators.label(class="control-label") }}
+      {{ form.originators(class="form-control") }}
+      {{ errors(form.originators) }}
+      <ul class="help-block">
+        <li>Note that schemes are assumed to be endorsed by their maintaining
+          organizations; do not record such endorsements here.</li>
+      </ul>
+    </div>
+    </fieldset>
     <div class="form-group">
       <button class="btn btn-primary">Save changes</button>
+      {% if doc_id == 0 %}
       <a href="{{ url_for('hello') }}" class="btn btn-default">Cancel</a>
+      {% else %}
+      <a href="{{ url_for('main.display', table='e', number=doc_id) }}" class="btn btn-default">Cancel &amp; view record</a>
+      {% endif %}
     </div>
   </form>
 {% endblock %}
