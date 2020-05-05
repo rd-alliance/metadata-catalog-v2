@@ -12,9 +12,18 @@
     {# <li><a href="{{ url_for('subject_index') }}">Browse by subject</a></li> #}
     {# <li><a href="{{ url_for('scheme_search') }}">Search</a></li> #}
   </ul>
-  <h2>Metadata-related tools</h2>
+  <h2>Metadata-related entities</h2>
   <ul>
-    <li><a href="{{ url_for('list.record_index', series='tool') }}">Browse by tool name</a></li>
+    <li><p><a href="{{ url_for('list.record_index', series='mapping') }}">Browse mappings between schemes</a></p></li>
+    <li><p><a href="{{ url_for('list.record_index', series='tool') }}">Browse metadata-related tools</a></p></li>
+    <li><p><a href="{{ url_for('list.record_index', series='organization') }}">Browse organizations</a></p>
+      <ul>
+        <li><a href="{{ url_for('list.record_index', series='organization', role='funder') }}">Browse funders</a></li>
+        <li><a href="{{ url_for('list.record_index', series='organization', role='maintainer') }}">Browse organizations that maintain schemes</a></li>
+        <li><a href="{{ url_for('list.record_index', series='organization', role='user') }}">Browse known users of schemes</a></li>
+        <li><a href="{{ url_for('list.record_index', series='organization', role='originator') }}">Browse organizations that have endorsed schemes</a></li>
+      </ul></li>
+    <li><p><a href="{{ url_for('list.record_index', series='endorsement') }}">Browse endorsements</a></p></li>
   </ul>
   {% if current_user.is_authenticated %}
   <h2>Make changes</h2>
