@@ -91,28 +91,6 @@ def create_app(test_config=None):
     def terms_of_use():
         return render_template('terms-of-use.html')
 
-    # Placeholders
-    @app.route('/search', methods=['GET', 'POST'])
-    def scheme_search(isGui=None):
-        return render_template(
-            'search-form.html', form=None, titles=list(),
-            subjects=list(), ids=list(), funders=list(),
-            dataTypes=list())
-
-    @app.route('/subject/<subject>')
-    def subject(subject):
-        pass
-
-    @app.route('/datatype/<path:dataType>')
-    def dataType(dataType):
-        pass
-
-    @app.route('/funder/g<int:funder>')
-    @app.route('/maintainer/g<int:maintainer>')
-    @app.route('/user/g<int:user>')
-    def group(funder=None, maintainer=None, user=None):
-        pass
-
     from . import auth
     auth.oid.init_app(app)
     auth.lm.init_app(app)
@@ -123,6 +101,9 @@ def create_app(test_config=None):
 
     from . import lists
     app.register_blueprint(lists.bp)
+
+    from . import search
+    app.register_blueprint(search.bp)
 
     @app.context_processor
     def utility_processor():

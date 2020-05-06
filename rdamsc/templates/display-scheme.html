@@ -9,7 +9,7 @@
     <p class="col-sm-2">Used in</p>
     <ul class="col-sm-10 list-inline">
     {% for keyword in record['keywords'] %}
-      <li><a class="btn btn-special" href="{{ url_for('subject', subject=toURLSlug(keyword)) }}">{{ keyword }}</a></li>
+      <li><a class="btn btn-special" href="{{ url_for('search.subject', subject=keyword) }}">{{ keyword }}</a></li>
     {% endfor %}
     </ul>
   </div>

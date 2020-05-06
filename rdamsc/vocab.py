@@ -168,7 +168,7 @@ class Thesaurus(object):
             route.extend(base_entry['ancestry'][::-1])
             # 2. Get domain tree
             domain_uri = route.pop()
-            tree = self.tree.get(Query().uri == domain_uri)
+            tree = self.trees.get(Query().uri == domain_uri)
             if not tree:
                 print("DEBUG get_branch: Domain not found.")
                 return uris
