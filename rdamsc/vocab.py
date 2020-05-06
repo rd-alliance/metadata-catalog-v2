@@ -188,20 +188,23 @@ class Thesaurus(object):
 
         return uris
 
-    def get_choices(self):
-        return [kw['long_label'] for kw in self.entries]
-
     def get_label(self, uri: str) -> str:
         entry = self.terms.get(Query().uri == uri)
         if entry:
             return entry.get('label')
         return None
 
+    def get_labels(self):
+        return [kw['label'] for kw in self.entries]
+
     def get_long_label(self, uri: str) -> str:
         entry = self.terms.get(Query().uri == uri)
         if entry:
             return entry.get('long_label')
         return None
+
+    def get_long_labels(self):
+        return [kw['long_label'] for kw in self.entries]
 
     def get_tree(self, filter: List[str], master: List=None)\
             -> List[Mapping[str, Union[str, List]]]:

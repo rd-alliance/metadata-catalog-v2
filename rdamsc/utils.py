@@ -56,6 +56,17 @@ def has_day(isodate: str):
 
 # Utilities used in data
 # ======================
+def clean_error_list(field):
+    seen_errors = set()
+    for error in field.errors:
+        if isinstance(error, list):
+            for sub_error in error:
+                seen_errors.add(sub_error)
+        else:
+            seen_errors.add(error)
+    return list(seen_errors)
+
+
 def to_file_slug(string: str, callback: Callable[[Query], List]):
     """Transforms string into slug for use when decomposing the database to
     individual files.
@@ -82,3 +93,11 @@ def to_file_slug(string: str, callback: Callable[[Query], List]):
             i += 1
     else:
         return slug
+
+
+def wild_to_regex(string):
+    """Transforms wildcard searches to regular expressions."""
+    regex = re.escape(string)
+    regex = regex.replace('\*', '.*')
+    regex = regex.replace('\?', '.')
+    return regex

@@ -39,7 +39,7 @@ from wtforms.compat import string_types
 # Local
 # -----
 from .db_utils import JSONStorageWithGit
-from .utils import Pluralizer, to_file_slug
+from .utils import Pluralizer, clean_error_list, to_file_slug
 from .vocab import get_thesaurus, get_vocab_db
 
 bp = Blueprint('main', __name__)
@@ -653,7 +653,7 @@ class Scheme(Record):
         vocabs = dict()
 
         th = get_thesaurus()
-        vocabs['subjects'] = th.get_choices()
+        vocabs['subjects'] = th.get_long_labels()
 
         return vocabs
 
@@ -1053,6 +1053,16 @@ class Datatype(Record):
         labels.sort()
         return labels
 
+    @classmethod
+    def load_by_label(cls, label: str):
+        db = cls.get_db()
+        tb = db.table(cls.table)
+        doc = tb.get(Query().label == label)
+
+        if doc:
+            return cls(value=doc, doc_id=doc.doc_id)
+        return cls(value=dict(), doc_id=0)
+
     def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
 
@@ -1329,9 +1339,7 @@ class SchemeForm(FlaskForm):
     title = StringField('Name of metadata scheme')
     description = TextHTMLField('Description')
     keywords = FieldList(
-        StringField('Subject area', validators=[
-            validators.Optional(),
-            ]),
+        StringField('Subject area', validators=[validators.Optional()]),
         'Subject areas', min_entries=1)
     dataTypes = SelectMultipleField(
         'Types of data described by this scheme')
@@ -1992,14 +2000,3 @@ def display(table, number, field=None, api=False):
     return render_template(
         f"display-{record.series}.html", record=record, versions=versions,
         relations=relations, **params)
-
-
-def clean_error_list(field):
-    seen_errors = set()
-    for error in field.errors:
-        if isinstance(error, list):
-            for sub_error in error:
-                seen_errors.add(sub_error)
-        else:
-            seen_errors.add(error)
-    return list(seen_errors)
