@@ -639,6 +639,7 @@ class Record(Document):
 
 
 class Scheme(Record):
+    '''Object representing a metadata scheme.'''
     table = 'm'
     series = 'scheme'
 
@@ -653,7 +654,6 @@ class Scheme(Record):
 
         return vocabs
 
-    '''Object representing a metadata scheme.'''
     def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
 
@@ -737,10 +737,10 @@ class Scheme(Record):
 
 
 class Tool(Record):
+    '''Object representing a tool.'''
     table = 't'
     series = 'tool'
 
-    '''Object representing a tool.'''
     def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
 
@@ -808,10 +808,10 @@ class Tool(Record):
 
 
 class Crosswalk(Record):
+    '''Object representing a mapping.'''
     table = 'c'
     series = 'mapping'
 
-    '''Object representing a mapping.'''
     def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
 
@@ -920,6 +920,7 @@ class Crosswalk(Record):
 
 
 class Group(Record):
+    '''Object representing an organization.'''
     table = 'g'
     series = 'organization'
 
@@ -933,7 +934,6 @@ class Group(Record):
         choices.sort(key=lambda k: k[1].lower())
         return choices
 
-    '''Object representing an organization.'''
     def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
 
@@ -971,10 +971,10 @@ class Group(Record):
 
 
 class Endorsement(Record):
+    '''Object representing an endorsement.'''
     table = 'e'
     series = 'endorsement'
 
-    '''Object representing an endorsement.'''
     def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
 
@@ -1009,6 +1009,7 @@ class Endorsement(Record):
 
 
 class Datatype(Record):
+    '''Wraps items in the dataType table.'''
     table = 'datatype'
     series = 'datatype'
 
@@ -1158,8 +1159,7 @@ class VocabTerm(Document):
 
 
 class Location(VocabTerm, Record):
-    '''Abstract class with common methods for the helper classes
-    for different types of vocabulary terms.'''
+    '''Wraps options for link types.'''
     table = 'location'
     series = 'location'
 
@@ -1168,8 +1168,7 @@ class Location(VocabTerm, Record):
 
 
 class EntityType(VocabTerm, Record):
-    '''Abstract class with common methods for the helper classes
-    for different types of vocabulary terms.'''
+    '''Wraps options for classifying entities.'''
     table = 'type'
     series = 'type'
 
@@ -1178,8 +1177,7 @@ class EntityType(VocabTerm, Record):
 
 
 class IDScheme(VocabTerm, Record):
-    '''Abstract class with common methods for the helper classes
-    for different types of vocabulary terms.'''
+    '''Wraps options for recognised ID schemes.'''
     table = 'id_scheme'
     series = 'id_scheme'
 
@@ -1490,6 +1488,7 @@ class GroupForm(FlaskForm):
 
 class EndorsementForm(FlaskForm):
     title = StringField('Title')
+    description = TextAreaField('Description')
     creators = FieldList(
         FormField(CreatorForm), 'Authors of the endorsement document',
         min_entries=1)

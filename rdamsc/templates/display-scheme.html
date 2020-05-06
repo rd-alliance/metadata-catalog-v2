@@ -265,6 +265,9 @@
           {% if 'title' in endorsement %}<a href="{{ url_for('main.display', table='e', number=endorsement.doc_id) }}">{{ endorsement['title'] }}</a>.{% endif %}
           {% if 'publication' in endorsement %} {{ endorsement['publication']|safe }}.{% endif %}
           {% for identifier in endorsement.get('identifiers') %}{% if identifier['scheme'] == 'DOI' %} DOI: <a href="https://doi.org/{{ identifier['id'] }}">{{ identifier['id'] }}</a>.{% endif %}{% endfor %}</p>
+        {% if 'description' in endorsement %}
+        <div class="description">{{ endorsement['description']|safe }}</div>
+        {% endif %}
         {% if 'locations' in endorsement or current_user.is_authenticated %}
         <ul class="locations list-inline">
         {% for location in endorsement['locations'] %}

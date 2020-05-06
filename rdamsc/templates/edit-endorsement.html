@@ -4,7 +4,7 @@
 {% block main %}
   <form action="{{ url_for('main.edit_record', table='e', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
     {{ form.hidden_tag() }}
-    <formset>
+    <fieldset>
     <div class="form-group">
       {{ form.title.label(class="control-label") }}
       {{ form.title(placeholder="Title of document", class="form-control") }}
@@ -12,7 +12,17 @@
         <li>Give the title in sentence case.</li>
       </ul>
     </div>
-    </formset>
+    <div class="form-group{{ state(form.description) }}">
+      {{ form.description.label(class="control-label") }}
+      {{ form.description(class="form-control") }}
+      {{ errors(form.description) }}
+      <ul class="help-block">
+        <li>Use this to record any caveats to the endorsement.</li>
+        <li>This could indicate if only certain versions of the scheme(s) are
+          endorsed.</li>
+      </ul>
+    </div>
+    </fieldset>
     <fieldset>
     <legend>{{ form.creators.label.text }}</legend>
     <div class="form-group">

@@ -28,6 +28,9 @@
     </ul>
   </div>
   {% endif %}
+  {% if 'description' in record %}
+  <div class="description">{{ record['description']|safe }}</div>
+  {% endif %}
   {% if 'originators' in relations %}
   <div class="endorsements">
     <h2>Endorsing organizations</h2>
