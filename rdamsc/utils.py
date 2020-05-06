@@ -53,6 +53,7 @@ def has_day(isodate: str):
     """Returns true if ISO date has a day component."""
     return isodate.count('-') == 2
 
+
 # Utilities used in data
 # ======================
 def to_file_slug(string: str, callback: Callable[[Query], List]):

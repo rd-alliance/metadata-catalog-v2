@@ -28,7 +28,6 @@ from rdflib.namespace import SKOS, RDF
 # Local
 # -----
 from .db_utils import JSONStorageWithGit
-from .utils import to_url_slug
 
 UNO = Namespace('http://vocabularies.unesco.org/ontology#')
 

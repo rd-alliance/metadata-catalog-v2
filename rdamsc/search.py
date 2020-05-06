@@ -12,7 +12,7 @@ from tinydb import Query
 
 # Local
 # -----
-from .records import Scheme
+from .records import Scheme, Datatype
 from .utils import Pluralizer
 from .vocab import get_thesaurus
 
@@ -34,8 +34,8 @@ def subject(subject):
     th = get_thesaurus()
     uris = th.get_branch(subject)
     if not uris:
-            flash(f'The subject "{subject}" was not found in the thesaurus.', 'error')
-            return render_template('search-results.html', title=subject)
+        flash(f'The subject "{subject}" was not found in the thesaurus.', 'error')
+        return render_template('search-results.html', title=subject)
 
     # Search for schemes
     results = Scheme.search(Query().keywords.any(uris))
@@ -52,9 +52,25 @@ def subject(subject):
         'search-results.html', title=subject, results=results)
 
 
-@bp.route('/datatype/<path:dataType>')
-def dataType(dataType):
-    pass
+@bp.route('/datatype/datatype<int:number>')
+def dataType(number):
+    datatype = Datatype.load(number)
+    if not datatype:
+        abort(404)
+
+    results = Scheme.search(Query().dataTypes.any(datatype.mscid))
+    no_of_hits = len(results)
+    if no_of_hits:
+        flash('Found {:N scheme/s} used for this type of data.'
+              .format(Pluralizer(no_of_hits)))
+        results.sort(key=lambda k: k['title'].lower())
+    else:
+        flash('No schemes have been reported to be used for this type of'
+              ' data.', 'error')
+    return render_template(
+        'search-results.html', title=datatype.get('label', f'type {number}'),
+        results=results)
+
 
 @bp.route('/funder/g<int:funder>')
 @bp.route('/maintainer/g<int:maintainer>')
