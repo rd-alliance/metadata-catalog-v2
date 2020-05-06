@@ -130,9 +130,11 @@ class Relation(object):
                 t.update(relation, doc_ids=[relation.doc_id])
         return removed_relations
 
-    def subjects(self, predicate=None, object=None, filter=None):
+    def subjects(self, predicate=None, object=None,
+                 filter: Type[Document]=None):
         '''Returns list of MSCIDs for all records that are subjects in the
-        relations database, optionally filtered by predicate and object.'''
+        relations database, optionally filtered by predicate, object and
+        record class.'''
         mscids = set()
         prefix = f"{mscid_prefix}{filter.table}" if filter else None
         Q = Query()
@@ -166,9 +168,10 @@ class Relation(object):
         n = len(mscid_prefix) + 1
         return sorted(mscids, key=lambda k: k[:n] + k[n:].zfill(5))
 
-    def subject_records(self, predicate=None, object=None, filter=None):
+    def subject_records(self, predicate=None, object=None,
+                        filter: Type[Document]=None):
         '''Returns list of Records that are subjects in the relations database,
-        optionally filtered by predicate and object.'''
+        optionally filtered by predicate, object and record class.'''
         mscids = self.subjects(predicate, object, filter)
         return [Record.load_by_mscid(mscid) for mscid in mscids]
 

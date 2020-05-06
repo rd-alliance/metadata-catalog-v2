@@ -12,7 +12,7 @@ from tinydb import Query
 
 # Local
 # -----
-from .records import Scheme, Datatype
+from .records import Datatype, Group, Relation, Scheme
 from .utils import Pluralizer
 from .vocab import get_thesaurus
 
@@ -42,7 +42,7 @@ def subject(subject):
     no_of_hits = len(results)
     if no_of_hits:
         flash('Found {:N scheme/s}.'.format(Pluralizer(no_of_hits)))
-        results.sort(key=lambda k: k['title'].lower())
+        results.sort(key=lambda k: k.name.lower())
     else:
         flash('No schemes have been associated with this subject area.'
               ' Would you like to see some <a href="{}">generic schemes</a>?'
@@ -63,7 +63,7 @@ def dataType(number):
     if no_of_hits:
         flash('Found {:N scheme/s} used for this type of data.'
               .format(Pluralizer(no_of_hits)))
-        results.sort(key=lambda k: k['title'].lower())
+        results.sort(key=lambda k: k.name.lower())
     else:
         flash('No schemes have been reported to be used for this type of'
               ' data.', 'error')
@@ -72,9 +72,19 @@ def dataType(number):
         results=results)
 
 
-@bp.route('/funder/g<int:funder>')
-@bp.route('/maintainer/g<int:maintainer>')
-@bp.route('/user/g<int:user>')
-def group(funder=None, maintainer=None, user=None):
-    pass
-
+@bp.route('/<any(funder, maintainer, user):role>/g<int:number>')
+def group(role, number):
+    rel = Relation()
+    group = Group.load(number)
+    verb = role[0:-1] + 'd'
+    results = rel.subject_records(predicate=role, object=group.mscid, filter=Scheme)
+    no_of_hits = len(results)
+    if no_of_hits:
+        flash('Found {:N scheme/s} {} by this organization.'
+              .format(Pluralizer(no_of_hits), verb))
+        results.sort(key=lambda k: k.name.lower())
+    else:
+        flash('No schemes found that are {} by this organization.'.format(verb),
+              'error')
+    return render_template(
+        'search-results.html', title=group.name, results=results)
