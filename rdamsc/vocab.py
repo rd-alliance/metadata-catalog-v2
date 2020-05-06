@@ -14,7 +14,7 @@ from typing import (
 # Non-standard
 # ------------
 # See https://flask.palletsprojects.com/en/1.1.x/
-from flask import current_app, g
+from flask import current_app, g, url_for
 # See http://tinydb.readthedocs.io/
 from tinydb import TinyDB, Query
 from tinydb.database import Document
@@ -28,6 +28,7 @@ from rdflib.namespace import SKOS, RDF
 # Local
 # -----
 from .db_utils import JSONStorageWithGit
+from .utils import to_url_slug
 
 UNO = Namespace('http://vocabularies.unesco.org/ontology#')
 
@@ -138,10 +139,11 @@ class Thesaurus(object):
             uris.extend(self._child_uris(child))
         return uris
 
-    def get_branch(self, term: str, broader=True, narrower=True):
+    def get_branch(self, term: str, broader: bool=True, narrower: bool=True):
         '''Given a term's label or URI, returns the term's URI along with the
         URI of each ancestor and descendent term. Returns an empty list if term
-        not recognised.'''
+        not recognised.
+        '''
         Q = Query()
         uris = list()
 
@@ -202,25 +204,36 @@ class Thesaurus(object):
             return entry.get('long_label')
         return None
 
-    def get_tree(self, master: List=None, filter: List[str]=None)\
+    def get_tree(self, filter: List[str], master: List=None)\
             -> List[Mapping[str, Union[str, List]]]:
-        '''Returns a list of dictionaries, each of which provides the URL
-        ('uri') of a term in the Catalog, its preferred label in English
-        ('label'), and (if applicable) a list of dictionaries corresponding to
-        immediately narrower terms in the thesaurus ('children'). If filter (a
-        list of URIs) is given, only those URIs will be present in the tree:
-        other terms will be filtered out.
+        '''Takes a list of term URIs, and returns the corresponding terms in tree
+        form, specifically as a list of dictionaries suitable for use with the
+        contents template: 'url' holds the URL of the term's search result in
+        the Catalog (not its ID URI), 'name' holds its preferred label in
+        English, and (if applicable) 'children' holds a list of dictionaries
+        corresponding to immediately narrower terms in the thesaurus
+        ('children').
         '''
         tree = list()
         if master is None:
+            # First call -- start at top of tree:
             master = self.tree
+            # Add ancestor terms to whitelist:
+            kw_branches_used = set()
+            for kw in filter:
+                if kw in kw_branches_used:
+                    continue
+                kw_branches_used.update(
+                    self.get_branch(kw, narrower=False))
+            filter = list(kw_branches_used)
+
         for entry in master:
-            uri = str(entry['uri'])
-            if filter is None or uri in filter:
-                node = {'uri': uri, 'label': entry['label']}
+            url = url_for('search.subject', subject=entry['label'])
+            if str(entry['uri']) in filter:
+                node = {'url': url, 'name': entry['label']}
                 all_children = entry.get('children')
                 if all_children:
-                    children = self.get_tree(all_children, filter)
+                    children = self.get_tree(filter, all_children)
                     if children:
                         node['children'] = children
                 tree.append(node)

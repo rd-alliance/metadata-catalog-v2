@@ -23,8 +23,8 @@ from tinydb.operations import delete
 from tinyrecord import transaction
 # See https://flask.palletsprojects.com/en/1.1.x/
 from flask import (
-    abort, Blueprint, current_app, flash, g, redirect, render_template, request,
-    session, url_for
+    abort, Blueprint, current_app, flash, g, redirect, render_template,
+    request, session, url_for
 )
 # See https://flask-login.readthedocs.io/
 from flask_login import login_required
@@ -653,6 +653,20 @@ class Scheme(Record):
         vocabs['subjects'] = th.get_choices()
 
         return vocabs
+
+    @classmethod
+    def get_used_keywords(cls) -> List[str]:
+        '''Returns a deduplicated list of subject keywords (as URIs) in use in
+        the database.
+        '''
+        # Get list of keywords in use
+        schemes_with_kw = cls.search(Query().keywords.exists())
+        keywords_used = set()
+        for s in schemes_with_kw:
+            for kw in s['keywords']:
+                keywords_used.add(kw)
+
+        return list(keywords_used)
 
     def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)

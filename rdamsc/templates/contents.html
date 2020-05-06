@@ -5,8 +5,11 @@
   {% for item in tree recursive %}
     <li><p><a href="{{ item['url'] }}">{{ item['name'] }}</a></p>
     {% if item['children'] %}
-        <ul class="subindex">{{ loop(item['children']) }}</ul>
-    {% endif %}</li>
+        <ul class="subindex">
+        {{ loop(item['children']) }}
+        </ul>
+    {% endif %}
+    </li>
   {% endfor %}
   </ul>
 {% endblock %}

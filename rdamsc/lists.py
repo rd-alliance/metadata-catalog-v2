@@ -15,6 +15,7 @@ from flask import (
 # Local
 # -----
 from .records import Record, Relation, Scheme
+from .vocab import get_thesaurus
 
 bp = Blueprint('list', __name__)
 
@@ -98,3 +99,14 @@ def record_index(series=None, role=None):
     else:
         abort(404)
 
+
+# Subject index
+# =============
+@bp.route('/subject-index')
+def subject_index():
+    th = get_thesaurus()
+    keywords_used = Scheme.get_used_keywords()
+    tree = th.get_tree(keywords_used)
+    print(f"DEBUG: Tree = {tree}")
+    return render_template(
+        'contents.html', title='Index of subjects', tree=tree)
