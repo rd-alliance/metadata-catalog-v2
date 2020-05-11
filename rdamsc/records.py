@@ -40,7 +40,7 @@ from wtforms.compat import string_types
 # -----
 from .db_utils import JSONStorageWithGit
 from .utils import Pluralizer, clean_error_list, to_file_slug
-from .vocab import get_thesaurus, get_vocab_db
+from .vocab import get_thesaurus
 
 bp = Blueprint('main', __name__)
 mscid_prefix = 'msc:'
@@ -1032,7 +1032,7 @@ class Datatype(Record):
 
     @classmethod
     def get_db(cls):
-        return get_vocab_db()
+        return get_term_db()
 
     @classmethod
     def get_choices(cls):
