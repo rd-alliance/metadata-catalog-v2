@@ -1216,9 +1216,10 @@ class IDScheme(VocabTerm, Record):
 # ===============
 # Custom validators
 # -----------------
-def EmailOrURL(form, field):
+def email_or_url(form, field):
     """Raise error if URL/email address is not well-formed."""
     result = urlparse(field.data)
+    print(f"DEBUG EmailOrURL: {field.data} => {result.scheme} {result.netloc}")
     if result.scheme == 'mailto':
         if not re.match(r'[^@\s]+@[^@\s\.]+\.[^@\s]+', result.path):
             raise ValidationError(
@@ -1229,6 +1230,33 @@ def EmailOrURL(form, field):
                 'Please provide the protocol (e.g. "http://", "mailto:").')
         if not result.netloc:
             return ValidationError('That URL does not look quite right.')
+
+
+class Optional(object):
+    """
+    Allows empty input and stops the validation chain from continuing.
+
+    If input is empty, also removes prior errors (such as processing errors)
+    from the field.
+
+    :param strip_whitespace:
+        If True (the default) also stop the validation chain on input which
+        consists of only whitespace.
+    """
+    field_flags = ('optional', )
+
+    def __init__(self, strip_whitespace=True):
+        if strip_whitespace:
+            self.string_check = lambda s: s.strip()
+        else:
+            self.string_check = lambda s: s
+
+    def __call__(self, form, field):
+        if (not field.raw_data) or (
+                isinstance(field.raw_data[0], string_types) and
+                not self.string_check(field.raw_data[0])):
+            field.errors[:] = []
+            raise validators.StopValidation()
 
 
 class RequiredIf(object):
@@ -1253,20 +1281,23 @@ class RequiredIf(object):
                 raise Exception(
                     'No field named "{}" in form'.format(other_field_name))
             if bool(other_field.data):
-                if not field.raw_data or not field.raw_data[0]:
-                    if self.message is None:
-                        message = field.gettext('This field is required.')
-                    else:
-                        message = self.message
-                    field.errors[:] = []
-                    other_fields_empty = False
-                    raise validators.StopValidation(message)
-            elif (not field.raw_data) or (
+                other_fields_empty = False
+        if other_fields_empty:
+            # Optional
+            if (not field.raw_data) or (
                     isinstance(field.raw_data[0], string_types) and
                     not self.string_check(field.raw_data[0])):
                 field.errors[:] = []
-        if other_fields_empty:
-            raise validators.StopValidation()
+                raise validators.StopValidation()
+        else:
+            # InputRequired
+            if not field.raw_data or not field.raw_data[0]:
+                if self.message is None:
+                    message = field.gettext('This field is required.')
+                else:
+                    message = self.message
+                field.errors[:] = []
+                raise validators.StopValidation(message)
 
 
 def W3CDate(form, field):
@@ -1299,22 +1330,22 @@ class TextHTMLField(TextAreaField):
 # Reusable subforms
 # -----------------
 class NativeDateField(StringField):
-    validators = [validators.Optional(), W3CDate]
+    validators = [Optional(), W3CDate]
 
 
 class LocationForm(Form):
-    url = StringField('URL', validators=[RequiredIf(['type']), EmailOrURL])
+    url = StringField('URL', validators=[RequiredIf(['type']), email_or_url])
     type = SelectField('Type', validators=[RequiredIf(['url'])], default='')
 
 
 class EndorsementLocationForm(Form):
-    url = StringField('URL', validators=[validators.Optional(), EmailOrURL])
+    url = StringField('URL', validators=[Optional(), email_or_url])
     type = HiddenField('document')
 
 
 class SampleForm(Form):
     title = StringField('Title', validators=[RequiredIf(['url'])])
-    url = StringField('URL', validators=[RequiredIf(['title']), EmailOrURL])
+    url = StringField('URL', validators=[RequiredIf(['title']), email_or_url])
 
 
 class IdentifierForm(Form):
@@ -1339,7 +1370,7 @@ class SchemeForm(FlaskForm):
     title = StringField('Name of metadata scheme')
     description = TextHTMLField('Description')
     keywords = FieldList(
-        StringField('Subject area', validators=[validators.Optional()]),
+        StringField('Subject area', validators=[Optional()]),
         'Subject areas', min_entries=1)
     dataTypes = SelectMultipleField(
         'Types of data described by this scheme')
@@ -1389,17 +1420,17 @@ class SchemeVersionForm(FlaskForm):
     valid = FormField(DateRangeForm, 'Date considered current', separator='_')
     locations = FieldList(
         FormField(LocationForm), 'Relevant links', min_entries=1)
-    samples = FieldList(
-        FormField(SampleForm), 'Sample records conforming to this scheme',
-        min_entries=1)
     identifiers = FieldList(
         FormField(IdentifierForm), 'Identifiers for this scheme',
+        min_entries=1)
+    samples = FieldList(
+        FormField(SampleForm), 'Sample records conforming to this scheme',
         min_entries=1)
 
 
 class ToolForm(FlaskForm):
     title = StringField('Name of tool')
-    description = TextAreaField('Description')
+    description = TextHTMLField('Description')
     types = SelectMultipleField(
         'Type of tool', render_kw={'size': 5})
     locations = FieldList(
@@ -1437,7 +1468,7 @@ class ToolVersionForm(FlaskForm):
 
 class CrosswalkForm(FlaskForm):
     name = StringField('Name or descriptor for mapping')
-    description = TextAreaField('Description')
+    description = TextHTMLField('Description')
     locations = FieldList(
         FormField(LocationForm), 'Links to this mapping', min_entries=1)
     identifiers = FieldList(
@@ -1476,7 +1507,7 @@ class CrosswalkVersionForm(FlaskForm):
 
 class GroupForm(FlaskForm):
     name = StringField('Name of organization')
-    description = TextAreaField('Description')
+    description = TextHTMLField('Description')
     types = SelectMultipleField(
         'Type of organization')
     locations = FieldList(
@@ -1513,7 +1544,7 @@ class GroupForm(FlaskForm):
 
 class EndorsementForm(FlaskForm):
     title = StringField('Title')
-    description = TextAreaField('Description')
+    description = TextHTMLField('Description')
     creators = FieldList(
         FormField(CreatorForm), 'Authors of the endorsement document',
         min_entries=1)
@@ -1537,7 +1568,7 @@ class EndorsementForm(FlaskForm):
 class DatatypeForm(FlaskForm):
     id = StringField(
         'URL identifying this type of data',
-        validators=[validators.Optional(), EmailOrURL])
+        validators=[Optional(), email_or_url])
     label = StringField(
         'Descriptor for this type of data',
         validators=[validators.InputRequired()])
@@ -1565,7 +1596,7 @@ def get_data_db():
         g.data_db = TinyDB(
             current_app.config['MAIN_DATABASE_PATH'],
             storage=JSONStorageWithGit,
-            indent=2,
+            indent=1,
             ensure_ascii=False)
 
     return g.data_db
@@ -1576,7 +1607,7 @@ def get_term_db():
         g.term_db = TinyDB(
             current_app.config['TERM_DATABASE_PATH'],
             storage=JSONStorageWithGit,
-            indent=2,
+            indent=1,
             ensure_ascii=False)
 
     return g.term_db
