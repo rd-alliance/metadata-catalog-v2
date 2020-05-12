@@ -93,4 +93,26 @@ def test_create_view_records(client, auth, app, page, data_db):
         orig['slug'] = 'test-scheme-1'
         assert orig == entry
 
+    # Test stripping out bad tags
+    response = client.get('/edit/m0')
+    html = response.get_data(as_text=True)
+    m2 = data_db.get_formdata('m2')
+    m2.update(page.get_all_hidden(html))
+    m2['description'] = m2['description'].replace(
+        '1.</p>',
+        '<span class="mso-nasty">1</span><script>do_evil();</script>.</p>')
+    response = client.post('/edit/m0', data=m2, follow_redirects=True)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    msg = "Successfully added record."
+    page.assert_contains(msg, html)
+
+    with open(app.config['MAIN_DATABASE_PATH']) as f:
+        db = json.load(f)
+        entry = db.get('m', dict()).get('2', dict())
+        orig = data_db.m2
+        del orig['versions']
+        orig['slug'] = 'test-scheme-2'
+        assert orig == entry
+
     # Test EmailOrURL (email) validator

@@ -60,7 +60,8 @@ class DataDBActions(object):
                     "scheme": "DOI"}]}
         self.m2 = {
             "title": "Test scheme 2",
-            "description": "<p>Paragraph 1.</p><p>Paragraph 2.</p>",
+            "description": "<p>Paragraph 1.</p>"
+                           "<p><a href=\"https://m.us/\">Paragraph</a> 2.</p>",
             "keywords": [
                 "http://rdamsc.bath.ac.uk/thesaurus/subdomain235",
                 "http://vocabularies.unesco.org/thesaurus/concept4011"],
@@ -287,8 +288,13 @@ class DataDBActions(object):
             i += 1
         self.rels = rels
 
-    def get_formdata(self, record: str, with_relations=False):
+    def get_formdata(self, record: str, with_relations=False, version=None):
         dbdata = getattr(self, record)
+        if version is not None:
+            try:
+                dbdata = dbdata.get('versions', list())[version]
+            except IndexError:
+                return MultiDict()
         kw_map = {
             'http://rdamsc.bath.ac.uk/thesaurus/subdomain235':
                 "Earth sciences < Science",
@@ -297,6 +303,8 @@ class DataDBActions(object):
                 " Environmental sciences and engineering < Science"}
         multi_dict_items = []
         for key in dbdata:
+            if key == 'versions':
+                continue
             value = dbdata[key]
             if isinstance(value, list):
                 for index, subvalue in enumerate(value):

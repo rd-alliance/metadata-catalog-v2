@@ -67,6 +67,10 @@ allowed_tags = {
     'br': [],
     'wbr': [],
     }
+disallowed_tagblocks = [
+    'script',
+    'style',
+    ]
 
 
 # Database wrapper classes
@@ -512,8 +516,7 @@ class Record(Document):
             html_in = formdata.get(field.name)
             if not html_in:
                 continue
-            # TODO: apply filtering
-            html_safe = html_in
+            html_safe = strip_tags(html_in)
             formdata[field.name] = html_safe
 
         # Convert subjects to URIs:
@@ -1392,7 +1395,8 @@ class SampleForm(Form):
 
 class IdentifierForm(Form):
     id = StringField('ID')
-    scheme = SelectField('ID scheme')
+    scheme = SelectField(
+        'ID scheme', validators=[RequiredIf(['id'])], default='')
 
 
 class DateRangeForm(Form):
@@ -1633,6 +1637,8 @@ class VocabForm(FlaskForm):
         render_kw={'size': 5})
 
 
+# Utility functions
+# =================
 def get_data_db():
     if 'data_db' not in g:
         g.data_db = TinyDB(
@@ -1655,6 +1661,56 @@ def get_term_db():
     return g.term_db
 
 
+def strip_tags(string: str) -> str:
+    '''Ensure only safe tags are included in string.'''
+
+    # Check for tags that must have their contents removed:
+    for tag in disallowed_tagblocks:
+        matches = re.finditer(
+            r'<' + tag + r'( [^>])?>.*?</' + tag + r'\s*>',
+            string,
+            re.DOTALL)
+        for m in matches:
+            string = string.replace(m.group(0), '')
+
+    # Check matched tags:
+    matches = re.finditer(
+        r'<(?P<close>/)?(?P<tag>\w+)(?P<attrib> [^>]*)?>',
+        string,
+        re.DOTALL)
+    seen = list()
+    for m in matches:
+        if m.group(0) in seen:
+            continue
+        repl = ''
+        if m.group('tag') in allowed_tags:
+            repl += '<'
+            if m.group('close'):
+                repl += '/'
+            repl += m.group("tag")
+            attribs = m.group('attrib')
+            while attribs:
+                a = re.search(
+                    r''' (?P<attr>[-\w]+)='''
+                    r'''(?:(?P<v1>\w+)|"(?P<v2>[^"]*)"|'(?P<v3>[^']*)')''',
+                    attribs)
+                if not a:
+                    attribs = ''
+                    continue
+                if a.group('attr') in allowed_tags[m.group('tag')]:
+                    val = (a.group("v1") if a.group("v1") else (
+                        a.group("v2") if a.group("v2") is not None else
+                        a.group("v3")))
+                    repl += f' {a.group("attr")}="{val}"'
+                attribs = attribs.replace(a.group(0), '')
+            repl += '>'
+        string = string.replace(m.group(0), repl)
+        seen.append(m.group(0))
+    return string
+
+
+# Routes
+# ======
 @bp.route('/edit/<string(length=1):table><int:number>',
           methods=['GET', 'POST'])
 @login_required
