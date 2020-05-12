@@ -2,6 +2,7 @@ import os
 import re
 import tempfile
 import json
+from html import unescape
 import pytest
 from werkzeug.datastructures import MultiDict
 
@@ -191,7 +192,10 @@ class DataDBActions(object):
             "locations": [
                 {
                     "url": "http://website.org/g1",
-                    "type": "website"}],
+                    "type": "website"},
+                {
+                    "url": "mailto:g1@website.org",
+                    "type": "email"}],
             "identifiers": [
                 {
                     "id": "10.1234/g1",
@@ -238,14 +242,59 @@ class DataDBActions(object):
             "id": "https://www.w3.org/TR/vocab-dcat/#class-dataset",
             "label": "Dataset"}
 
-    def get_formdata(self, record: str):
+        fw_tags = {
+            "parent scheme": "parent_schemes",
+            "supported scheme": "supported_schemes",
+            "input scheme": "input_schemes",
+            "output scheme": "output_schemes",
+            "endorsed scheme": "endorsed_schemes",
+            "maintainer": "maintainers",
+            "funder": "funders",
+            "user ": "users",
+            "originator": "originators"}
+        rv_tags = {
+            "parent scheme": "child_schemes",
+            "supported scheme": "tools",
+            "input scheme": "input_to_mappings",
+            "output scheme": "output_from_mappings",
+            "endorsed scheme": "endorsements",
+            "maintainer": "maintained_{}s",
+            "funder": "funded_{}s",
+            "user ": "used_schemes",
+            "originator": "endorsements"}
+        rc_cls = {'m': 'scheme', 't': 'tool', 'c': 'crosswalk'}
+        rels = dict()
+        i = 1
+        while hasattr(self, f'rel{i}'):
+            fw_rel = dict()
+            id = getattr(self, f'rel{i}').get('@id').replace('msc:', '')
+            for k, v in getattr(self, f'rel{i}').items():
+                if k not in fw_tags:
+                    continue
+                fw_rel[fw_tags[k]] = v
+                tag = rv_tags[k]
+                for mscid in v:
+                    if mscid not in rels:
+                        rels[mscid] = dict()
+                    if '{}' in tag:
+                        tag = tag.format(rc_cls.get(mscid[4:5]))
+                    if tag not in rels[mscid]:
+                        rels[mscid][tag] = list()
+                    rels[mscid][tag].append(id)
+            if id not in rels:
+                rels[id] = dict()
+            rels[id].update(fw_rel)
+            i += 1
+        self.rels = rels
+
+    def get_formdata(self, record: str, with_relations=False):
         dbdata = getattr(self, record)
-        if 'keywords' in dbdata:
-            # Hard coded for data used above
-            dbdata['keywords'] = [
+        kw_map = {
+            'http://rdamsc.bath.ac.uk/thesaurus/subdomain235':
                 "Earth sciences < Science",
+            'http://vocabularies.unesco.org/thesaurus/concept4011':
                 "Biological diversity < Ecological balance < Ecosystems <"
-                " Environmental sciences and engineering < Science"]
+                " Environmental sciences and engineering < Science"}
         multi_dict_items = []
         for key in dbdata:
             value = dbdata[key]
@@ -262,7 +311,7 @@ class DataDBActions(object):
                                 ('{}-{}'.format(key, index), subsubvalue))
                     elif key in ['keywords']:
                         multi_dict_items.append(
-                            ('{}-{}'.format(key, index), subvalue))
+                            ('{}-{}'.format(key, index), kw_map[subvalue]))
                     else:
                         multi_dict_items.append(
                             ('{}'.format(key), subvalue))
@@ -270,6 +319,9 @@ class DataDBActions(object):
                 pass
             else:
                 multi_dict_items.append((key, value))
+        if with_relations:
+            for rel, mscid in self.rels.get(record, dict()).items():
+                multi_dict_items.append((rel, mscid))
         formdata = MultiDict(multi_dict_items)
         return formdata
 
@@ -330,11 +382,22 @@ class PageActions(object):
         if html is not None:
             self.read(html)
         m = re.search(
-            r'<input id="csrf_token" name="csrf_token"'' type="hidden"'
+            r'<input id="csrf_token" name="csrf_token" type="hidden"'
             r' value="([^"]+)">', self.html)
         if not m:
             return None
         return m.group(1)
+
+    def get_all_hidden(self, html=None):
+        '''Extracts hidden inputs from page's form controls.'''
+        if html is not None:
+            self.read(html)
+        results = MultiDict()
+        for m in re.finditer(
+                r'<input id="(?P<name>[^"]+)" name="(?P=name)" type="hidden"'
+                r' value="(?P<value>[^"]+)">', self.html):
+            results.add(m.group('name'), unescape(m.group('value')))
+        return results
 
     def assert_contains(self, substring, html=None):
         '''Asserts page source includes substring.'''
