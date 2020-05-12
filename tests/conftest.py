@@ -324,7 +324,9 @@ class DataDBActions(object):
                         multi_dict_items.append(
                             ('{}'.format(key), subvalue))
             elif isinstance(value, dict):
-                pass
+                for subkey, subvalue in value.items():
+                    multi_dict_items.append(
+                        ('{}-{}'.format(key, subkey), subvalue))
             else:
                 multi_dict_items.append((key, value))
         if with_relations:

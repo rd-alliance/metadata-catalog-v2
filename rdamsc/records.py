@@ -367,10 +367,6 @@ class Record(Document):
     def slug(self):
         return self.get_slug()
 
-    @property
-    def vform(self):
-        raise NotImplementedError
-
     def _save(self, value: Mapping):
         '''Saves record to database. Returns error message if a problem
         arises.'''
@@ -622,8 +618,7 @@ class Record(Document):
             html_in = formdata.get(field.name)
             if not html_in:
                 continue
-            # TODO: apply filtering
-            html_safe = html_in
+            html_safe = strip_tags(html_in)
             formdata[field.name] = html_safe
 
         alldata = dict(self)
@@ -741,7 +736,7 @@ class Scheme(Record):
         # Get data from database:
         main_data = json.loads(json.dumps(self))
 
-        # Strip out version info, this is handled separately:
+        # Get version info:
         data = dict()
         if index is not None:
             try:
@@ -1380,6 +1375,8 @@ class NativeDateField(StringField):
 
 class LocationForm(Form):
     url = StringField('URL', validators=[RequiredIf(['type']), EmailOrURL()])
+    # Setting a default value works around the WTForms (< 2.3.0) bug where
+    # SelectFields return the string 'None' if no selection is made.
     type = SelectField('Type', validators=[RequiredIf(['url'])], default='')
 
 
@@ -1395,6 +1392,8 @@ class SampleForm(Form):
 
 class IdentifierForm(Form):
     id = StringField('ID')
+    # Setting a default value works around the WTForms (< 2.3.0) bug where
+    # SelectFields return the string 'None' if no selection is made.
     scheme = SelectField(
         'ID scheme', validators=[RequiredIf(['id'])], default='')
 
@@ -1463,7 +1462,7 @@ class SchemeVersionForm(FlaskForm):
     note = TextHTMLField('Note')
     issued = NativeDateField('Date published')
     available = NativeDateField('Date released as draft/proposal')
-    valid = FormField(DateRangeForm, 'Date considered current', separator='_')
+    valid = FormField(DateRangeForm, 'Date considered current')
     locations = FieldList(
         FormField(LocationForm), 'Relevant links', min_entries=1)
     identifiers = FieldList(
@@ -1596,7 +1595,7 @@ class EndorsementForm(FlaskForm):
         min_entries=1)
     publication = StringField('Other bibliographic information (excluding date)')
     issued = NativeDateField('Endorsement date')
-    valid = FormField(DateRangeForm, 'Date considered current', separator='_')
+    valid = FormField(DateRangeForm, 'Date considered current')
     locations = FieldList(
         FormField(EndorsementLocationForm), 'Links to this endorsement', min_entries=1)
     identifiers = FieldList(
@@ -1811,6 +1810,12 @@ def edit_version(table, number, index=None):
               "Try filling out this new one instead.", 'error')
         return redirect(url_for('main.edit_record', table=table, number=0))
 
+    if index is not None and index >= len(record.get('versions', list())):
+        flash("You are trying to update a version that doesn't exist."
+              "Try adding this new one instead.", 'error')
+        return redirect(url_for(
+            'main.edit_version', table=table, number=number))
+
     # Instantiate edit form
     form = record.get_vform(index)
 
@@ -1826,19 +1831,8 @@ def edit_version(table, number, index=None):
         form_data = form.data
 
         # Save form data to database
-        error = record.save_gui_vinput(form_data)
-        if record.doc_id:
-            # Editing an existing record
-            if error:
-                flash(error, 'error')
-                return redirect(
-                    url_for('main.edit_version', series=table, number=number,
-                            index=index))
-            else:
-                flash('Successfully updated version.', 'success')
-                return redirect(
-                    url_for('main.display', table=table, number=number))
-        else:
+        error = record.save_gui_vinput(form_data, index=index)
+        if index is None:
             # Adding a new record
             if error:
                 flash(error, 'error')
@@ -1848,6 +1842,17 @@ def edit_version(table, number, index=None):
             else:
                 number = record.doc_id
                 flash('Successfully added version.', 'success')
+                return redirect(
+                    url_for('main.display', table=table, number=number))
+        else:
+            # Editing an existing record
+            if error:
+                flash(error, 'error')
+                return redirect(
+                    url_for('main.edit_version', series=table, number=number,
+                            index=index))
+            else:
+                flash('Successfully updated version.', 'success')
                 return redirect(
                     url_for('main.display', table=table, number=number))
     if form.errors:
@@ -1972,8 +1977,8 @@ def display(table, number, field=None, api=False):
     # Objectify data types:
     if 'dataTypes' in record:
         datatypes = list()
-        for mscid in record['dataTypes']:
-            datatype = Datatype.load_by_mscid(mscid)
+        for dt_mscid in record['dataTypes']:
+            datatype = Datatype.load_by_mscid(dt_mscid)
             if datatype:
                 datatypes.append(datatype)
         record['dataTypes'] = datatypes
@@ -1986,7 +1991,7 @@ def display(table, number, field=None, api=False):
         for index in range(len(record['versions'])):
             record['versions'][index]['index'] = index
         for v in record['versions']:
-            this_version = v
+            this_version = v.copy()
             this_version['status'] = ''
             if 'issued' in v:
                 this_version['date'] = v['issued']
@@ -2010,12 +2015,13 @@ def display(table, number, field=None, api=False):
             elif 'available' in v:
                 this_version['date'] = v['available']
                 this_version['status'] = 'proposed'
+            else:
+                print(f'WARNING: no dates in {v}.')
             versions.append(this_version)
         try:
             versions.sort(key=lambda k: k['date'], reverse=True)
         except KeyError:
-            print('WARNING: Record {}{} has missing version date.'
-                  .format(mscid))
+            print(f'WARNING: Record {mscid} is missing a version date.')
             try:
                 versions.sort(key=lambda k: k['number'], reverse=True)
             except KeyError:
