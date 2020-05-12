@@ -1332,19 +1332,20 @@ class RequiredIf(object):
                 raise validators.StopValidation(message)
 
 
-class W3CDate(object):
+class W3CDate(validators.Regexp):
+    """Validates a W3C-formatted year, month or date.
+    """
     def __init__(self, message=None):
-        self.message = message
+        pattern = r'^\d{4}(-\d{2}){0,2}$'
+        super(W3CDate, self).__init__(pattern, message=message)
 
     def __call__(self, form, field):
-        """Raise error if a string is not a valid W3C-formatted date."""
-        if re.search(r'^\d{4}(-\d{2}){0,2}$', field.data) is None:
-            if self.message is None:
-                message = field.gettext(
-                    "Please provide the date in yyyy-mm-dd format.")
-            else:
-                message = self.message
-            raise ValidationError(message)
+        message = self.message
+        if message is None:
+            message = field.gettext(
+                "Please provide the date in yyyy-mm-dd format.")
+
+        super(W3CDate, self).__call__(form, field, message)
 
 
 # Custom elements
