@@ -1216,32 +1216,64 @@ class IDScheme(VocabTerm, Record):
 # ===============
 # Custom validators
 # -----------------
-def email_or_url(form, field):
-    """Raise error if URL/email address is not well-formed."""
-    result = urlparse(field.data)
-    print(f"DEBUG EmailOrURL: {field.data} => {result.scheme} {result.netloc}")
-    if result.scheme == 'mailto':
-        if not re.match(r'[^@\s]+@[^@\s\.]+\.[^@\s]+', result.path):
-            raise ValidationError(
-                'That email address does not look quite right.')
-    else:
-        if not result.scheme:
-            raise ValidationError(
-                'Please provide the protocol (e.g. "http://", "mailto:").')
-        if not result.netloc:
-            return ValidationError('That URL does not look quite right.')
+class EmailOrURL(object):
+    """Adaptation of WTForms URL validator to test mailto: URLs as well.
+    """
+    def __init__(self, require_tld=True):
+        self.gen_regex = re.compile(
+            r"^(?P<protocol>[a-z]+):.+",
+            re.IGNORECASE)
+        self.url_regex = re.compile(
+            r"^(?P<protocol>[a-z]+):"
+            r"//(?P<host>[^\/\?:]+)"
+            r"(?P<port>:[0-9]+)?"
+            r"(?P<path>\/.*?)?"
+            r"(?P<query>\?.*)?$",
+            re.IGNORECASE)
+        self.email_regex = re.compile(
+            r"^(?P<protocol>mailto):"
+            r"(?P<user>[A-Z0-9][A-Z0-9._%+-]{0,63})@"
+            r"(?P<host>(?:[A-Z0-9-]{2,63}\.)+[A-Z]{2,63})$",
+            re.IGNORECASE)
+        self.validate_hostname = validators.HostnameValidation(
+            require_tld=require_tld,
+            allow_ip=True,
+        )
+
+    def __call__(self, form, field):
+        datum = field.data if field.data else ''
+
+        if not self.gen_regex.match(datum):
+            raise ValidationError(field.gettext(
+                'Please provide the protocol (e.g. "http://", "mailto:").'))
+
+        if datum.startswith('mailto:'):
+            if len(datum[7:]) > 254:
+                raise ValidationError(
+                    'That email address is too long.')
+
+            match = self.email_regex.match(datum)
+            if not match:
+                raise ValidationError(field.gettext(
+                    'That email address does not look quite right.'))
+
+        else:
+            match = self.url_regex.match(datum)
+            message = field.gettext(
+                    'That URL does not look quite right.')
+            if not match:
+                raise ValidationError(message)
+            if not self.validate_hostname(match.group('host')):
+                raise ValidationError(message)
 
 
 class Optional(object):
-    """
-    Allows empty input and stops the validation chain from continuing.
+    """This is just like the normal WTForms version but with more explicit
+    Boolean logic.
 
-    If input is empty, also removes prior errors (such as processing errors)
-    from the field.
-
-    :param strip_whitespace:
-        If True (the default) also stop the validation chain on input which
-        consists of only whitespace.
+    If the input is empty or (unless called with strip_whitespace=False)
+    consists solely of whitespace, it stops the validation chain and removes
+    any previous errors (so it can be used anywhere in the chain).
     """
     field_flags = ('optional', )
 
@@ -1300,10 +1332,19 @@ class RequiredIf(object):
                 raise validators.StopValidation(message)
 
 
-def W3CDate(form, field):
-    """Raise error if a string is not a valid W3C-formatted date."""
-    if re.search(r'^\d{4}(-\d{2}){0,2}$', field.data) is None:
-        raise ValidationError('Please provide the date in yyyy-mm-dd format.')
+class W3CDate(object):
+    def __init__(self, message=None):
+        self.message = message
+
+    def __call__(self, form, field):
+        """Raise error if a string is not a valid W3C-formatted date."""
+        if re.search(r'^\d{4}(-\d{2}){0,2}$', field.data) is None:
+            if self.message is None:
+                message = field.gettext(
+                    "Please provide the date in yyyy-mm-dd format.")
+            else:
+                message = self.message
+            raise ValidationError(message)
 
 
 # Custom elements
@@ -1330,22 +1371,22 @@ class TextHTMLField(TextAreaField):
 # Reusable subforms
 # -----------------
 class NativeDateField(StringField):
-    validators = [Optional(), W3CDate]
+    validators = [Optional(), W3CDate()]
 
 
 class LocationForm(Form):
-    url = StringField('URL', validators=[RequiredIf(['type']), email_or_url])
+    url = StringField('URL', validators=[RequiredIf(['type']), EmailOrURL()])
     type = SelectField('Type', validators=[RequiredIf(['url'])], default='')
 
 
 class EndorsementLocationForm(Form):
-    url = StringField('URL', validators=[Optional(), email_or_url])
+    url = StringField('URL', validators=[Optional(), EmailOrURL()])
     type = HiddenField('document')
 
 
 class SampleForm(Form):
     title = StringField('Title', validators=[RequiredIf(['url'])])
-    url = StringField('URL', validators=[RequiredIf(['title']), email_or_url])
+    url = StringField('URL', validators=[RequiredIf(['title']), EmailOrURL()])
 
 
 class IdentifierForm(Form):
@@ -1568,7 +1609,7 @@ class EndorsementForm(FlaskForm):
 class DatatypeForm(FlaskForm):
     id = StringField(
         'URL identifying this type of data',
-        validators=[Optional(), email_or_url])
+        validators=[Optional(), EmailOrURL()])
     label = StringField(
         'Descriptor for this type of data',
         validators=[validators.InputRequired()])

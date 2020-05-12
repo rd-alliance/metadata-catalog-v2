@@ -9,15 +9,7 @@
     <h2>Links and documentation</h2>
     <ul class="locations list-inline">
     {% for location in record['locations'] %}
-      {% if location['type'] == 'website' %}
-      <li><a class="btn btn-special" href="{{ location['url'] }}">Visit website</a></li>
-      {% elif location['type'] == 'document' %}
-      <li><a class="btn btn-special" href="{{ location['url'] }}">View documentation</a></li>
-      {% elif location['type'] == 'application' %}
-      <li><a class="btn btn-special" href="{{ location['url'] }}">Use tool online</a></li>
-      {% elif location['type'] == 'service' %}
-      <li><a class="btn btn-special" href="{{ location['url'] }}">Service endpoint</a></li>
-      {% endif %}
+      <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'website' %}Visit website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
     {% endfor %}
     </ul>
   </div>

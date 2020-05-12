@@ -39,7 +39,6 @@ class Thesaurus(object):
         self.trees = db.table('thesaurus_trees')
         if len(self.terms) == 0:
             # Initialise from supplied data
-            print(f"DEBUG Thesaurus.init: Parsing turtle file.")
             self.g = Graph()
             moddir = os.path.dirname(__file__)
             subjects_file = os.path.join(

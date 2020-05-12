@@ -260,9 +260,12 @@ class DataDBActions(object):
                         for subsubvalue in subvalue:
                             multi_dict_items.append(
                                 ('{}-{}'.format(key, index), subsubvalue))
-                    else:
+                    elif key in ['keywords']:
                         multi_dict_items.append(
                             ('{}-{}'.format(key, index), subvalue))
+                    else:
+                        multi_dict_items.append(
+                            ('{}'.format(key), subvalue))
             elif isinstance(value, dict):
                 pass
             else:
