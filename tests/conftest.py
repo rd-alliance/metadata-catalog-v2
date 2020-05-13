@@ -251,7 +251,7 @@ class DataDBActions(object):
             "endorsed scheme": "endorsed_schemes",
             "maintainer": "maintainers",
             "funder": "funders",
-            "user ": "users",
+            "user": "users",
             "originator": "originators"}
         rv_tags = {
             "parent scheme": "child_schemes",
@@ -261,7 +261,7 @@ class DataDBActions(object):
             "endorsed scheme": "endorsements",
             "maintainer": "maintained_{}s",
             "funder": "funded_{}s",
-            "user ": "used_schemes",
+            "user": "used_schemes",
             "originator": "endorsements"}
         rc_cls = {'m': 'scheme', 't': 'tool', 'c': 'crosswalk'}
         rels = dict()
@@ -272,16 +272,21 @@ class DataDBActions(object):
             for k, v in getattr(self, f'rel{i}').items():
                 if k not in fw_tags:
                     continue
+
+                # Forward relations
                 fw_rel[fw_tags[k]] = v
+
+                # Inverse relations
                 tag = rv_tags[k]
                 for mscid in v:
-                    if mscid not in rels:
-                        rels[mscid] = dict()
+                    v_id = mscid.replace('msc:', '')
+                    if v_id not in rels:
+                        rels[v_id] = dict()
                     if '{}' in tag:
-                        tag = tag.format(rc_cls.get(mscid[4:5]))
-                    if tag not in rels[mscid]:
-                        rels[mscid][tag] = list()
-                    rels[mscid][tag].append(id)
+                        tag = tag.format(rc_cls.get(id[0:1]))
+                    if tag not in rels[v_id]:
+                        rels[v_id][tag] = list()
+                    rels[v_id][tag].append(f"msc:{id}")
             if id not in rels:
                 rels[id] = dict()
             rels[id].update(fw_rel)
@@ -311,27 +316,27 @@ class DataDBActions(object):
                     if isinstance(subvalue, dict):
                         for subsubkey in subvalue:
                             multi_dict_items.append(
-                                ('{}-{}-{}'.format(key, index, subsubkey),
+                                (f'{key}-{index}-{subsubkey}',
                                  subvalue[subsubkey]))
                     elif isinstance(subvalue, list):
                         for subsubvalue in subvalue:
                             multi_dict_items.append(
-                                ('{}-{}'.format(key, index), subsubvalue))
+                                (f'{key}-{index}', subsubvalue))
                     elif key in ['keywords']:
                         multi_dict_items.append(
-                            ('{}-{}'.format(key, index), kw_map[subvalue]))
+                            (f'{key}-{index}', kw_map[subvalue]))
                     else:
-                        multi_dict_items.append(
-                            ('{}'.format(key), subvalue))
+                        multi_dict_items.append((key, subvalue))
             elif isinstance(value, dict):
                 for subkey, subvalue in value.items():
                     multi_dict_items.append(
-                        ('{}-{}'.format(key, subkey), subvalue))
+                        (f'{key}-{subkey}', subvalue))
             else:
                 multi_dict_items.append((key, value))
         if with_relations:
-            for rel, mscid in self.rels.get(record, dict()).items():
-                multi_dict_items.append((rel, mscid))
+            for rel, mscids in self.rels.get(record, dict()).items():
+                for index, mscid in enumerate(mscids):
+                    multi_dict_items.append((rel, mscid))
         formdata = MultiDict(multi_dict_items)
         return formdata
 
