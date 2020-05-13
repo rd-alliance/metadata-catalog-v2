@@ -230,11 +230,11 @@ class DataDBActions(object):
             "funder": ["msc:g1"]}
         self.rel3 = {
             "@id": "msc:m1",
-            "user": ["msc:g1"]}
+            "maintainer": ["msc:g1"]}
         self.rel4 = {
             "@id": "msc:m2",
             "parent scheme": ["msc:m1"],
-            "maintainer": ["msc:g1"]}
+            "user": ["msc:g1"]}
         self.rel5 = {
             "@id": "msc:t1",
             "supported scheme": ["msc:m3"]}

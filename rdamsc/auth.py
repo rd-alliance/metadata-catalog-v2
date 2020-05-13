@@ -466,7 +466,7 @@ def load_user(id):
 
 
 class LoginForm(FlaskForm):
-    openid = StringField('OpenID URL', validators=[validators.URL])
+    openid = StringField('OpenID URL', validators=[validators.URL()])
 
 
 @bp.route('/login', methods=['GET', 'POST'])
