@@ -168,7 +168,6 @@ class DataDBActions(object):
                     "familyName": "Surname",
                     "fullName": "Given Family"}]}
         self.c2 = {
-            "name": "Test crosswalk 2",
             "description": "<p>Paragraph 1.</p><p>Paragraph 2.</p>",
             "versions": [
                 {
@@ -189,7 +188,7 @@ class DataDBActions(object):
         self.g1 = {
             "name": "Organization 1",
             "description": "<p>Paragraph 1.</p><p>Paragraph 2.</p>",
-            "types": "standards body",
+            "types": ["standards body"],
             "locations": [
                 {
                     "url": "http://website.org/g1",
@@ -221,24 +220,24 @@ class DataDBActions(object):
                     "id": "10.1234/e1",
                     "scheme": "DOI"}]}
         self.rel1 = {
-            "@id": "msc:m1",
-            "user": ["msc:g1"]}
-        self.rel2 = {
-            "@id": "msc:m2",
-            "parent scheme": ["msc:m1"],
-            "maintainer": ["msc:g1"]}
-        self.rel3 = {
-            "@id": "msc:t1",
-            "supported scheme": ["msc:m3"]}
-        self.rel4 = {
-            "@id": "msc:c1",
-            "input scheme": ["msc:m1"],
-            "output scheme": ["msc:m2"],
-            "funder": ["msc:g1"]}
-        self.rel5 = {
             "@id": "msc:e1",
             "endorsed scheme": ["msc:m1", "msc:m2"],
             "originator": ["msc:g1"]}
+        self.rel2 = {
+            "@id": "msc:c2",
+            "input scheme": ["msc:m1"],
+            "output scheme": ["msc:m2"],
+            "funder": ["msc:g1"]}
+        self.rel3 = {
+            "@id": "msc:m1",
+            "user": ["msc:g1"]}
+        self.rel4 = {
+            "@id": "msc:m2",
+            "parent scheme": ["msc:m1"],
+            "maintainer": ["msc:g1"]}
+        self.rel5 = {
+            "@id": "msc:t1",
+            "supported scheme": ["msc:m3"]}
         self.datatype1 = {
             "id": "https://www.w3.org/TR/vocab-dcat/#class-dataset",
             "label": "Dataset"}
