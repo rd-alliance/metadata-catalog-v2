@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros-forms.html" import state, errors %}
+{% from "macros-forms.html" import state, errors with context %}
 {% block title %}Search the Catalog{% endblock %}
 {% block main %}
   <form action="{{ url_for('search.scheme_search') }}" method="post" accept-charset="utf-8" class="form-horizontal">
@@ -14,9 +14,9 @@
     -->
     {{ form.hidden_tag() }}
     <p>Search for schemes that match any of the following criteria:</p>
-    <div class="form-group">
-      {{ form.title.label(class="col-sm-3 control-label") }}
-      <div class="col-sm-9">
+    <div class="form-group row">
+      {{ form.title.label(class="col-md-4 col-lg-3 col-form-label text-md-right") }}
+      <div class="col-md-8 col-lg-9">
         <datalist id="titles">
           {% for item in titles %}
           <option>{{ item }}</option>
@@ -25,14 +25,14 @@
         {{ form.title(placeholder="Name of scheme", list="titles", class="form-control") }}
       </div>
     </div>
-    <div class="form-group">
-      {{ form.keywords.label(class="col-sm-3 control-label") }}
+    <div class="form-group row">
+      {{ form.keywords.label(class="col-md-4 col-lg-3 col-form-label text-md-right") }}
       <datalist id="keyword-list">
         {% for item in subjects %}
         <option>{{ item }}</option>
         {% endfor %}
       </datalist>
-      <div class="col-sm-9">
+      <div class="col-md-8 col-lg-9">
         {% for f in form.keywords %}
         <div>
           <span class="{{ state(f) }}">{{ f(list="keyword-list", class="form-control form-control-narrow") }}</span>
@@ -41,9 +41,9 @@
         {% endfor %}
       </div>
     </div>
-    <div class="form-group">
-      {{ form.identifier.label(class="col-sm-3 control-label") }}
-      <div class="col-sm-9">
+    <div class="form-group row">
+      {{ form.identifier.label(class="col-md-4 col-lg-3 col-form-label text-md-right") }}
+      <div class="col-md-8 col-lg-9">
         <datalist id="identifiers">
           {% for item in ids %}
           <option>{{ item }}</option>
@@ -53,9 +53,9 @@
       </div>
     </div>
     {% if funders %}
-    <div class="form-group">
-      {{ form.funder.label(class="col-sm-3 control-label") }}
-      <div class="col-sm-9">
+    <div class="form-group row">
+      {{ form.funder.label(class="col-md-4 col-lg-3 col-form-label text-md-right") }}
+      <div class="col-md-8 col-lg-9">
         <datalist id="funders">
           {% for item in funders %}
           <option>{{ item }}</option>
@@ -66,9 +66,9 @@
     </div>
     {% endif %}
     {% if dataTypes %}
-    <div class="form-group">
-      {{ form.dataType.label(class="col-sm-3 control-label") }}
-      <div class="col-sm-9">
+    <div class="form-group row">
+      {{ form.dataType.label(class="col-md-4 col-lg-3 col-form-label text-md-right") }}
+      <div class="col-md-8 col-lg-9">
         <datalist id="dataTypes">
           {% for item in dataTypes %}
           <option>{{ item }}</option>
@@ -78,8 +78,8 @@
       </div>
     </div>
     {% endif %}
-    <div class="form-group">
-      <div class="col-sm-offset-3 col-sm-9">
+    <div class="form-group row">
+      <div class="offset-md-4 offset-lg-3 col-md-8 col-lg-9">
         <button class="btn btn-primary">Submit</button>
       </div>
     </div>

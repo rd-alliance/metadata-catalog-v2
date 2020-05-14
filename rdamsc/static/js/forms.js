@@ -39,15 +39,15 @@ $( "input[list='keyword-list']" ).parent().parent().filter(":last-child")
 
 /* Cleaning help text */
 
-$( ".form-group" ).find( ".help-block" ).hide();
+$( ".form-group" ).find( ".form-text" ).hide();
 
 $( ":input" ).focus(function() {
-  $( this ).closest( ".form-group" ).find( ".help-block" )
+  $( this ).closest( ".form-group" ).find( ".form-text" )
   .filter( ":hidden" ).show(400);
 });
 
 $( ".form-group" ).focusout(function (event) {
   if ( $( this ).has( event.relatedTarget ).length == 0 ) {
-    $( this ).find( ".help-block" ).hide(400);
+    $( this ).find( ".form-text" ).hide(400);
   }
 });

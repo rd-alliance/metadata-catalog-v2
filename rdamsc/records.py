@@ -34,7 +34,8 @@ from wtforms import (
     FieldList, Form, FormField, HiddenField, SelectField, SelectMultipleField,
     StringField, TextAreaField, ValidationError, validators, widgets
 )
-from wtforms.compat import string_types
+from wtforms.compat import string_types, text_type
+from markupsafe import escape, Markup
 
 # Local
 # -----
@@ -1162,8 +1163,7 @@ class VocabTerm(Document):
         form = self.form(data=data)
 
         if self.doc_id == 0:
-            form.id.validators.append(
-                validators.InputRequired())
+            form.id.validators = [validators.InputRequired()]
             form.id.render_kw = {'required': True}
 
         return form
@@ -1346,7 +1346,52 @@ class W3CDate(validators.Regexp):
         super(W3CDate, self).__call__(form, field, message)
 
 
-# Custom elements
+# Custom widgets
+# --------------
+class CheckboxSelect(widgets.Select):
+    '''Renders as a series of radio buttons or checkboxes instead of
+    a select element with option elements.
+    '''
+    def __call__(self, field, **kwargs):
+        kwargs.setdefault('id', field.id)
+        attrs = {'id': field.id}
+        html = list()
+        #html = [f'<div {widgets.html_params(**attrs)}>']
+        for value, label, selected in field.iter_choices():
+            html.append(self.render_option(
+                field, value, label, selected, **kwargs))
+        #html.append('</div>')
+        return Markup('\n'.join(html))
+
+    def render_option(self, field, value, label, selected, **kwargs):
+        if value is True:
+            # Handle the special case of a 'True' value.
+            value = text_type(value)
+
+        choice_id = f'{field.id}-{value}'
+        div_attrs = dict()
+        label_attrs = {'for': choice_id}
+        if 'divclass' in kwargs:
+            div_attrs['class'] = kwargs.pop('divclass')
+        if 'labelclass' in kwargs:
+            label_attrs['class'] = kwargs.pop('labelclass')
+        attrs = dict()
+        if self.multiple:
+            attrs['type'] = 'checkbox'
+        else:
+            attrs['type'] = 'radio'
+        attrs.update(dict(kwargs, id=choice_id, name=field.name, value=value))
+        if selected:
+            attrs['checked'] = True
+        return Markup(
+            f'  <div {widgets.html_params(**div_attrs)}>\n'
+            f'    <input {widgets.html_params(**attrs)}>\n'
+            f'    <label {widgets.html_params(**label_attrs)}>'
+            f'{escape(label)}</label>\n'
+            f'  </div>')
+
+
+# Custom fields
 # ---------------
 class SelectRelatedField(SelectMultipleField):
     def __init__(self, label='', record: Type[Record]=Scheme, inverse=False,
@@ -1633,7 +1678,7 @@ class VocabForm(FlaskForm):
             (Crosswalk.series, Crosswalk.series),
             (Endorsement.series, Endorsement.series),
             (Group.series, Group.series)],
-        render_kw={'size': 5})
+        widget=CheckboxSelect(multiple=True))
 
 
 # Utility functions
@@ -1898,7 +1943,7 @@ def edit_vocabterm(vocab, number):
     form = record.get_form()
 
     if number == 0:
-        form['id'].validators.append(validators.InputRequired())
+        form['id'].validators = [validators.InputRequired()]
 
     # Processing the request
     if request.method == 'POST' and form.validate():

@@ -5,21 +5,21 @@
   <div class="description">{{ record['description']|safe }}</div>
   {% endif %}
   {% if 'keywords' in record %}
-  <div class="keywords clearfix">
-    <p class="col-sm-2">Used in</p>
-    <ul class="col-sm-10 list-inline">
+  <div class="keywords row">
+    <p class="col-sm-3 col-md-2 text-sm-right">Used in</p>
+    <ul class="col-sm-9 col-md-10 list-inline">
     {% for keyword in record['keywords'] %}
-      <li><a class="btn btn-special" href="{{ url_for('search.subject', subject=keyword) }}">{{ keyword }}</a></li>
+      <li class="list-inline-item"><a class="btn btn-keyword" href="{{ url_for('search.subject', subject=keyword) }}">{{ keyword }}</a></li>
     {% endfor %}
     </ul>
   </div>
   {% endif %}
   {% if 'dataTypes' in record %}
-  <div class="dataTypes clearfix">
-    <p class="col-sm-2">Used for</p>
-    <ul class="col-sm-10 list-inline">
+  <div class="dataTypes row">
+    <p class="col-sm-3 col-md-2 text-sm-right">Used for</p>
+    <ul class="col-sm-9 col-md-10 list-inline">
     {% for type in record['dataTypes'] %}
-      <li><a class="btn btn-special" href="{{ url_for('search.dataType', number=type.doc_id) }}">{{ type['label'] }}</a></li>
+      <li class="list-inline-item"><a class="btn btn-datatype" href="{{ url_for('search.subject', number=type.doc_id) }}">{{ type['label'] }}</a></li>
     {% endfor %}
     </ul>
   </div>
@@ -30,11 +30,11 @@
     <ul class="locations list-inline">
     {% for location in record['locations'] %}
       {% if location['type'] == 'website' %}
-      <li><a class="btn btn-special" href="{{ location['url'] }}">Visit website</a></li>
+      <li class="list-inline-item"><a class="btn btn-location" href="{{ location['url'] }}">Visit website</a></li>
       {% elif location['type'] == 'document' %}
-      <li><a class="btn btn-special" href="{{ location['url'] }}">View specification</a></li>
+      <li class="list-inline-item"><a class="btn btn-location" href="{{ location['url'] }}">View specification</a></li>
       {% else %}
-      <li><a class="btn btn-special" href="{{ location['url'] }}">View specification in {{ location['type'] }} format</a></li>
+      <li class="list-inline-item"><a class="btn btn-location" href="{{ location['url'] }}">View specification in {{ location['type'] }} format</a></li>
       {% endif %}
     {% endfor %}
     </ul>
@@ -50,7 +50,7 @@
       {% if 'locations' in org %}
         <ul class="locations list-inline">
         {% for location in org['locations'] %}
-          <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
+          <li class="list-inline-item"><a class="btn btn-location" href="{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
         {% endfor %}
         </ul>
       {% endif %}
@@ -62,7 +62,7 @@
       {% if 'locations' in org %}
         <ul class="locations list-inline">
         {% for location in org['locations'] %}
-          <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
+          <li class="list-inline-item"><a class="btn btn-location" href="{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
         {% endfor %}
         </ul>
       {% endif %}
@@ -81,15 +81,19 @@
   {% endif %}
   <div class="identifiers">
     <h2>Identifiers</h2>
-    <dl class="dl-horizontal">
-      <dt>Internal MSC ID</dt><dd><a href="{{ url_for('main.display', table='m', number=record.doc_id) }}">msc:m{{ record.doc_id }}</a></dd>
+    <dl class="row">
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right">Internal MSC ID</dt>
+      <dd class="col-sm-7 col-md-8 col-lg-9"><a href="{{ url_for('main.display', table='m', number=record.doc_id) }}">msc:m{{ record.doc_id }}</a></dd>
     {% for identifier in record['identifiers'] %}
       {% if identifier['scheme'] == 'DOI' %}
-      <dt>DOI</dt><dd><a href="https://doi.org/{{ identifier['id'] }}">{{ identifier['id'] }}</a></dd>
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right">DOI</dt>
+      <dd class="col-sm-7 col-md-8 col-lg-9"><a href="https://doi.org/{{ identifier['id'] }}">{{ identifier['id'] }}</a></dd>
       {% elif identifier['scheme'] %}
-      <dt>{{ identifier['scheme'] }}</dt><dd>{{ identifier['id'] }}</dd>
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right">{{ identifier['scheme'] }}</dt>
+      <dd class="col-sm-7 col-md-8 col-lg-9">{{ identifier['id'] }}</dd>
       {% else %}
-      <dt>Other identifier</dt><dd>{{ identifier['id'] }}</dd>
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right">Other identifier</dt>
+      <dd class="col-sm-7 col-md-8 col-lg-9">{{ identifier['id'] }}</dd>
       {% endif %}
     {% endfor %}
     </dl>
@@ -97,39 +101,46 @@
   {% if versions %}
   <div class="versions">
     <h2>Version history</h2>
-    <dl class="dl-horizontal">
+    <dl class="row">
     {% for version in versions %}
-      <dt id="v{{ version['number'] }}">{{ version['date'] }}</dt>
-      <dd>
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right" id="v{{ version['number'] }}">{{ version['date'] }}</dt>
+      <dd class="col-sm-7 col-md-8 col-lg-9">
         <p>{% if 'number' in version %}version {{ version['number'] }}{% else %}(unnumbered version){% endif %}{% if version['status'] %} ({{ version['status'] }}){% endif %}
           {% if 'title' in version %} &ndash; {{ version['title'] }}{% endif %}</p>
-        {% if 'description' in version %}
-        <div class="description">{{ version['description']|safe }}</div>
+        {% if 'note' in version %}
+        <div class="description">{{ version['note']|safe }}</div>
         {% endif %}
+        {% if 'identifiers' in version %}
+        <dl>
         {% for identifier in version['identifiers'] %}
-          <p>
+          <div class="d-flex">
           {% if identifier['scheme'] == 'DOI' %}
-          <strong>DOI</strong>&emsp;<a href="https://doi.org/{{ identifier['id'] }}">{{ identifier['id'] }}</a>
+          <dt>DOI</dt>
+          <dd><a href="https://doi.org/{{ identifier['id'] }}">{{ identifier['id'] }}</a></dd>
           {% elif identifier['scheme'] %}
-          <strong>{{ identifier['scheme'] }}</strong>&emsp;{{ identifier['id'] }}
+          <dt>{{ identifier['scheme'] }}</dt>
+          <dd>{{ identifier['id'] }}</dd>
           {% else %}
-          <strong>Identifier</strong>&emsp;{{ identifier['id'] }}
+          <dt>Identifier</dt>
+          <dd>{{ identifier['id'] }}</dd>
           {% endif %}
-          </p>
+          </div>
         {% endfor %}
+        </dl>
+        {% endif %}
         {% if 'locations' in version or current_user.is_authenticated %}
         <ul class="locations list-inline">
         {% for location in version['locations'] %}
           {% if location['type'] == 'website' %}
-          <li><a class="btn btn-sm btn-special" href="{{ location['url'] }}">Visit website</a></li>
+          <li class="list-inline-item"><a class="btn btn-sm btn-location" href="{{ location['url'] }}">Visit website</a></li>
           {% elif location['type'] == 'document' %}
-          <li><a class="btn btn-sm btn-special" href="{{ location['url'] }}">View specification</a></li>
+          <li class="list-inline-item"><a class="btn btn-sm btn-location" href="{{ location['url'] }}">View specification</a></li>
           {% else %}
-          <li><a class="btn btn-sm btn-special" href="{{ location['url'] }}">View specification in {{ location['type'] }} format</a></li>
+          <li class="list-inline-item"><a class="btn btn-sm btn-location" href="{{ location['url'] }}">View specification in {{ location['type'] }} format</a></li>
           {% endif %}
         {% endfor %}
         {% if current_user.is_authenticated %}
-          <li><a class="btn btn-warning" href="{{ url_for('main.edit_version', table='m', number=record.doc_id, index=version['index']) }}">Edit version</a></li>
+          <li class="list-inline-item"><a class="btn btn-outline-primary" href="{{ url_for('main.edit_version', table='m', number=record.doc_id, index=version['index']) }}">Edit version</a></li>
         {% endif %}
         </ul>
         {% endif %}
@@ -157,10 +168,10 @@
         {% if 'locations' in mapping or current_user.is_authenticated %}
         <ul class="locations list-inline">
         {% for location in mapping['locations'] %}
-          <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'document' %}View documentation{% else %}Download {{ location['type'] }}{% endif %}</a></li>
+          <li class="list-inline-item"><a class="btn btn-location" href="{{ location['url'] }}">{% if location['type'] == 'document' %}View documentation{% else %}Download {{ location['type'] }}{% endif %}</a></li>
         {% endfor %}
         {% if current_user.is_authenticated %}
-          <li><a class="btn btn-default" href="{{ url_for('main.edit_record', table='c', number=mapping.doc_id) }}">Edit record</a></li>
+          <li class="list-inline-item"><a class="btn btn-outline-primary" href="{{ url_for('main.edit_record', table='c', number=mapping.doc_id) }}">Edit record</a></li>
         {% endif %}
         </ul>
         {% endif %}
@@ -174,10 +185,10 @@
         {% if 'locations' in mapping %}
         <ul class="locations list-inline">
         {% for location in mapping['locations'] %}
-          <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'document' %}View documentation{% else %}Download {{ location['type'] }}{% endif %}</a></li>
+          <li class="list-inline-item"><a class="btn btn-location" href="{{ location['url'] }}">{% if location['type'] == 'document' %}View documentation{% else %}Download {{ location['type'] }}{% endif %}</a></li>
         {% endfor %}
         {% if current_user.is_authenticated %}
-          <li><a class="btn btn-default" href="{{ url_for('main.edit_record', table='c', number=mapping.doc_id) }}">Edit record</a></li>
+          <li class="list-inline-item"><a class="btn btn-outline-primary" href="{{ url_for('main.edit_record', table='c', number=mapping.doc_id) }}">Edit record</a></li>
         {% endif %}
         </ul>
         {% endif %}
@@ -199,13 +210,13 @@
         <ul class="locations list-inline">
         {% for location in tool['locations'] %}
           {% if location['type'] == 'website' %}
-          <li><a class="btn btn-special" href="{{ location['url'] }}">Visit website</a></li>
+          <li class="list-inline-item"><a class="btn btn-location" href="{{ location['url'] }}">Visit website</a></li>
           {% elif location['type'] == 'document' %}
-          <li><a class="btn btn-special" href="{{ location['url'] }}">View documentation</a></li>
+          <li class="list-inline-item"><a class="btn btn-location" href="{{ location['url'] }}">View documentation</a></li>
           {% elif location['type'] == 'application' %}
-          <li><a class="btn btn-special" href="{{ location['url'] }}">Use tool online</a></li>
+          <li class="list-inline-item"><a class="btn btn-location" href="{{ location['url'] }}">Use tool online</a></li>
           {% elif location['type'] == 'service' %}
-          <li><a class="btn btn-special" href="{{ location['url'] }}">Service endpoint</a></li>
+          <li class="list-inline-item"><a class="btn btn-location" href="{{ location['url'] }}">Service endpoint</a></li>
           {% endif %}
         {% endfor %}
         </ul>
@@ -228,7 +239,7 @@
         {% if 'locations' in user %}
         <ul class="locations list-inline">
         {% for location in user['locations'] %}
-          <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
+          <li class="list-inline-item"><a class="btn btn-location" href="{{ location['url'] }}">{% if location['type'] == 'website' %}View website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
         {% endfor %}
         </ul>
       {% endif %}
@@ -267,10 +278,10 @@
         {% if 'locations' in endorsement or current_user.is_authenticated %}
         <ul class="locations list-inline">
         {% for location in endorsement['locations'] %}
-          <li><a class="btn btn-special" href="{{ location['url'] }}">View endorsement</a></li>
+          <li class="list-inline-item"><a class="btn btn-location" href="{{ location['url'] }}">View endorsement</a></li>
         {% endfor %}
         {% if current_user.is_authenticated %}
-          <li><a class="btn btn-default" href="{{ url_for('main.edit_record', table='e', number=endorsement.doc_id) }}">Edit record</a></li>
+          <li class="list-inline-item"><a class="btn btn-outline-primary" href="{{ url_for('main.edit_record', table='e', number=endorsement.doc_id) }}">Edit record</a></li>
         {% endif %}
         </ul>
         {% endif %}
@@ -281,11 +292,11 @@
   {% if current_user.is_authenticated %}
   <aside>
     <div class="form-group">
-      <a href="{{ url_for('main.edit_record', table='m', number=record.doc_id) }}" class="btn btn-default">Edit this record</a>
+      <a href="{{ url_for('main.edit_record', table='m', number=record.doc_id) }}" class="btn btn-outline-success">Edit this record</a>
       {% if versions %}
-      <a href="{{ url_for('main.edit_version', table='m', number=record.doc_id) }}" class="btn btn-default">Add another version</a>
+      <a href="{{ url_for('main.edit_version', table='m', number=record.doc_id) }}" class="btn btn-outline-primary">Add another version</a>
       {% else %}
-      <a href="{{ url_for('main.edit_version', table='m', number=record.doc_id) }}" class="btn btn-default">Add version information</a>
+      <a href="{{ url_for('main.edit_version', table='m', number=record.doc_id) }}" class="btn btn-outline-primary">Add version information</a>
       {% endif %}
     </div>
   </aside>

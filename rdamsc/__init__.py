@@ -110,6 +110,7 @@ def create_app(test_config=None):
         return {
             'toURLSlug': to_url_slug,
             'fromURLSlug': from_url_slug,
-            'hasDay': has_day}
+            'hasDay': has_day,
+            'isList': is_list}
 
     return app

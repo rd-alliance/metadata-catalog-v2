@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
-{% from "macros-forms.html" import state, errors %}
+{% from "macros-forms.html" import state, errors with context %}
 {% block title %}Sign in{% endblock %}
 {% block main %}
   <p>In order to contribute changes to the Catalog, you must sign in.</p>
   {% if providers %}
   <p>You can sign in with one of these OpenID Connect providers:</p>
-  <ul>
+  <ul class="list-inline d-flex justify-content-around align-content-center flex-wrap">
     {% for p in providers %}
-    <li><a href="{{ url_for('auth.oauth_authorize', provider=p['slug']) }}">Sign in with {{ p['name'] }}</a></li>
+    <li class="list-inline-item my-1"><a class="btn btn-outline-primary" href="{{ url_for('auth.oauth_authorize', provider=p['slug']) }}">{% if p['icon'] %}<span class="{{ p['icon'] }}"></span>&ensp;{% endif %}Sign in with {{ p['name'] }}</a></li>
     {% endfor %}
   </ul>
   {% endif %}
@@ -15,46 +15,49 @@
     To find the URL for your OpenID account, log in to the Research Data Alliance
     website and view your own profile. Take the URL of that page and add
     <code>/openid</code>.</p>
+  <p>
+    <form action="{{ url_for('auth.login') }}" method=post>
+      {{ form.hidden_tag() }}
+      <div class="row{{ state(form.openid) }}">
+        {{ form.openid.label(class="col-md-3 text-md-right col-form-label") }}
+        <div class="col-md-9 input-group">
+          {{ form.openid(placeholder="URL for your OpenID account", class="form-control") }}
+          <span class="input-group-append">
+            <button class="btn btn-success">Sign in</button>
+          </span>
+        </div>
+        <input type="hidden" name="next" value="{{ next }}">
+      </div>
+      {{ errors(form.openid) }}
+    </form>
+  </p>
   <p>If you have an account with another OpenID v2 provider, you can use that
     instead. Please consult your provider's documentation for the right URL to
     use; some known URL patterns are provided below.</p>
-  <form action="{{ url_for('auth.login') }}" method=post class="form-inline">
-    {{ form.hidden_tag() }}
-    <div class="form-group form-group-wide {{ state(form.openid) }}">
-      {{ form.openid.label(class="control-label") }}
-      <div class="input-group">
-        {{ form.openid(placeholder="URL for your OpenID account", class="form-control") }}
-        <span class="input-group-btn">
-          <button class="btn">Sign in</button>
-        </span>
-      </div>
-      <input type="hidden" name="next" value="{{ next }}">
+  <dl class="dl-striped">
+    <div class="row">
+      <dt class="col-md-5 col-lg-4">Research Data Alliance</dt>
+      <dd class="col-md-7 col-lg-8"><code>https://www.rd-alliance.org/users/</code>(username)<code>/openid</code></dd>
     </div>
-    {{ errors(form.openid) }}
-  </form>
-  <table class="table table-striped" style="margin-top:16px;">
-    <tr>
-      <th>Research Data Alliance</th>
-      <td><code>https://www.rd-alliance.org/users/</code>(username)<code>/openid</code></td>
-    </tr>
-    <tr>
-      <th>AOL</th>
-      <td><code>https://openid.aol.com/</code>(screenname)</td>
-    </tr>
-    <tr>
-      <th>Launchpad/Ubuntu One</th>
-      <td><code>https://launchpad.net/~</code>(username)</td>
-    </tr>
-    <tr>
-      <th>LiveJournal</th>
-      <td><code>https://</code>(username)<code>.livejournal.com/</code></td>
-    </tr>
-    <tr>
-      <th>Steam</th>
-      <td><code>https://steamcommunity.com/openid/id/</code>(64-character ID)</td>
-    <tr>
-      <th>WordPress</th>
-      <td><code>https://</code>(blog)<code>.wordpress.com/</code></td>
-    </tr>
-  </table>
+    <div class="row">
+      <dt class="col-md-5 col-lg-4">AOL</dt>
+      <dd class="col-md-7 col-lg-8"><code>https://openid.aol.com/</code>(screenname)</dd>
+    </div>
+    <div class="row">
+      <dt class="col-md-5 col-lg-4">Launchpad/Ubuntu One</dt>
+      <dd class="col-md-7 col-lg-8"><code>https://launchpad.net/~</code>(username)</dd>
+    </div>
+    <div class="row">
+      <dt class="col-md-5 col-lg-4">LiveJournal</dt>
+      <dd class="col-md-7 col-lg-8"><code>https://</code>(username)<code>.livejournal.com/</code></dd>
+    </div>
+    <div class="row">
+      <dt class="col-md-5 col-lg-4">Steam</dt>
+      <dd class="col-md-7 col-lg-8"><code>https://steamcommunity.com/openid/id/</code>(64-character ID)</dd>
+    </div>
+    <div class="row">
+      <dt class="col-md-5 col-lg-4">WordPress</dt>
+      <dd class="col-md-7 col-lg-8"><code>https://</code>(blog)<code>.wordpress.com/</code></dd>
+    </div>
+  </dl>
 {% endblock %}

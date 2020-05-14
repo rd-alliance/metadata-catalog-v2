@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros-forms.html" import state, errors %}
+{% from "macros-forms.html" import state, errors with context %}
 {% block title %}{% if index is none() %}Add new version{% else %}Edit {% if number in form %}version {{ form.number.data }}{% else %}unnumbered version{% endif %}{% endif %}{% endblock %}
 {% block main %}
   <form action="{{ url_for('main.edit_version', table='c', number=doc_id, index=index) }}" method="post"  accept-charset="utf-8" class="form-block">
@@ -11,14 +11,14 @@
         {{ form.number(class="form-control", style="width:auto;") }}
       </div>
       {{ errors(form.number) }}
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>Do not preface the version number with "version" or "v".</li>
       </ul>
     </div>
     <div class="form-group">
       {{ form.note.label(class="control-label") }}
       {{ form.note(class="form-control") }}
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>If this version requires some explanation, give it here.</li>
       </ul>
     </div>
@@ -26,7 +26,7 @@
       {{ form.issued.label(class="control-label") }}
       {{ form.issued(class="form-control", style="width:auto;") }}
       {{ errors(form.issued) }}
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>Give the date as yyyy, or yyyy-mm, or yyyy-mm-dd.</li>
       </ul>
     </div>
@@ -37,12 +37,12 @@
       <ol class="form-list">
         {% for f in form.locations %}
         <li>
-          <div class="{{ state(f.url) }}">
+          <div class="form-subgroup{{ state(f.url) }}">
           {{ f.url.label(class="control-label") }}
           {{ f.url(placeholder="URL e.g. https://www...", class="form-control") }}
           {{ errors(f.url) }}
           </div>
-          <div class="{{ state(f['type']) }}">
+          <div class="form-subgroup{{ state(f['type']) }}">
           {{ f['type'].label(class="control-label") }}
           {{ f['type'](class="form-control", style="width:auto;") }}
           {{ errors(f['type']) }}
@@ -50,7 +50,7 @@
         </li>
         {% endfor %}
       </ol>
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>To give several locations, save after adding each one.</li>
       </ul>
     </div>
@@ -61,14 +61,20 @@
       <ol class="form-list">
       {% for f in form.identifiers %}
         <li>
-        {{ f['id'].label(class="control-label") }}
-        {{ f['id'](placeholder="e.g. 10.001/1234", class="form-control") }}
-        {{ f.scheme.label(class="control-label") }}
-        {{ f.scheme(class="form-control", style="width:auto;") }}
+          <div class="form-subgroup{{ state(f['id']) }}">
+          {{ f['id'].label(class="control-label") }}
+          {{ f['id'](placeholder="e.g. 10.001/1234", class="form-control") }}
+          {{ errors(f['id']) }}
+          </div>
+          <div class="form-subgroup{{ state(f.scheme) }}">
+          {{ f.scheme.label(class="control-label") }}
+          {{ f.scheme(class="form-control", style="width:auto;") }}
+          {{ errors(f.scheme) }}
+          </div>
         </li>
       {% endfor %}
       </ol>
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>Provide an identifier, if known, for this particular version of the
           mapping.</li>
         <li>You do not need to repeat the internal Catalog identifier here.</li>
@@ -77,8 +83,8 @@
     </div>
     </fieldset>
     <div class="form-group">
-      <button class="btn btn-primary">Save changes</button>
-      <a href="{{ url_for('main.display', table='c', number=doc_id) }}" class="btn btn-default">Cancel &amp; view record</a>
+      <button class="btn btn-success">Save changes</button>
+      <a href="{{ url_for('main.display', table='c', number=doc_id) }}" class="btn btn-outline-secondary">Cancel &amp; view record</a>
     </div>
   </form>
 {% endblock %}

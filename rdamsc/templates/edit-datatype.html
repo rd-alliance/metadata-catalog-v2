@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros-forms.html" import state, errors %}
+{% from "macros-forms.html" import state, errors with context %}
 {% block title %}{% if doc_id == 0 %}Add new datatype{% else %}Edit record msc:datatype{{ doc_id }}{% endif %}{% endblock %}
 {% block main %}
   <form action="{{ url_for('main.edit_vocabterm', vocab='datatype', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
@@ -9,7 +9,7 @@
       {{ form.label.label(class="control-label") }}
       {{ form.label(placeholder="Type of data", class="form-control") }}
       {{ errors(form.label) }}
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>The type of data as you would like it displayed. Must be unique.</li>
       </ul>
     </div>
@@ -17,15 +17,15 @@
       {{ form.id.label(class="control-label") }}
       {{ form.id(placeholder="https://...", class="form-control") }}
       {{ errors(form.id) }}
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>This should be the URL that would be used to identify the type in
           Linked Data, if known.</li>
       </ul>
     </div>
     </fieldset>
     <div class="form-group">
-      <button class="btn btn-primary">Save changes</button>
-      <a href="{{ url_for('hello') }}" class="btn btn-default">Cancel</a>
+      <button class="btn btn-success">Save changes</button>
+      <a href="{{ url_for('hello') }}" class="btn btn-outline-secondary">Cancel</a>
     </div>
   </form>
 {% endblock %}

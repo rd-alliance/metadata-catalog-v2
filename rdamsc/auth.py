@@ -118,6 +118,7 @@ class GoogleSignIn(OAuthSignIn):
     def __init__(self):
         super(GoogleSignIn, self).__init__('google')
         self.formatted_name = 'Google'
+        self.icon = 'fab fa-google'
         oauth_db = get_oauth_db()
         discovery = oauth_db.get(Query().provider == self.provider_name)
         discovery_url = ('https://accounts.google.com/.well-known/'
@@ -205,6 +206,7 @@ class LinkedinSignIn(OAuthSignIn):
     def __init__(self):
         super(LinkedinSignIn, self).__init__('linkedin')
         self.formatted_name = 'LinkedIn'
+        self.icon = 'fab fa-linkedin'
         self.service = OAuth2Service(
             name=self.provider_name,
             client_id=self.consumer_id,
@@ -242,6 +244,7 @@ class TwitterSignIn(OAuthSignIn):
     def __init__(self):
         super(TwitterSignIn, self).__init__('twitter')
         self.formatted_name = 'Twitter'
+        self.icon = 'fab fa-twitter'
         self.service = OAuth1Service(
             name=self.provider_name,
             consumer_key=self.consumer_id,
@@ -278,6 +281,7 @@ class GithubSignIn(OAuthSignIn):
     def __init__(self):
         super(GithubSignIn, self).__init__('github')
         self.formatted_name = 'GitHub'
+        self.icon = 'fab fa-github'
         self.service = OAuth2Service(
             name=self.provider_name,
             client_id=self.consumer_id,
@@ -319,6 +323,7 @@ class GitlabSignIn(OAuthSignIn):
     def __init__(self):
         super(GitlabSignIn, self).__init__('gitlab')
         self.formatted_name = 'GitLab'
+        self.icon = 'fab fa-gitlab'
         oauth_db = get_oauth_db()
         discovery = oauth_db.get(Query().provider == self.provider_name)
         discovery_url = ('https://gitlab.com/.well-known/'
@@ -402,6 +407,7 @@ class OrcidSignIn(OAuthSignIn):
     def __init__(self):
         super(OrcidSignIn, self).__init__('orcid')
         self.formatted_name = 'ORCID'
+        self.icon = 'fab fa-orcid'
         self.service = OAuth2Service(
             name=self.provider_name,
             client_id=self.consumer_id,
@@ -497,7 +503,8 @@ def login():
                 continue
             providers.append({
                 'name': provider.formatted_name,
-                'slug': provider.provider_name})
+                'slug': provider.provider_name,
+                'icon': provider.icon})
         providers.sort(key=lambda k: k['slug'])
     return render_template(
         'login.html', form=form, providers=providers, next=oid.get_next_url())

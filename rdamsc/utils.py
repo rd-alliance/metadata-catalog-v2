@@ -54,6 +54,13 @@ def has_day(isodate: str):
     return isodate.count('-') == 2
 
 
+def is_list(obj: object):
+    """Returns true if object is a list. Principle use is to determine if a
+    field has undergone validation: unvalidated field.errors is a tuple,
+    validated field.errors is a list."""
+    return isinstance(obj, list)
+
+
 # Utilities used in data
 # ======================
 def clean_error_list(field):

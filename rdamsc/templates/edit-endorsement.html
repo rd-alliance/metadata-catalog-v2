@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros-forms.html" import state, errors %}
+{% from "macros-forms.html" import state, errors with context %}
 {% block title %}{% if doc_id == 0 %}Add new endorsement{% else %}Edit endorsement msc:e{{ doc_id }}{% endif %}{% endblock %}
 {% block main %}
   <form action="{{ url_for('main.edit_record', table='e', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
@@ -8,7 +8,7 @@
     <div class="form-group">
       {{ form.title.label(class="control-label") }}
       {{ form.title(placeholder="Title of document", class="form-control") }}
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>Give the title in sentence case.</li>
       </ul>
     </div>
@@ -16,7 +16,7 @@
       {{ form.description.label(class="control-label") }}
       {{ form.description(class="form-control") }}
       {{ errors(form.description) }}
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>Use this to record any caveats to the endorsement.</li>
         <li>This could indicate if only certain versions of the scheme(s) are
           endorsed.</li>
@@ -29,17 +29,17 @@
       <ol class="form-list">
       {% for f in form.creators %}
         <li>
-          <div class="{{ state(f.givenName) }}">
+          <div class="form-subgroup{{ state(f.givenName) }}">
             {{ f.givenName.label(class="control-label") }}
             {{ f.givenName(class="form-control") }}
             {{ errors(f.givenName) }}
           </div>
-          <div class="{{ state(f.familyName) }}">
+          <div class="form-subgroup{{ state(f.familyName) }}">
             {{ f.familyName.label(class="control-label") }}
             {{ f.familyName(class="form-control") }}
             {{ errors(f.familyName) }}
           </div>
-          <div class="{{ state(f.fullName) }}">
+          <div class="form-subgroup{{ state(f.fullName) }}">
             {{ f.fullName.label(class="control-label") }}
             {{ f.fullName(class="form-control") }}
             {{ errors(f.fullName) }}
@@ -47,7 +47,7 @@
         </li>
       {% endfor %}
       </ol>
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>Give the individual or corporate authors that would appear in a
           citation</li>
         <li>For preference, provide the given name(s) and family name.</li>
@@ -63,7 +63,7 @@
       {{ form.publication.label(class="control-label") }}
       {{ form.publication(class="form-control") }}
       {{ errors(form.publication) }}
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>For a journal article, give the journal name, volume, issue, and
           page range/article number, e.g. <code>&lt;i&gt;IEEE MultiMedia&lt;/i&gt;, 13(2), 84-88</code>.</li>
         <li>For a report, give the location (if applicable) and publisher, e.g.
@@ -74,7 +74,7 @@
       {{ form.issued.label(class="control-label") }}
       {{ form.issued(class="form-control", style="width:auto;") }}
       {{ errors(form.issued) }}
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>Give the date as yyyy, or yyyy-mm, or yyyy-mm-dd.</li>
         <li>Use "endorsement date" if the endorsement has been or may be
           withdrawn at some point.</li>
@@ -91,7 +91,7 @@
       </div>
       {{ errors(form.valid.start) }}
       {{ errors(form.valid.end) }}
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>Give the date as yyyy, or yyyy-mm, or yyyy-mm-dd.</li>
         <li>Use "date considered current" if the endorsement is kept under
           review and may be (or has been) withdrawn.</li>
@@ -104,12 +104,10 @@
       <ol class="form-list">
       {% for f in form.locations %}
         <li>
-          <div class="{{ state(f.url) }}">
+          <div class="form-subgroup{{ state(f.url) }}">
           {{ f.url.label(class="control-label") }}
           {{ f.url(placeholder="URL e.g. https://www...", class="form-control") }}
           {{ errors(f.url) }}
-          </div>
-          <div class="{{ state(f['type']) }}">
           {{ errors(f['type']) }}
           </div>
         </li>
@@ -123,12 +121,12 @@
       <ol class="form-list">
       {% for f in form.identifiers %}
         <li>
-          <div class="{{ state(f['id']) }}">
+          <div class="form-subgroup{{ state(f['id']) }}">
             {{ f['id'].label(class="control-label") }}
             {{ f['id'](placeholder="e.g. 10.001/1234", class="form-control") }}
             {{ errors(f['id']) }}
           </div>
-          <div class="{{ state(f.scheme) }}">
+          <div class="form-subgroup{{ state(f.scheme) }}">
             {{ f.scheme.label(class="control-label") }}
             {{ f.scheme(class="form-control", style="width:auto;") }}
             {{ errors(f.scheme) }}
@@ -149,18 +147,18 @@
       {{ form.originators.label(class="control-label") }}
       {{ form.originators(class="form-control") }}
       {{ errors(form.originators) }}
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>Note that schemes are assumed to be endorsed by their maintaining
           organizations; do not record such endorsements here.</li>
       </ul>
     </div>
     </fieldset>
     <div class="form-group">
-      <button class="btn btn-primary">Save changes</button>
+      <button class="btn btn-success">Save changes</button>
       {% if doc_id == 0 %}
-      <a href="{{ url_for('hello') }}" class="btn btn-default">Cancel</a>
+      <a href="{{ url_for('hello') }}" class="btn btn-outline-secondary">Cancel</a>
       {% else %}
-      <a href="{{ url_for('main.display', table='e', number=doc_id) }}" class="btn btn-default">Cancel &amp; view record</a>
+      <a href="{{ url_for('main.display', table='e', number=doc_id) }}" class="btn btn-outline-secondary">Cancel &amp; view record</a>
       {% endif %}
     </div>
   </form>

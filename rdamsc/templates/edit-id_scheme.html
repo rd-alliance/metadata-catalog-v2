@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros-forms.html" import state, errors %}
+{% from "macros-forms.html" import state, errors with context %}
 {% block title %}{% if doc_id == 0 %}Add new identifier scheme{% else %}Edit identifier scheme {{ form.id.data }}{% endif %}{% endblock %}
 {% block main %}
   <form action="{{ url_for('main.edit_vocabterm', vocab='id_scheme', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
@@ -13,7 +13,7 @@
       {{ form.id(disabled=True, class="form-control") }}
       {% endif %}
       {{ errors(form.id) }}
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>The value for this identifier scheme to use in the database (cannot be
           changed once set).</li>
       </ul>
@@ -22,22 +22,22 @@
       {{ form.label.label(class="control-label") }}
       {{ form.label(placeholder="Link type", class="form-control") }}
       {{ errors(form.label) }}
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>The identifier scheme as you would like it displayed.</li>
       </ul>
     </div>
     <div class="form-group{{ state(form.applies) }}">
       {{ form.applies.label(class="control-label") }}
-      {{ form.applies(class="form-control") }}
+      {{ form.applies(divclass="custom-control custom-switch", class="custom-control-input", labelclass="custom-control-label") }}
       {{ errors(form.applies) }}
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>The types of record for which this identifier scheme is valid.</li>
       </ul>
     </div>
     </fieldset>
     <div class="form-group">
-      <button class="btn btn-primary">Save changes</button>
-      <a href="{{ url_for('hello') }}" class="btn btn-default">Cancel</a>
+      <button class="btn btn-success">Save changes</button>
+      <a href="{{ url_for('hello') }}" class="btn btn-outline-secondary">Cancel</a>
     </div>
   </form>
 {% endblock %}

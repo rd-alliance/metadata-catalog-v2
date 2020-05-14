@@ -8,31 +8,25 @@
   {% block head %}
   <title>{% block title %}{% endblock %}{% if self.title() %} – {% endif %}Metadata Standards Catalog</title>
   <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,400i,700" rel="stylesheet">
-  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bootstrap.min.css') }}" />
-  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/msc.css') }}" />
-  <link rel="stylesheet" type="text/css" href="https://netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css">
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/msc.min.css') }}" />
+  <script src="https://kit.fontawesome.com/3a0c141ff6.js" crossorigin="anonymous"></script>
   {% endblock %}
 </head>
 <body>
-  <header class="navbar navbar-inverse navbar-static-top">
+  <header class="navbar navbar-dark bg-primary navbar-expand-md">
     <nav class="container">
-      <div class="navbar-header">
-        <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
-          <span class="sr-only">Toggle navigation</span>
-          <span class="icon-bar"></span>
-          <span class="icon-bar"></span>
-          <span class="icon-bar"></span>
-        </button>
-        <a class="navbar-brand" href="{{ url_for('hello') }}">Metadata Standards Catalog</a>
-      </div>
+      <a class="navbar-brand" href="{{ url_for('hello') }}">Metadata Standards Catalog</a>
+      <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+      </button>
       <div id="navbar" class="collapse navbar-collapse">
-        <ul class="nav navbar-nav navbar-right">
-          <li><a href="{{ url_for('search.scheme_search') }}">Search</a></li>
+        <ul class="navbar-nav ml-auto">
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('search.scheme_search') }}">Search</a></li>
           {% if current_user.is_authenticated %}
-          <li><a href="{{ url_for('auth.edit_profile') }}">My profile</a></li>
-          <li><a href="{{ url_for('auth.logout') }}">Sign out</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.edit_profile') }}">My profile</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.logout') }}">Sign out</a></li>
           {% else %}
-          <li><a href="{{ url_for('auth.login') }}">Sign in</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.login') }}">Sign in</a></li>
           {% endif %}
         </ul>
       </div>
@@ -50,15 +44,13 @@
   {% endwith %}
   {% block main %}{% endblock %}
   </main>
-  <footer class="navbar">
-    <div class="container">
-      <ul class="nav navbar-nav">
-        <li><a href="https://www.github.com/rd-alliance/metadata-catalog-dev"><i class="fa fa-github-square"></i>&ensp;github</a></li>
-        <li><a href="https://twitter.com/resdatall"><i class="fa fa-twitter-square"></i>&ensp;@twitter</a></li>
-        <li><a href="https://www.linkedin.com/profile/view?id=272003890&trk=nav_responsive_tab_profile"><i class="fa fa-linkedin-square"></i>&ensp;linkedin</a></li>
-        <li><a href="https://www.facebook.com/pages/Research-Data-Alliance/459608890798924"><i class="fa fa-facebook-square"></i>&ensp;facebook</a></li>
-      </ul>
-    </div>
+  <footer class="navbar navbar-expand-sm justify-content-center">
+    <ul class="navbar-nav">
+      <li class="nav-item"><a class="nav-link" href="https://www.github.com/rd-alliance/metadata-catalog-dev"><span class="fab fa-github"></span>&ensp;github</a></li>
+      <li class="nav-item"><a class="nav-link" href="https://twitter.com/resdatall"><span class="fab fa-twitter"></span>&ensp;@twitter</a></li>
+      <li class="nav-item"><a class="nav-link" href="https://www.linkedin.com/profile/view?id=272003890&trk=nav_responsive_tab_profile"><span class="fab fa-linkedin"></span>&ensp;linkedin</a></li>
+      <li class="nav-item"><a class="nav-link" href="https://www.facebook.com/pages/Research-Data-Alliance/459608890798924"><span class="fab fa-facebook"></span>&ensp;facebook</a></li>
+    </ul>
   </footer>
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
   <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>

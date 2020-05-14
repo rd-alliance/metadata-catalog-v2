@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros-forms.html" import state, errors %}
+{% from "macros-forms.html" import state, errors with context %}
 {% block title %}{% if doc_id == 0 %}Add new tool{% else %}Edit tool msc:t{{ doc_id }}{% endif %}{% endblock %}
 {% block main %}
   <form action="{{ url_for('main.edit_record', table='t', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
@@ -14,7 +14,7 @@
       {{ form.description.label(class="control-label") }}
       {{ form.description(class="form-control") }}
       {{ errors(form.description) }}
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>Please provide a short description of the intended use of the tool,
           and its capabilities.</li>
       </ul>
@@ -31,12 +31,12 @@
       <ol class="form-list">
       {% for f in form.locations %}
         <li>
-          <div class="{{ state(f.url) }}">
+          <div class="form-subgroup{{ state(f.url) }}">
           {{ f.url.label(class="control-label") }}
           {{ f.url(placeholder="URL e.g. https://www...", class="form-control") }}
           {{ errors(f.url) }}
           </div>
-          <div class="{{ state(f['type']) }}">
+          <div class="form-subgroup{{ state(f['type']) }}">
           {{ f['type'].label(class="control-label") }}
           {{ f['type'](class="form-control", style="width:auto;") }}
           {{ errors(f['type']) }}
@@ -52,12 +52,12 @@
       <ol class="form-list">
       {% for f in form.identifiers %}
         <li>
-          <div class="{{ state(f['id']) }}">
+          <div class="form-subgroup{{ state(f['id']) }}">
             {{ f['id'].label(class="control-label") }}
             {{ f['id'](placeholder="e.g. 10.001/1234", class="form-control") }}
             {{ errors(f['id']) }}
           </div>
-          <div class="{{ state(f.scheme) }}">
+          <div class="form-subgroup{{ state(f.scheme) }}">
             {{ f.scheme.label(class="control-label") }}
             {{ f.scheme(class="form-control", style="width:auto;") }}
             {{ errors(f.scheme) }}
@@ -73,17 +73,17 @@
       <ol class="form-list">
       {% for f in form.creators %}
         <li>
-          <div class="{{ state(f.givenName) }}">
+          <div class="form-subgroup{{ state(f.givenName) }}">
             {{ f.givenName.label(class="control-label") }}
             {{ f.givenName(class="form-control") }}
             {{ errors(f.givenName) }}
           </div>
-          <div class="{{ state(f.familyName) }}">
+          <div class="form-subgroup{{ state(f.familyName) }}">
             {{ f.familyName.label(class="control-label") }}
             {{ f.familyName(class="form-control") }}
             {{ errors(f.familyName) }}
           </div>
-          <div class="{{ state(f.fullName) }}">
+          <div class="form-subgroup{{ state(f.fullName) }}">
             {{ f.fullName.label(class="control-label") }}
             {{ f.fullName(class="form-control") }}
             {{ errors(f.fullName) }}
@@ -91,7 +91,7 @@
         </li>
       {% endfor %}
       </ol>
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>For preference, provide the given name(s) and family name.</li>
         <li>Use "full name" to override the assumed given&ndash;family name
           order, or if you are not sure how the name breaks down into given
@@ -105,7 +105,7 @@
       {{ form.supported_schemes.label(class="control-label") }}
       {{ form.supported_schemes(class="form-control") }}
       {{ errors(form.supported_schemes) }}
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>Select a scheme if the tool accepts metadata conforming to it as
           an input, or emits metadata conforming to it as an output.</li>
       </ul>
@@ -120,17 +120,17 @@
       {{ form.funders(class="form-control") }}
       {{ errors(form.funders) }}
     </div>
-    <p class="help-block">
+    <p class="form-text text-muted">
       If the record you need isn't listed, save this one and create the other
       record: you will be able to add the relationship from the other record.
     </p>
     </fieldset>
     <div class="form-group">
-      <button class="btn btn-primary">Save changes</button>
+      <button class="btn btn-success">Save changes</button>
       {% if doc_id == 0 %}
-      <a href="{{ url_for('hello') }}" class="btn btn-default">Cancel</a>
+      <a href="{{ url_for('hello') }}" class="btn btn-outline-secondary">Cancel</a>
       {% else %}
-      <a href="{{ url_for('main.display', table='t', number=doc_id) }}" class="btn btn-default">Cancel &amp; view record</a>
+      <a href="{{ url_for('main.display', table='t', number=doc_id) }}" class="btn btn-outline-secondary">Cancel &amp; view record</a>
       {% endif %}
     </div>
   </form>

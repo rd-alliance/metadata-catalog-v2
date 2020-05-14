@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros-forms.html" import state, errors %}
+{% from "macros-forms.html" import state, errors with context %}
 {% block title %}{% if doc_id == 0 %}Add new metadata scheme{% else %}Edit record msc:m{{ doc_id }}{% endif %}{% endblock %}
 {% block main %}
   <form action="{{ url_for('main.edit_record', table='m', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
@@ -9,7 +9,7 @@
       {{ form.title.label(class="control-label") }}
       {{ form.title(placeholder="Name of scheme", class="form-control") }}
       {{ errors(form.title) }}
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>If the scheme is known by an abbreviation, put this at the start of
           the name, then give the expanded form in parentheses, e.g. “SDMX
           (Statistical Data and Metadata Exchange)”.</li>
@@ -23,7 +23,7 @@
       {{ form.description.label(class="control-label") }}
       {{ form.description(class="form-control") }}
       {{ errors(form.description) }}
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>This could indicate if the scheme is used to create standalone metadata
           records, or insert metadata into data files, or is in fact a data format
           that includes metadata elements.</li>
@@ -51,7 +51,7 @@
       {{ errors(f) }}
       {% endfor %}
       </div>
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>Use domains, micro-thesaurus names or concepts from the
           <a href="http://vocabularies.unesco.org/browser/thesaurus/en/" target="_blank">UNESCO Thesaurus</a>.</li>
       </ul>
@@ -60,7 +60,7 @@
       {{ form.dataTypes.label(class="control-label") }}
       {{ form.dataTypes(class="form-control") }}
       {{ errors(form.dataTypes) }}
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>Provide types of data which this scheme is usually used to describe.</li>
         <li>You can add new types from the home page.</li>
       </ul>
@@ -72,12 +72,12 @@
       <ol class="form-list">
         {% for f in form.locations %}
         <li>
-          <div class="{{ state(f.url) }}">
+          <div class="form-subgroup{{ state(f.url) }}">
           {{ f.url.label(class="control-label") }}
           {{ f.url(placeholder="URL e.g. https://www...", class="form-control") }}
           {{ errors(f.url) }}
           </div>
-          <div class="{{ state(f['type']) }}">
+          <div class="form-subgroup{{ state(f['type']) }}">
           {{ f['type'].label(class="control-label") }}
           {{ f['type'](class="form-control", style="width:auto;") }}
           {{ errors(f['type']) }}
@@ -85,7 +85,7 @@
         </li>
         {% endfor %}
       </ol>
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>To give several locations, save after adding each one.</li>
       </ul>
     </div>
@@ -96,12 +96,12 @@
       <ol class="form-list">
       {% for f in form.identifiers %}
         <li>
-          <div class="{{ state(f['id']) }}">
+          <div class="form-subgroup{{ state(f['id']) }}">
             {{ f['id'].label(class="control-label") }}
             {{ f['id'](placeholder="e.g. 10.001/1234", class="form-control") }}
             {{ errors(f['id']) }}
           </div>
-          <div class="{{ state(f.scheme) }}">
+          <div class="form-subgroup{{ state(f.scheme) }}">
             {{ f.scheme.label(class="control-label") }}
             {{ f.scheme(class="form-control", style="width:auto;") }}
             {{ errors(f.scheme) }}
@@ -109,7 +109,7 @@
         </li>
       {% endfor %}
       </ol>
-      <ul class="help-block">
+      <ul class="form-text text-muted">
         <li>Provide an identifier, if known, for the scheme across all versions.
           To identify individual versions, provide details under the version instead.</li>
         <li>Do not need repeat the internal Catalog identifier here.</li>
@@ -164,17 +164,17 @@
       {{ form.endorsements(class="form-control") }}
       {{ errors(form.endorsements) }}
     </div>
-    <p class="help-block">
+    <p class="form-text text-muted">
       If the record you need isn't listed, save this one and create the other
       record: you will be able to add the relationship from the other record.
     </p>
     </fieldset>
     <div class="form-group">
-      <button class="btn btn-primary">Save changes</button>
+      <button class="btn btn-success">Save changes</button>
       {% if doc_id == 0 %}
-      <a href="{{ url_for('hello') }}" class="btn btn-default">Cancel</a>
+      <a href="{{ url_for('hello') }}" class="btn btn-outline-secondary">Cancel</a>
       {% else %}
-      <a href="{{ url_for('main.display', table='m', number=doc_id) }}" class="btn btn-default">Cancel &amp; view record</a>
+      <a href="{{ url_for('main.display', table='m', number=doc_id) }}" class="btn btn-outline-secondary">Cancel &amp; view record</a>
       {% endif %}
     </div>
   </form>

@@ -403,3 +403,10 @@ def test_create_view_records(client, auth, app, page, data_db):
         db = json.load(f)
         rel_entry = db.get('rel', dict()).get('1', dict())
         assert {"@id": "msc:e1"} == rel_entry
+
+
+def test_create_terms(client, auth, app, page, data_db):
+    auth.login()
+
+    # Create Datatype
+    response = client.get('/edit/datatype0')

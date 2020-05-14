@@ -4,12 +4,22 @@
   {% if 'description' in record %}
   <div class="description">{{ record['description']|safe }}</div>
   {% endif %}
+  {% if 'types' in record %}
+  <div class="types">
+    <dl class="row justify-content-end">
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right">Tool type</dt>
+      {% for type in record['types'] %}
+      <dd class="col-sm-7 col-md-8 col-lg-9">{{ type }}</dd>
+      {% endfor %}
+    </dl>
+  </div>
+  {% endif %}
   {% if 'locations' in record %}
   <div class="locations">
     <h2>Links and documentation</h2>
     <ul class="locations list-inline">
     {% for location in record['locations'] %}
-      <li><a class="btn btn-special" href="{{ location['url'] }}">{% if location['type'] == 'website' %}Visit website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
+      <li class="list-inline-item"><a class="btn btn-location" href="{{ location['url'] }}">{% if location['type'] == 'website' %}Visit website{% elif location['type'] == 'email' %}Send email{% else %}More information{% endif %}</a></li>
     {% endfor %}
     </ul>
   </div>
@@ -76,10 +86,10 @@
         {% if 'locations' in endorsement or current_user.is_authenticated %}
         <ul class="locations list-inline">
         {% for location in endorsement['locations'] %}
-          <li><a class="btn btn-special" href="{{ location['url'] }}">View endorsement</a></li>
+          <li class="list-inline-item"><a class="btn btn-location" href="{{ location['url'] }}">View endorsement</a></li>
         {% endfor %}
         {% if current_user.is_authenticated %}
-          <li><a class="btn btn-default" href="{{ url_for('main.edit_record', table='e', number=endorsement.doc_id) }}">Edit record</a></li>
+          <li class="list-inline-item"><a class="btn btn-outline-primary" href="{{ url_for('main.edit_record', table='e', number=endorsement.doc_id) }}">Edit record</a></li>
         {% endif %}
         </ul>
         {% endif %}
@@ -89,15 +99,19 @@
   {% endif %}
   <div class="identifiers">
     <h2>Identifiers</h2>
-    <dl class="dl-horizontal">
-      <dt>Internal MSC ID</dt><dd><a href="{{ url_for('main.display', table='g', number=record.doc_id) }}">msc:g{{ record.doc_id }}</a></dd>
+    <dl class="row">
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right">Internal MSC ID</dt>
+      <dd class="col-sm-7 col-md-8 col-lg-9"><a href="{{ url_for('main.display', table='g', number=record.doc_id) }}">msc:g{{ record.doc_id }}</a></dd>
     {% for identifier in record['identifiers'] %}
       {% if identifier['scheme'] == 'DOI' %}
-      <dt>DOI</dt><dd><a href="https://doi.org/{{ identifier['id'] }}">{{ identifier['id'] }}</a></dd>
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right">DOI</dt>
+      <dd class="col-sm-7 col-md-8 col-lg-9"><a href="https://doi.org/{{ identifier['id'] }}">{{ identifier['id'] }}</a></dd>
       {% elif identifier['scheme'] %}
-      <dt>{{ identifier['scheme'] }}</dt><dd>{{ identifier['id'] }}</dd>
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right">{{ identifier['scheme'] }}</dt>
+      <dd class="col-sm-7 col-md-8 col-lg-9">{{ identifier['id'] }}</dd>
       {% else %}
-      <dt>Other identifier</dt><dd>{{ identifier['id'] }}</dd>
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right">Other identifier</dt>
+      <dd class="col-sm-7 col-md-8 col-lg-9">{{ identifier['id'] }}</dd>
       {% endif %}
     {% endfor %}
     </dl>
@@ -105,7 +119,7 @@
   {% if current_user.is_authenticated %}
   <aside>
     <p>
-      <a href="{{ url_for('main.edit_record', table='g', number=record.doc_id) }}" class="btn btn-default">Edit this record</a>
+      <a href="{{ url_for('main.edit_record', table='g', number=record.doc_id) }}" class="btn btn-outline-success">Edit this record</a>
     </p>
   </aside>
   {% endif %}
