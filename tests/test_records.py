@@ -409,4 +409,41 @@ def test_create_terms(client, auth, app, page, data_db):
     auth.login()
 
     # Create Datatype
-    response = client.get('/edit/datatype0')
+    response = client.get('/edit/datatype100', follow_redirects=True)
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains("<h1>Add new datatype</h1>")
+    page.assert_contains(
+        "You are trying to update a record that doesn't exist.")
+    datatype1 = data_db.get_formdata('datatype1')
+    datatype1.update(page.get_all_hidden())
+    response = client.post(
+        '/edit/datatype0', data=datatype1, follow_redirects=True)
+
+    with open(app.config['TERM_DATABASE_PATH']) as f:
+        db = json.load(f)
+        rel_entry = db.get('datatype', dict()).get('1', dict())
+        assert data_db.datatype1 == rel_entry
+
+
+def test_auth_protection(client, auth, app, page, data_db):
+    data_db.write_db()
+    data_db.write_terms()
+
+    response = client.get('/edit/m1', follow_redirects=True)
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains("Please sign in to access this page.")
+    page.assert_contains("<h1>Sign in</h1>")
+
+    response = client.get('/edit/m2/0', follow_redirects=True)
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains("Please sign in to access this page.")
+    page.assert_contains("<h1>Sign in</h1>")
+
+    response = client.get('/edit/datatype1', follow_redirects=True)
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains("Please sign in to access this page.")
+    page.assert_contains("<h1>Sign in</h1>")

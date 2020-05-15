@@ -501,10 +501,12 @@ def login():
             if provider.provider_name not in current_app.config.get(
                     'OAUTH_CREDENTIALS'):
                 continue
-            providers.append({
+            provider_details = {
                 'name': provider.formatted_name,
-                'slug': provider.provider_name,
-                'icon': provider.icon})
+                'slug': provider.provider_name}
+            if hasattr(provider, 'icon'):
+                provider_details['icon'] = provider.icon
+            providers.append(provider_details)
         providers.sort(key=lambda k: k['slug'])
     return render_template(
         'login.html', form=form, providers=providers, next=oid.get_next_url())

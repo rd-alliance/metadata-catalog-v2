@@ -18,9 +18,9 @@ from flask import current_app, g, url_for
 # See http://tinydb.readthedocs.io/
 from tinydb import TinyDB, Query
 from tinydb.database import Document
-# See http://rdflib.readthedocs.io/
 # See https://github.com/eugene-eeo/tinyrecord
 from tinyrecord import transaction
+# See http://rdflib.readthedocs.io/
 import rdflib
 from rdflib import Graph, Literal, Namespace, URIRef
 from rdflib.namespace import SKOS, RDF

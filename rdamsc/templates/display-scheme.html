@@ -19,7 +19,7 @@
     <p class="col-sm-3 col-md-2 text-sm-right">Used for</p>
     <ul class="col-sm-9 col-md-10 list-inline">
     {% for type in record['dataTypes'] %}
-      <li class="list-inline-item"><a class="btn btn-datatype" href="{{ url_for('search.subject', number=type.doc_id) }}">{{ type['label'] }}</a></li>
+      <li class="list-inline-item"><a class="btn btn-datatype" href="{{ url_for('search.dataType', number=type.doc_id) }}">{{ type['label'] }}</a></li>
     {% endfor %}
     </ul>
   </div>
