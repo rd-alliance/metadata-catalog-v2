@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "macros-forms.html" import state, errors with context %}
-{% block title %}{% if doc_id == 0 %}Add new metadata scheme{% else %}Edit record msc:m{{ doc_id }}{% endif %}{% endblock %}
+{% block title %}{% if doc_id == 0 %}Add new metadata scheme{% else %}Edit metadata scheme msc:m{{ doc_id }}{% endif %}{% endblock %}
 {% block main %}
   <form action="{{ url_for('main.edit_record', table='m', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
     {{ form.hidden_tag() }}

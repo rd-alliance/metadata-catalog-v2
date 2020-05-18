@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "macros-forms.html" import state, errors with context %}
-{% block title %}{% if doc_id == 0 %}Add new organization{% else %}Edit record msc:g{{ doc_id }}{% endif %}{% endblock %}
+{% block title %}{% if doc_id == 0 %}Add new organization{% else %}Edit organization msc:g{{ doc_id }}{% endif %}{% endblock %}
 {% block main %}
   <form action="{{ url_for('main.edit_record', table='g', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
     {{ form.hidden_tag() }}
