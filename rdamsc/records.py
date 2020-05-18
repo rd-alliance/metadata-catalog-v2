@@ -1950,7 +1950,7 @@ def edit_vocabterm(vocab, number):
         form_data = form.data
         # Save form data to database
         error = record.save_gui_input(form_data)
-        if record.doc_id:
+        if number:
             # Editing an existing record
             if error:
                 flash(error, 'error')
