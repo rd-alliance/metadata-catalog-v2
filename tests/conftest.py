@@ -434,28 +434,28 @@ class PageActions(object):
 
 @pytest.fixture
 def app():
-    inst_path = tempfile.mkdtemp()
+    with tempfile.TemporaryDirectory() as inst_path:
+        app = create_app({
+            'TESTING': True,
+            'MAIN_DATABASE_PATH': os.path.join(inst_path, 'data', 'db.json'),
+            'VOCAB_DATABASE_PATH': os.path.join(inst_path, 'data', 'vocab.json'),
+            'TERM_DATABASE_PATH': os.path.join(inst_path, 'data', 'terms.json'),
+            'USER_DATABASE_PATH': os.path.join(inst_path, 'users', 'db.json'),
+            'OAUTH_DATABASE_PATH': os.path.join(inst_path, 'oauth', 'db.json'),
+            'OPENID_FS_STORE_PATH': os.path.join(inst_path, 'open-id'),
+            'OAUTH_CREDENTIALS': {
+                'test': {
+                    'id': 'test-oauth-app-id',
+                    'secret': 'test-oauth-app-secret'}}
+        })
 
-    app = create_app({
-        'TESTING': True,
-        'MAIN_DATABASE_PATH': os.path.join(inst_path, 'data', 'db.json'),
-        'VOCAB_DATABASE_PATH': os.path.join(inst_path, 'data', 'vocab.json'),
-        'TERM_DATABASE_PATH': os.path.join(inst_path, 'data', 'terms.json'),
-        'USER_DATABASE_PATH': os.path.join(inst_path, 'users', 'db.json'),
-        'OAUTH_DATABASE_PATH': os.path.join(inst_path, 'oauth', 'db.json'),
-        'OPENID_FS_STORE_PATH': os.path.join(inst_path, 'open-id'),
-        'OAUTH_CREDENTIALS': {
-            'test': {
-                'id': 'test-oauth-app-id',
-                'secret': 'test-oauth-app-secret'}}
-    })
-
-    yield app
+        yield app
 
 
 @pytest.fixture
 def client(app):
-    return app.test_client()
+    with app.test_client() as client:
+        yield client
 
 
 @pytest.fixture

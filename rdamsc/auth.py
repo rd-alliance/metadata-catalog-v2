@@ -65,23 +65,23 @@ class OAuthSignIn(object):
             self.consumer_secret = credentials['secret']
 
     def authorize(self):
-        pass
+        raise NotImplementedError  # pragma: no cover
 
     def callback(self):
-        pass
+        raise NotImplementedError  # pragma: no cover
 
     def get_callback_url(self):
         return url_for('auth.oauth_callback', provider=self.provider_name,
                        _external=True)
 
     @classmethod
-    def get_provider(self, provider_name):
-        if self.providers is None:
-            self.providers = {}
-            for provider_class in self.__subclasses__():
+    def get_provider(cls, provider_name):
+        if cls.providers is None:
+            cls.providers = {}
+            for provider_class in cls.__subclasses__():
                 provider = provider_class()
-                self.providers[provider.provider_name] = provider
-        return self.providers[provider_name]
+                cls.providers[provider.provider_name] = provider
+        return cls.providers.get(provider_name)
 
 
 class TestSignIn(OAuthSignIn):
@@ -90,6 +90,7 @@ class TestSignIn(OAuthSignIn):
     def __init__(self):
         super(TestSignIn, self).__init__('test')
         self.formatted_name = 'Test'
+        self.icon = 'fas fa-key'
         self.service = OAuth2Service(
             name=self.provider_name,
             client_id=self.consumer_id,
@@ -114,7 +115,7 @@ class TestSignIn(OAuthSignIn):
         return (None, None, None)
 
 
-class GoogleSignIn(OAuthSignIn):
+class GoogleSignIn(OAuthSignIn):  # pragma: no cover
     def __init__(self):
         super(GoogleSignIn, self).__init__('google')
         self.formatted_name = 'Google'
@@ -202,7 +203,7 @@ class GoogleSignIn(OAuthSignIn):
             idinfo.get('email'))
 
 
-class LinkedinSignIn(OAuthSignIn):
+class LinkedinSignIn(OAuthSignIn):  # pragma: no cover
     def __init__(self):
         super(LinkedinSignIn, self).__init__('linkedin')
         self.formatted_name = 'LinkedIn'
@@ -240,7 +241,7 @@ class LinkedinSignIn(OAuthSignIn):
             idinfo.get('emailAddress'))
 
 
-class TwitterSignIn(OAuthSignIn):
+class TwitterSignIn(OAuthSignIn):  # pragma: no cover
     def __init__(self):
         super(TwitterSignIn, self).__init__('twitter')
         self.formatted_name = 'Twitter'
@@ -277,7 +278,7 @@ class TwitterSignIn(OAuthSignIn):
             None)
 
 
-class GithubSignIn(OAuthSignIn):
+class GithubSignIn(OAuthSignIn):  # pragma: no cover
     def __init__(self):
         super(GithubSignIn, self).__init__('github')
         self.formatted_name = 'GitHub'
@@ -319,7 +320,7 @@ class GithubSignIn(OAuthSignIn):
             idinfo.get('email'))
 
 
-class GitlabSignIn(OAuthSignIn):
+class GitlabSignIn(OAuthSignIn):  # pragma: no cover
     def __init__(self):
         super(GitlabSignIn, self).__init__('gitlab')
         self.formatted_name = 'GitLab'
@@ -403,7 +404,7 @@ class GitlabSignIn(OAuthSignIn):
             idinfo.get('email'))
 
 
-class OrcidSignIn(OAuthSignIn):
+class OrcidSignIn(OAuthSignIn):  # pragma: no cover
     def __init__(self):
         super(OrcidSignIn, self).__init__('orcid')
         self.formatted_name = 'ORCID'
@@ -468,7 +469,7 @@ def load_user(id):
     document = user_db.get(doc_id=int(id))
     if document:
         return User(value=document, doc_id=document.doc_id)
-    return None
+    return None  # pragma: no cover
 
 
 class LoginForm(FlaskForm):
@@ -485,14 +486,14 @@ def login():
     if current_user.is_authenticated:
         return redirect(oid.get_next_url())
     form = LoginForm(request.form)
-    if request.method == 'POST' and form.validate():
+    if request.method == 'POST' and form.validate():  # pragma: no cover
         openid = form.openid.data
         if openid:
             return oid.try_login(
                 openid, ask_for=['email', 'nickname'],
                 ask_for_optional=['fullname'])
     error = oid.fetch_error()
-    if error:
+    if error:  # pragma: no cover
         flash(error, 'error')
     providers = list()
     if 'OAUTH_CREDENTIALS' in current_app.config:
@@ -513,7 +514,7 @@ def login():
 
 
 @oid.after_login
-def create_or_login(resp):
+def create_or_login(resp):  # pragma: no cover
     '''This function handles the response from an OpenID v2 provider.
     '''
     session['openid'] = resp.identity_url
@@ -537,6 +538,8 @@ def oauth_authorize(provider):
     if not current_user.is_anonymous:
         return redirect(url_for('hello'))
     oauth = OAuthSignIn.get_provider(provider)
+    if oauth is None or oauth.consumer_id is None:
+        abort(404)
     return oauth.authorize()
 
 
@@ -549,6 +552,8 @@ def oauth_callback(provider):
     if not current_user.is_anonymous:
         return redirect(url_for('hello'))
     oauth = OAuthSignIn.get_provider(provider)
+    if oauth is None or oauth.consumer_id is None:
+        abort(404)
     openid, username, email = oauth.callback()
     session['openid'] = openid
     if openid is None:
@@ -580,9 +585,10 @@ def create_profile():
     not exist in the user database, this view creates and saves their profile.
     '''
     user_db = get_user_db()
-    if current_user.is_authenticated or 'openid' not in session:
-        if 'openid' not in session:
-            flash('OpenID sign-in failed, sorry.', 'error')
+    if current_user.is_authenticated:
+        return redirect(url_for('hello'))
+    if 'openid' not in session or session['openid'] is None:
+        flash('OpenID sign-in failed, sorry.', 'error')
         return redirect(url_for('hello'))
     form = ProfileForm(request.values)
     if request.method == 'POST' and form.validate():
@@ -598,9 +604,14 @@ def create_profile():
         login_user(user)
         return redirect(oid.get_next_url() or url_for('hello'))
     if form.errors:
-        flash('Could not create profile as there {:/was an error/were N errors}.'
-              ' See below for details.'.format(Pluralizer(len(form.errors))),
-              'error')
+        if 'csrf_token' in form.errors:
+            msg = ('Could not save changes as your form session has expired.'
+                   ' Please try again.')
+        else:
+            msg = ('Could not create profile as there {:/was an error/were N'
+                   ' errors}. See below for details.'
+                   .format(Pluralizer(len(form.errors))))
+        flash(msg, 'error')
     return render_template(
         'create-profile.html', form=form,
         next=oid.get_next_url() or url_for('hello'))
@@ -623,11 +634,11 @@ def edit_profile():
                 openid_formatted = (openid_format
                                     .format(provider.formatted_name))
                 break
-        else:
+        else:  # pragma: no cover
             openid_formatted = (openid_format
                                 .format(openid_tuple[0]))
         openid_formatted += current_user['name']
-    else:
+    else:  # pragma: no cover
         # OpenID v2 profile
         openid_formatted = current_user['userid']
     form = ProfileForm(request.values, data=current_user)
@@ -640,9 +651,18 @@ def edit_profile():
             'userid': current_user['userid']}
         if user_db.update(data, doc_ids=[current_user.doc_id]):
             flash('Profile successfully updated.')
-        else:
+        else:  # pragma: no cover
             flash('Profile could not be updated, sorry.')
         return redirect(url_for('hello'))
+    if form.errors:
+        if 'csrf_token' in form.errors:
+            msg = ('Could not save changes as your form session has expired.'
+                   ' Please try again.')
+        else:
+            msg = ('Could not update profile as there {:/was an error/were N'
+                   ' errors}. See below for details.'
+                   .format(Pluralizer(len(form.errors))))
+        flash(msg, 'error')
     return render_template(
         'edit-profile.html', form=form, openid_formatted=openid_formatted)
 
@@ -658,7 +678,7 @@ def remove_profile():
         logout_user()
         session.pop('openid', None)
         flash('You were signed out.')
-    else:
+    else:  # pragma: no cover
         flash('Your profile could not be deleted.')
     return redirect(url_for('hello'))
 

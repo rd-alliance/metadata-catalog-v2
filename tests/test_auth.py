@@ -1,8 +1,21 @@
-import re
 from urllib.parse import urlencode
 import json
-import pytest
-from flask import g, session
+
+
+def test_bad_provider(client, page):
+    # Unsupported provider:
+    response = client.get('/authorize/null')
+    assert response.status_code == 404
+
+    response = client.get('/callback/null')
+    assert response.status_code == 404
+
+    # Supported provider with missing key
+    response = client.get('/authorize/linkedin')
+    assert response.status_code == 404
+
+    response = client.get('/callback/linkedin')
+    assert response.status_code == 404
 
 
 def test_oauth_login(client, auth, app, page):
@@ -10,6 +23,7 @@ def test_oauth_login(client, auth, app, page):
     scope = 'read:user'
     callback = f'{base}/callback/test'
     appid = app.config['OAUTH_CREDENTIALS']['test']['id']
+    assert appid == 'test-oauth-app-id'
     userid = "test$testuser"
     username = "Test User"
     useremail = "test@localhost.local"
@@ -38,6 +52,54 @@ def test_oauth_login(client, auth, app, page):
     csrf = page.get_csrf(html)
     assert csrf
 
+    # Missing username
+    response = client.post(
+        '/create-profile',
+        data={'csrf_token': csrf, 'email': useremail},
+        follow_redirects=True)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains("there was an error.")
+    page.assert_contains("You must provide a user name.")
+    csrf = page.get_csrf()
+
+    # Missing email
+    response = client.post(
+        '/create-profile',
+        data={'csrf_token': csrf, 'name': username},
+        follow_redirects=True)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains("there was an error.")
+    page.assert_contains("You must enter an email address.")
+    csrf = page.get_csrf()
+
+    # Bad email
+    response = client.post(
+        '/create-profile',
+        data={'csrf_token': csrf, 'name': username, 'email': 'bad_address'},
+        follow_redirects=True)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains("there was an error.")
+    page.assert_contains("You must enter a valid email address.")
+
+    # Missing CSRF
+    response = client.post(
+        '/create-profile',
+        data={'name': username, 'email': useremail},
+        follow_redirects=True)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains(
+        "Could not save changes as your form session has expired.")
+    csrf = page.get_csrf()
+
+    # All good
     response = client.post(
         '/create-profile',
         data={'csrf_token': csrf, 'name': username, 'email': useremail},
@@ -66,6 +128,30 @@ def test_oauth_login(client, auth, app, page):
 
     # Test profile editing
 
+    # Missing username
+    response = client.post(
+        '/edit-profile',
+        data={'csrf_token': csrf, 'email': newemail},
+        follow_redirects=True)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains("there was an error.")
+    page.assert_contains("You must provide a user name.")
+
+    # Missing CSRF
+    response = client.post(
+        '/edit-profile',
+        data={'name': username, 'email': newemail},
+        follow_redirects=True)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains(
+        "Could not save changes as your form session has expired.")
+    csrf = page.get_csrf()
+
+    # All good
     response = client.post(
         '/edit-profile',
         data={'csrf_token': csrf, 'name': username, 'email': newemail},
@@ -79,6 +165,24 @@ def test_oauth_login(client, auth, app, page):
         users = json.load(f)
         assert users.get('_default', dict()).get('1', dict()).get(
             'email') == newemail
+
+    # Test redirection when logged in user visits login page:
+
+    response = client.get('/login', follow_redirects=True)
+    html = response.get_data(as_text=True)
+    page.assert_contains(auth_only, html)
+
+    response = client.get('/authorize/test', follow_redirects=True)
+    html = response.get_data(as_text=True)
+    page.assert_contains(auth_only, html)
+
+    response = client.get('/callback/test', follow_redirects=True)
+    html = response.get_data(as_text=True)
+    page.assert_contains(auth_only, html)
+
+    response = client.get('/create-profile', follow_redirects=True)
+    html = response.get_data(as_text=True)
+    page.assert_contains(auth_only, html)
 
     # Test regular logout
 

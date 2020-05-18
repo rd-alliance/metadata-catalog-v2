@@ -42,7 +42,7 @@ class User(Document):
     def get_id(self):
         return str(self.doc_id)
 
-    def __eq__(self, other):
+    def __eq__(self, other):  # pragma: no cover
         '''
         Checks the equality of two `UserMixin` objects using `get_id`.
         '''
@@ -50,7 +50,7 @@ class User(Document):
             return self.get_id() == other.get_id()
         return NotImplemented
 
-    def __ne__(self, other):
+    def __ne__(self, other):  # pragma: no cover
         '''
         Checks the inequality of two `UserMixin` objects using `get_id`.
         '''

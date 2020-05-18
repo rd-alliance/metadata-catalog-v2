@@ -303,9 +303,49 @@ def test_create_view_records(client, auth, app, page, data_db):
     page.assert_contains("Add new endorsement")
     e1 = data_db.get_formdata('e1', with_relations=True)
     e1.update(page.get_all_hidden())
+    e1['issued'] = "2017-12"
+    e1.pop('valid-start')
+    e1.pop('valid-end')
+    endorsed_schemes = e1.poplist('endorsed_schemes')
+    endorsed_schemes.pop()
+    for s in endorsed_schemes:
+        e1.add('endorsed_schemes', s)
     response = client.post('/edit/e0', data=e1, follow_redirects=True)
     html = response.get_data(as_text=True)
     page.assert_contains("Successfully added record.", html)
+
+    # Test display of date without day:
+    response = client.get(s.replace('msc:', '/msc/'))
+    html = response.get_data(as_text=True)
+    page.assert_contains("Endorsed in 2017-12", html)
+
+    # Test adding record more relations of the same type:
+    response = client.get('/edit/e1')
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains("Edit endorsement msc:e1")
+    e1 = data_db.get_formdata('e1', with_relations=True)
+    e1.update(page.get_all_hidden())
+    e1.pop('valid-start')
+    e1.pop('valid-end')
+    response = client.post('/edit/e1', data=e1, follow_redirects=True)
+    html = response.get_data(as_text=True)
+    page.assert_contains("Successfully updated record.", html)
+
+    # Test display of date with day:
+    response = client.get(s.replace('msc:', '/msc/'))
+    html = response.get_data(as_text=True)
+    page.assert_contains("Endorsed on 2017-12-31", html)
+
+    # Test display of date range:
+    response = client.get('/edit/e1')
+    html = response.get_data(as_text=True)
+    e1 = data_db.get_formdata('e1', with_relations=True)
+    e1.update(page.get_all_hidden(html))
+    client.post('/edit/e1', data=e1, follow_redirects=True)
+    response = client.get(s.replace('msc:', '/msc/'))
+    html = response.get_data(as_text=True)
+    page.assert_contains("Endorsed between 2018-01-01 and 2019-12-31", html)
 
     with open(app.config['MAIN_DATABASE_PATH']) as f:
         db = json.load(f)
@@ -348,7 +388,7 @@ def test_create_view_records(client, auth, app, page, data_db):
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     page.read(html)
-    page.assert_contains("Edit record msc:g1")
+    page.assert_contains("Edit organization msc:g1")
 
     # Test removing inverse relationships:
     g1 = data_db.get_formdata('g1')
@@ -419,11 +459,50 @@ def test_create_terms(client, auth, app, page, data_db):
     datatype1.update(page.get_all_hidden())
     response = client.post(
         '/edit/datatype0', data=datatype1, follow_redirects=True)
+    html = response.get_data(as_text=True)
+    page.assert_contains("Successfully added record.", html)
 
     with open(app.config['TERM_DATABASE_PATH']) as f:
         db = json.load(f)
         rel_entry = db.get('datatype', dict()).get('1', dict())
         assert data_db.datatype1 == rel_entry
+
+    # Test CSRF error message:
+    loc1json = (
+        '{ "id": "website", "label": "website",'
+        '"applies": ["scheme", "organization", "tool"]}')
+    loc1 = json.loads(loc1json)
+    response = client.post('/edit/location1', data=loc1, follow_redirects=True)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains("Edit link type")
+    page.assert_contains(
+        "Could not save changes as your form session has expired.")
+
+    # Test missing label
+    del loc1['label']
+    loc1.update(page.get_all_hidden())
+    response = client.post('/edit/location1', data=loc1, follow_redirects=True)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains("there was an error")
+    page.assert_contains("This field is required.")
+
+    # Test missing ID on new label
+    response = client.get('/edit/type0', follow_redirects=True)
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains("<h1>Add new entity type</h1>")
+    type0 = {"label": "Test type", "applies": ["tool"]}
+    type0.update(page.get_all_hidden())
+    response = client.post('/edit/type0', data=loc1, follow_redirects=True)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains("there was an error")
+    page.assert_contains("This field is required.")
 
 
 def test_auth_protection(client, auth, app, page, data_db):
@@ -447,3 +526,5 @@ def test_auth_protection(client, auth, app, page, data_db):
     page.read(html)
     page.assert_contains("Please sign in to access this page.")
     page.assert_contains("<h1>Sign in</h1>")
+
+
