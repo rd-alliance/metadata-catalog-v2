@@ -2,13 +2,13 @@
 {% block title %}{{ title }}{% endblock %}
 {% block main %}
   {% for result in results %}
-  <div class="panel panel-default">
-    <div class="panel-heading">
-      <p class="panel-title"><a href="{{ url_for('main.display', table='m', number=result.doc_id) }}">{{ result['title'] }}</a></p>
+  <div class="card mb-3">
+    <div class="card-header">
+      <p class="card-title"><a href="{{ url_for('main.display', table='m', number=result.doc_id) }}">{{ result['title'] }}</a></p>
     </div>
     {% if 'description' in result %}
-    <div class="panel-body">
-      <div class="description">{{ result['description']|safe }}</div>
+    <div class="card-body">
+      <div class="description card-text">{{ result['description']|safe }}</div>
     </div>
     {% endif %}
   </div>
