@@ -9,12 +9,13 @@ from typing import List, Mapping
 import requests
 # See https://flask.palletsprojects.com/en/1.1.x/
 from flask import (
-    abort, Blueprint, render_template, url_for
+    abort, Blueprint, render_template, url_for,
+    current_app
 )
 
 # Local
 # -----
-from .records import Record, Relation, Scheme
+from .records import Record, Relation, Scheme, VocabTerm
 from .vocab import get_thesaurus
 
 bp = Blueprint('list', __name__)
@@ -40,7 +41,9 @@ def get_scheme_tree(records: List[Scheme]) -> Mapping[str, str]:
 
 # List of standards
 # =================
-@bp.route('/<string:series>-index/<string:role>')
+@bp.route('/<string:series>-index/<any("parent scheme", "supported scheme",'
+          ' "input scheme", "output scheme", "endorsed scheme", maintainer,'
+          ' funder, user, originator):role>')
 @bp.route('/<string:series>-index')
 def record_index(series=None, role=None):
     '''The contents template takes a 'tree' variable, which is a list of
@@ -52,19 +55,12 @@ def record_index(series=None, role=None):
     heading = series
     if series is None:
         abort(404)
-    elif series == "scheme":
+    elif series == "scheme" and role is None:
         # Listing metadata schemes.
         rel = Relation()
 
-        # Get all of them:
-        if role:
-            if not role.endswith("scheme"):
-                abort(404)
-            heading = role
-            records = rel.object_records(predicate=role)
-        else:
-            heading = "metadata standard"
-            records = Scheme.all()
+        heading = "metadata standard"
+        records = Scheme.all()
 
         # Get blacklist of child schemes
         children = rel.subjects(predicate="parent scheme")
@@ -75,12 +71,20 @@ def record_index(series=None, role=None):
         return render_template(
             'contents.html', title=f"Index of {heading}s", tree=tree)
 
+    # Abort if series is a vocabulary item:
+    elif series == "datatype" or series in [
+            c.series for c in VocabTerm.__subclasses__()]:
+        abort(404)
+
     # Listing another type of record.
     for record_cls in Record.__subclasses__():
         if series == record_cls.series:
             # Get all of them in alphabetical order:
             if role:
-                if role not in ['maintainer', 'funder', 'user', 'originator']:
+                if role.endswith("scheme"):
+                    if series != "scheme":
+                        abort(404)
+                elif series != "organization":
                     abort(404)
                 heading = role
                 rel = Relation()
@@ -95,7 +99,6 @@ def record_index(series=None, role=None):
                 } for record in records]
             return render_template(
                 'contents.html', title=f"Index of {heading}s", tree=tree)
-            break
     else:
         abort(404)
 
@@ -107,6 +110,5 @@ def subject_index():
     th = get_thesaurus()
     keywords_used = Scheme.get_used_keywords()
     tree = th.get_tree(keywords_used)
-    print(f"DEBUG: Tree = {tree}")
     return render_template(
         'contents.html', title='Index of subjects', tree=tree)

@@ -345,21 +345,23 @@ class DataDBActions(object):
             with open(db_file, 'r') as f:
                 db = json.load(f)
         else:
-            db = {"_default": {}}
+            db = {
+                "_default": {},
+                "m": {}, "t": {}, "c": {}, "g": {}, "e": {}, "rel": {}}
 
-        db["m"] = {"1": self.m1}
-        db["m"] = {"2": self.m2}
-        db["t"] = {"1": self.t1}
-        db["t"] = {"2": self.t2}
-        db["c"] = {"1": self.c1}
-        db["c"] = {"2": self.c2}
-        db["g"] = {"1": self.g1}
-        db["e"] = {"1": self.e1}
-        db["rel"] = {"1": self.rel1}
-        db["rel"] = {"2": self.rel2}
-        db["rel"] = {"3": self.rel3}
-        db["rel"] = {"4": self.rel4}
-        db["rel"] = {"5": self.rel5}
+        db["m"]["1"] = self.m1
+        db["m"]["2"] = self.m2
+        db["t"]["1"] = self.t1
+        db["t"]["2"] = self.t2
+        db["c"]["1"] = self.c1
+        db["c"]["2"] = self.c2
+        db["g"]["1"] = self.g1
+        db["e"]["1"] = self.e1
+        db["rel"]["1"] = self.rel1
+        db["rel"]["2"] = self.rel2
+        db["rel"]["3"] = self.rel3
+        db["rel"]["4"] = self.rel4
+        db["rel"]["5"] = self.rel5
 
         db_file = self._app.config['MAIN_DATABASE_PATH']
         with open(db_file, 'w') as f:
