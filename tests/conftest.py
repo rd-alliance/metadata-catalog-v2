@@ -227,10 +227,10 @@ class DataDBActions(object):
             "@id": "msc:c2",
             "input scheme": ["msc:m1"],
             "output scheme": ["msc:m2"],
-            "funder": ["msc:g1"]}
+            "maintainer": ["msc:g1"]}
         self.rel3 = {
             "@id": "msc:m1",
-            "maintainer": ["msc:g1"]}
+            "funder": ["msc:g1"]}
         self.rel4 = {
             "@id": "msc:m2",
             "parent scheme": ["msc:m1"],
@@ -241,6 +241,9 @@ class DataDBActions(object):
         self.datatype1 = {
             "id": "https://www.w3.org/TR/vocab-dcat/#class-dataset",
             "label": "Dataset"}
+        self.datatype2 = {
+            "id": "https://www.w3.org/TR/vocab-dcat/#class-catalog",
+            "label": "Catalog"}
 
         fw_tags = {
             "parent scheme": "parent_schemes",
@@ -375,7 +378,9 @@ class DataDBActions(object):
         else:
             terms = {"_default": {}}
 
-        terms['datatype'] = {"1": self.datatype1}
+        terms['datatype'] = dict()
+        terms['datatype']["1"] = self.datatype1
+        terms['datatype']["2"] = self.datatype2
         with open(terms_file, 'w') as f:
             json.dump(terms, f, indent=1, ensure_ascii=False)
 
@@ -393,7 +398,7 @@ class PageActions(object):
             r'<datalist[^>]*>(\n\s+<option>[^<]*</option>)+\n\s+</datalist>\n',
             '', html)
 
-    def get_csrf(self, html=None):
+    def get_csrf(self, html=None) -> str:
         '''Extracts CSRF token from page's form controls.'''
         if html is not None:
             self.read(html)
@@ -404,7 +409,7 @@ class PageActions(object):
             return None
         return m.group(1)
 
-    def get_all_hidden(self, html=None):
+    def get_all_hidden(self, html=None) -> MultiDict:
         '''Extracts hidden inputs from page's form controls.'''
         if html is not None:
             self.read(html)

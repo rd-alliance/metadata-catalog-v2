@@ -66,6 +66,9 @@ def scheme_search():
                     th.get_valid(),
                     'Value must be drawn from the UNESCO Thesaurus.'))
 
+    # Load relation handling:
+    rel = Relation()
+
     # Process form
     if request.method == 'POST' and form.validate():
         results_by_id = dict()
@@ -94,7 +97,7 @@ def scheme_search():
             sub_results_by_id = dict()
             term_set = set()
             for term in term_list:
-                if not term:
+                if not term:  # pragma: no cover
                     continue
                 term_set.update(th.get_branch(term))
             if term_set:
@@ -148,14 +151,14 @@ def scheme_search():
             dtype = Datatype.load_by_label(dtype_raw)
             for m in Scheme.search(Q.dataTypes.any(dtype.mscid)):
                 sub_results_by_id[m.mscid] = m
-            flash_result(matches,
+            flash_result(len(sub_results_by_id),
                          f'used with data of type "{dtype_raw}"')
             results_by_id.update(sub_results_by_id)
 
         # Show results
         no_of_hits = len(results_by_id)
         if no_of_queries > 1:
-            flash('Found {:N scheme/s} in total. '.format(
+            flash('Found {:N scheme/s} in total.'.format(
                 Pluralizer(no_of_hits)))
         if no_of_hits == 1:
             # Go direct to that page
@@ -166,16 +169,15 @@ def scheme_search():
         document_list = sorted(results_by_id.values(),
                                key=lambda k: k.name.lower())
         # Show results list
-        print("DEBUG: showing results")
         return render_template(
             'search-results.html', title=title, results=document_list)
 
     if form.errors:
         if 'csrf_token' in form.errors.keys():
-            msg = ('Could not save changes as your form session has expired.'
+            msg = ('Could not perform search as your form session has expired.'
                    ' Please try again.')
         else:
-            msg = ('Could not save changes as there {:/was an error/were N'
+            msg = ('Could not perform search as there {:/was an error/were N'
                    ' errors}. See below for details.'
                    .format(Pluralizer(len(form.errors))))
         flash(msg, 'error')
@@ -195,7 +197,6 @@ def scheme_search():
     # No results displayed, so render form instead.
     # Enable autocompletion for title, identifier, funder, dataType:
     all_schemes = Scheme.all()
-    rel = Relation()
     title_set = set()
     type_set = set()
     funder_set = set()
@@ -210,7 +211,7 @@ def scheme_search():
         for id in scheme.get('identifiers', list()):
             id_set.add(id.get('id'))
         for vn in scheme.get('versions', list()):
-            vtitle =vn.get('title')
+            vtitle = vn.get('title')
             if vtitle:
                 title_set.add(vtitle)
             for id in vn.get('identifiers', list()):
@@ -251,7 +252,7 @@ def subject(subject):
     else:
         flash('No schemes have been associated with this subject area.'
               ' Would you like to see some <a href="{}">generic schemes</a>?'
-              .format(url_for('subject', subject='Multidisciplinary')),
+              .format(url_for('search.subject', subject='Multidisciplinary')),
               'error')
     return render_template(
         'search-results.html', title=subject, results=results)
@@ -273,14 +274,17 @@ def dataType(number):
         flash('No schemes have been reported to be used for this type of'
               ' data.', 'error')
     return render_template(
-        'search-results.html', title=datatype.get('label', f'type {number}'),
+        'search-results.html', title=datatype.get('label', f'Type {number}'),
         results=results)
 
 
 @bp.route('/<any(funder, maintainer, user):role>/g<int:number>')
 def group(role, number):
-    rel = Relation()
     group = Group.load(number)
+    if not group:
+        abort(404)
+
+    rel = Relation()
     verb = role[0:-1] + 'd'
     results = rel.subject_records(predicate=role, object=group.mscid, filter=Scheme)
     no_of_hits = len(results)

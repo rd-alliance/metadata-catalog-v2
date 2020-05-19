@@ -162,18 +162,18 @@ class Thesaurus(object):
         if narrower:
             # Get list of child entries
             # 1. URIs from current up to top level
-            route = [base_entry['uri']]
-            route.extend(base_entry['ancestry'][::-1])
+            route = uris[::-1]
             # 2. Get domain tree
             domain_uri = route.pop()
             tree = self.trees.get(Query().uri == domain_uri)
-            if not tree:
+            if not tree:  # pragma: no cover
                 print("DEBUG get_branch: Domain not found.")
                 return uris
             # 3. Traverse down to current term
             while route:
+                termtest = self.terms.get(Query().uri == tree.get('uri'))
                 children = tree.get('children', list())
-                if not children:
+                if not children:  # pragma: no cover
                     print("DEBUG get_branch: Traversal ended early.")
                     return uris
                 child_uri = route.pop()
