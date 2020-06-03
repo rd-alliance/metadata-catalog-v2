@@ -36,11 +36,11 @@
     </ul>
   </div>
   {% endif %}
-  {% if related_crosswalks %}
+  {% if related_mappings %}
   <div class="mappings">
     <h2>Supported mappings</h2>
     <ul>
-    {% for role, related in related_crosswalks|dictsort %}
+    {% for role, related in related_mappings|dictsort %}
       <li>
         <p>This organization {{ role }} {% for r in related %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}<a href="{{ url_for('main.display', table='c', number=r.doc_id) }}">{{ r.name }}</a>{% endfor %}.</p>
       </li>

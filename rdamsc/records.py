@@ -1611,7 +1611,7 @@ class GroupForm(FlaskForm):
     maintained_tools = SelectRelatedField(
         'Tools maintained by this organization', Tool,
         description='maintainer', inverse=True)
-    maintained_crosswalks = SelectRelatedField(
+    maintained_mappings = SelectRelatedField(
         'Mappings maintained by this organization', Crosswalk,
         description='maintainer', inverse=True)
     funded_schemes = SelectRelatedField(
@@ -1620,7 +1620,7 @@ class GroupForm(FlaskForm):
     funded_tools = SelectRelatedField(
         'Tools funded by this organization', Tool,
         description='funder', inverse=True)
-    funded_crosswalks = SelectRelatedField(
+    funded_mappings = SelectRelatedField(
         'Mappings funded by this organization', Crosswalk,
         description='funder', inverse=True)
     used_schemes = SelectRelatedField(
@@ -1633,8 +1633,8 @@ class GroupForm(FlaskForm):
 
 
 class EndorsementForm(FlaskForm):
-    title = StringField('Title')
-    description = TextHTMLField('Description')
+    title = StringField('Title of the endorsement document')
+    description = TextHTMLField('Description of the endorsement document')
     creators = FieldList(
         FormField(CreatorForm), 'Authors of the endorsement document',
         min_entries=1)
