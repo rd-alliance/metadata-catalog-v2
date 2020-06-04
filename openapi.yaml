@@ -25,6 +25,16 @@ tags:
   description: Mappings (crosswalks)
 - name: e
   description: Endorsements
+- name: datatype
+  description: Data types
+- name: type
+  description: Entity types
+- name: location
+  description: Location (URL) types
+- name: id_scheme
+  description: Identifier schemes
+- name: thesaurus
+  description: RDAMSC Thesaurus
 - name: user
   description: Manage your API account
 paths:
@@ -195,7 +205,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QueryResponse'
-  /api/m:
+  /api2/m:
     get:
       tags:
       - m
@@ -240,7 +250,7 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
       security:
       - api_user: []
-  /api/m{int}:
+  /api2/m{int}:
     get:
       tags:
       - m
@@ -325,7 +335,7 @@ paths:
           content: {}
       security:
       - api_user: []
-  /api/g:
+  /api2/g:
     get:
       tags:
       - g
@@ -370,7 +380,7 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
       security:
       - api_user: []
-  /api/g{int}:
+  /api2/g{int}:
     get:
       tags:
       - g
@@ -455,7 +465,7 @@ paths:
           content: {}
       security:
       - api_user: []
-  /api/t:
+  /api2/t:
     get:
       tags:
       - t
@@ -500,7 +510,7 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
       security:
       - api_user: []
-  /api/t{int}:
+  /api2/t{int}:
     get:
       tags:
       - t
@@ -585,7 +595,7 @@ paths:
           content: {}
       security:
       - api_user: []
-  /api/c:
+  /api2/c:
     get:
       tags:
       - c
@@ -630,7 +640,7 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
       security:
       - api_user: []
-  /api/c{int}:
+  /api2/c{int}:
     get:
       tags:
       - c
@@ -715,7 +725,7 @@ paths:
           content: {}
       security:
       - api_user: []
-  /api/e:
+  /api2/e:
     get:
       tags:
       - e
@@ -760,7 +770,7 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
       security:
       - api_user: []
-  /api/e{int}:
+  /api2/e{int}:
     get:
       tags:
       - e
@@ -845,7 +855,527 @@ paths:
           content: {}
       security:
       - api_user: []
-  /api/reset-password:
+  /api2/datatype:
+    get:
+      tags:
+      - datatype
+      summary: "List all registered data types"
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dataTypes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ItemResponse'
+    post:
+      tags:
+      - datatype
+      summary: "Submit a new data type"
+      requestBody:
+        description: "Complete record in JSON."
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataType'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponseSuccess'
+        400:
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponseFailure'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+      security:
+      - api_user: []
+  /api2/datatype{int}:
+    get:
+      tags:
+      - datatype
+      summary: "Retrieve an existing data type record"
+      parameters:
+      - name: int
+        in: path
+        required: true
+        description: "Numeric portion of the MSC ID."
+        schema:
+          type: integer
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        404:
+          description: "Data type not found"
+          content: {}
+    put:
+      tags:
+      - datatype
+      summary: "Modify an existing data type record"
+      parameters:
+      - name: int
+        in: path
+        required: true
+        description: "Numeric portion of the MSC ID."
+        schema:
+          type: integer
+      requestBody:
+        description: "Complete record in JSON."
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataType'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponseSuccess'
+        400:
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponseFailure'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        404:
+          description: "Data type not found"
+          content: {}
+      security:
+      - api_user: []
+    delete:
+      tags:
+      - datatype
+      summary: "Remove an existing datatype record"
+      parameters:
+      - name: int
+        in: path
+        required: true
+        description: "Numeric portion of the MSC ID."
+        schema:
+          type: integer
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        404:
+          description: "Data type not found"
+          content: {}
+      security:
+      - api_user: []
+  /api2/type:
+    get:
+      tags:
+      - type
+      summary: "List all registered entity types"
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dataTypes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ItemResponse'
+    post:
+      tags:
+      - type
+      summary: "Submit a new entity type"
+      requestBody:
+        description: "Complete record in JSON."
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntitySpecificTypeNew'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponseSuccess'
+        400:
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponseFailure'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+      security:
+      - api_user: []
+  /api2/type{int}:
+    get:
+      tags:
+      - type
+      summary: "Retrieve an existing entity type record"
+      parameters:
+      - name: int
+        in: path
+        required: true
+        description: "Numeric portion of the MSC ID."
+        schema:
+          type: integer
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        404:
+          description: "Data type not found"
+          content: {}
+    put:
+      tags:
+      - type
+      summary: "Modify an existing entity type record"
+      parameters:
+      - name: int
+        in: path
+        required: true
+        description: "Numeric portion of the MSC ID."
+        schema:
+          type: integer
+      requestBody:
+        description: "Complete record in JSON."
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntitySpecificTypeOld'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponseSuccess'
+        400:
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponseFailure'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        404:
+          description: "Data type not found"
+          content: {}
+      security:
+      - api_user: []
+    delete:
+      tags:
+      - type
+      summary: "Remove an existing type record"
+      parameters:
+      - name: int
+        in: path
+        required: true
+        description: "Numeric portion of the MSC ID."
+        schema:
+          type: integer
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        404:
+          description: "Data type not found"
+          content: {}
+      security:
+      - api_user: []
+  /api2/location:
+    get:
+      tags:
+      - location
+      summary: "List all registered location (URL) types"
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dataTypes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ItemResponse'
+    post:
+      tags:
+      - location
+      summary: "Submit a new location (URL) type"
+      requestBody:
+        description: "Complete record in JSON."
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntitySpecificTypeNew'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponseSuccess'
+        400:
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponseFailure'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+      security:
+      - api_user: []
+  /api2/location{int}:
+    get:
+      tags:
+      - location
+      summary: "Retrieve an existing location (URL) type record"
+      parameters:
+      - name: int
+        in: path
+        required: true
+        description: "Numeric portion of the MSC ID."
+        schema:
+          type: integer
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        404:
+          description: "Data type not found"
+          content: {}
+    put:
+      tags:
+      - location
+      summary: "Modify an existing location (URL) type record"
+      parameters:
+      - name: int
+        in: path
+        required: true
+        description: "Numeric portion of the MSC ID."
+        schema:
+          type: integer
+      requestBody:
+        description: "Complete record in JSON."
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntitySpecificTypeOld'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponseSuccess'
+        400:
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponseFailure'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        404:
+          description: "Data type not found"
+          content: {}
+      security:
+      - api_user: []
+    delete:
+      tags:
+      - location
+      summary: "Remove an existing location record"
+      parameters:
+      - name: int
+        in: path
+        required: true
+        description: "Numeric portion of the MSC ID."
+        schema:
+          type: integer
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        404:
+          description: "Data type not found"
+          content: {}
+      security:
+      - api_user: []
+  /api2/id_scheme:
+    get:
+      tags:
+      - id_scheme
+      summary: "List all registered ID schemes"
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dataTypes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ItemResponse'
+    post:
+      tags:
+      - id_scheme
+      summary: "Submit a new ID scheme"
+      requestBody:
+        description: "Complete record in JSON."
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntitySpecificTypeNew'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponseSuccess'
+        400:
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponseFailure'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+      security:
+      - api_user: []
+  /api2/id_scheme{int}:
+    get:
+      tags:
+      - id_scheme
+      summary: "Retrieve an existing ID scheme record"
+      parameters:
+      - name: int
+        in: path
+        required: true
+        description: "Numeric portion of the MSC ID."
+        schema:
+          type: integer
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        404:
+          description: "Data type not found"
+          content: {}
+    put:
+      tags:
+      - id_scheme
+      summary: "Modify an existing ID scheme record"
+      parameters:
+      - name: int
+        in: path
+        required: true
+        description: "Numeric portion of the MSC ID."
+        schema:
+          type: integer
+      requestBody:
+        description: "Complete record in JSON."
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntitySpecificTypeOld'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponseSuccess'
+        400:
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponseFailure'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        404:
+          description: "Data type not found"
+          content: {}
+      security:
+      - api_user: []
+    delete:
+      tags:
+      - id_scheme
+      summary: "Remove an existing id_scheme record"
+      parameters:
+      - name: int
+        in: path
+        required: true
+        description: "Numeric portion of the MSC ID."
+        schema:
+          type: integer
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        404:
+          description: "Data type not found"
+          content: {}
+      security:
+      - api_user: []
+  /api2/reset-password:
     post:
       tags:
       - user
@@ -882,7 +1412,7 @@ paths:
           content: {}
       security:
       - api_user: []
-  /api/token:
+  /api2/token:
     get:
       tags:
       - user
@@ -909,7 +1439,7 @@ components:
       readOnly: true
       description: "Semantic identifier for the record."
       pattern: '^[-a-z0-9]{1,71}$'
-    ID:
+    MSCID:
       type: string
       readOnly: true
       description: "Non-semantic internal identifier for the record."
@@ -965,8 +1495,8 @@ components:
       properties:
         slug:
           $ref: '#/components/schemas/Slug'
-        id:
-          $ref: '#/components/schemas/ID'
+        mscid:
+          $ref: '#/components/schemas/MSCID'
         uri:
           $ref: '#/components/schemas/URI'
         title:
@@ -1087,164 +1617,13 @@ components:
                     title:
                       type: string
                       description: "The value of the title element from the sample record, or an equivalent short summary of what the sample record describes."
-    Endorsement:
-      type: object
-      properties:
-        slug:
-          $ref: '#/components/schemas/Slug'
-        id:
-          $ref: '#/components/schemas/ID'
-        uri:
-          $ref: '#/components/schemas/URI'
-        title:
-          type: string
-          description: "The title of the endorsement document."
-        description:
-          type: string
-          description: "Description of the endorsement document.
-
-      - Use this to record any caveats to the endorsement.
-
-      - This could indicate if only certain versions of the scheme(s) are endorsed."
-        creators:
-          type: array
-          description: "Authors of the endorsement document"
-          items:
-            $ref: '#/components/schemas/Creator'
-        publication:
-          type: string
-          description: "Other bibliographic information (excluding date)."
-        issued:
-          type: string
-          pattern: '^\d{4}(-\d{2}(-\d{2})?)?$'
-          description: "The date on which the endorsement was made. Use of this element does not imply that the originating organization reviews the endorsement for validity. If both `issued` and `valid` are given, issued is ignored."
-        valid:
-          allOf:
-          - description: "The start date expresses when the endorsement was made. If there is no end date, this implies that the originating organization currently endorses the standard. (If that implication is inappropriate, the date should be given under `issued` instead.)
-
-If an end date is provided, it expresses the date on which the endorsement was withdrawn."
-          - $ref: '#/components/schemas/DateRange'
-        locations:
-          type: array
-          description: "Locations where further information about the endorsement may be accessed."
-          items:
-            $ref: '#/components/schemas/Location'
-        identifiers:
-          type: array
-          description: "Strings used to identify the endorsement."
-          items:
-            $ref: '#/components/schemas/Identifier'
-        relatedEntities:
-          type: array
-          description: "Other entities in the MSC database."
-          items:
-            type: object
-            properties:
-              id:
-                type: string
-                description: "Full MSC ID of the entity."
-                pattern: '^msc:(m|g|t|c|e)\d+$'
-              role:
-                type: string
-                description: "The manner of the relationship between the entity and the endorsement."
-                enum:
-                - "endorsed scheme"
-                - "originator"
-              details:
-                type: object
-                readOnly: true
-                oneOf:
-                - $ref: '#/components/schemas/MetadataScheme'
-                - $ref: '#/components/schemas/Organization'
-    Mapping:
-      type: object
-      properties:
-        slug:
-          $ref: '#/components/schemas/Slug'
-        id:
-          $ref: '#/components/schemas/ID'
-        uri:
-          $ref: '#/components/schemas/URI'
-        name:
-          type: string
-          description: "Name or descriptor for the mapping."
-        description:
-          type: string
-          description: "A short description of the mapping.
-
-This could indicate if only certain versions of the input and output schemes are supported; if the mapping has been tailored to the outputs or inputs of specific repositories or services; if certain parts of the input or output schemes have been ignored; or if specific conventions in the input scheme are preferred (or necessary).
-
-This could recommend steps to be taken before or after applying the mapping in order to improve results."
-        creators:
-          type: array
-          description: "Persons or organizations responsible for creating, maintaining, or approving the mapping (the emphasis here is on establishing provenance/responsibility rather than a strict understanding of creation). If a maintaining organization has an entry in the MSC, it should be given under `relatedEntities` with type ‘maintainer’ rather than here."
-          items:
-            $ref: '#/components/schemas/Creator'
-        locations:
-          type: array
-          description: "Locations where further information about the tool may be accessed."
-          items:
-            $ref: '#/components/schemas/Location'
-        identifiers:
-          type: array
-          description: "Strings used to identify the mapping or version."
-          items:
-            $ref: '#/components/schemas/Identifier'
-        relatedEntities:
-          type: array
-          description: "Other entities in the MSC database."
-          items:
-            type: object
-            properties:
-              id:
-                type: string
-                description: "Full MSC ID of the entity."
-                pattern: '^msc:(m|g|t|c|e)\d+$'
-              role:
-                type: string
-                description: "The manner of the relationship between the entity and the mapping."
-                enum:
-                - "input scheme"
-                - "output scheme"
-                - "maintainer"
-                - "funder"
-              details:
-                type: object
-                readOnly: true
-                oneOf:
-                - $ref: '#/components/schemas/MetadataScheme'
-                - $ref: '#/components/schemas/Organization'
-        versions:
-          type: array
-          items:
-            properties:
-              number:
-                type: string
-                description: "The number, code or other string used to identify the version, omitting any initial “v”, “v.” or “ver.”."
-              note:
-                type: string
-                description: "If this version requires some explanation, give it here."
-              issued:
-                type: string
-                pattern: '^\d{4}(-\d{2}(-\d{2})?)?$'
-                description: "The date on which the version was published."
-              locations:
-                type: array
-                description: "Locations where further information about this version of the mapping may be accessed."
-                items:
-                  $ref: '#/components/schemas/Location'
-              identifiers:
-                type: array
-                description: "Strings used to identify this version of the mapping."
-                items:
-                  $ref: '#/components/schemas/Identifier'
     Organization:
       type: object
       properties:
         slug:
           $ref: '#/components/schemas/Slug'
-        id:
-          $ref: '#/components/schemas/ID'
+        mscid:
+          $ref: '#/components/schemas/MSCID'
         uri:
           $ref: '#/components/schemas/URI'
         name:
@@ -1303,8 +1682,8 @@ This could recommend steps to be taken before or after applying the mapping in o
       properties:
         slug:
           $ref: '#/components/schemas/Slug'
-        id:
-          $ref: '#/components/schemas/ID'
+        mscid:
+          $ref: '#/components/schemas/MSCID'
         uri:
           $ref: '#/components/schemas/URI'
         title:
@@ -1388,6 +1767,218 @@ This could recommend steps to be taken before or after applying the mapping in o
                 description: "Strings used to identify this version of the tool."
                 items:
                   $ref: '#/components/schemas/Identifier'
+    Mapping:
+      type: object
+      properties:
+        slug:
+          $ref: '#/components/schemas/Slug'
+        mscid:
+          $ref: '#/components/schemas/MSCID'
+        uri:
+          $ref: '#/components/schemas/URI'
+        name:
+          type: string
+          description: "Name or descriptor for the mapping."
+        description:
+          type: string
+          description: "A short description of the mapping.
+
+This could indicate if only certain versions of the input and output schemes are supported; if the mapping has been tailored to the outputs or inputs of specific repositories or services; if certain parts of the input or output schemes have been ignored; or if specific conventions in the input scheme are preferred (or necessary).
+
+This could recommend steps to be taken before or after applying the mapping in order to improve results."
+        creators:
+          type: array
+          description: "Persons or organizations responsible for creating, maintaining, or approving the mapping (the emphasis here is on establishing provenance/responsibility rather than a strict understanding of creation). If a maintaining organization has an entry in the MSC, it should be given under `relatedEntities` with type ‘maintainer’ rather than here."
+          items:
+            $ref: '#/components/schemas/Creator'
+        locations:
+          type: array
+          description: "Locations where further information about the tool may be accessed."
+          items:
+            $ref: '#/components/schemas/Location'
+        identifiers:
+          type: array
+          description: "Strings used to identify the mapping or version."
+          items:
+            $ref: '#/components/schemas/Identifier'
+        relatedEntities:
+          type: array
+          description: "Other entities in the MSC database."
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                description: "Full MSC ID of the entity."
+                pattern: '^msc:(m|g|t|c|e)\d+$'
+              role:
+                type: string
+                description: "The manner of the relationship between the entity and the mapping."
+                enum:
+                - "input scheme"
+                - "output scheme"
+                - "maintainer"
+                - "funder"
+              details:
+                type: object
+                readOnly: true
+                oneOf:
+                - $ref: '#/components/schemas/MetadataScheme'
+                - $ref: '#/components/schemas/Organization'
+        versions:
+          type: array
+          items:
+            properties:
+              number:
+                type: string
+                description: "The number, code or other string used to identify the version, omitting any initial “v”, “v.” or “ver.”."
+              note:
+                type: string
+                description: "If this version requires some explanation, give it here."
+              issued:
+                type: string
+                pattern: '^\d{4}(-\d{2}(-\d{2})?)?$'
+                description: "The date on which the version was published."
+              locations:
+                type: array
+                description: "Locations where further information about this version of the mapping may be accessed."
+                items:
+                  $ref: '#/components/schemas/Location'
+              identifiers:
+                type: array
+                description: "Strings used to identify this version of the mapping."
+                items:
+                  $ref: '#/components/schemas/Identifier'
+    Endorsement:
+      type: object
+      properties:
+        slug:
+          $ref: '#/components/schemas/Slug'
+        mscid:
+          $ref: '#/components/schemas/MSCID'
+        uri:
+          $ref: '#/components/schemas/URI'
+        title:
+          type: string
+          description: "The title of the endorsement document."
+        description:
+          type: string
+          description: "Description of the endorsement document.
+
+      - Use this to record any caveats to the endorsement.
+
+      - This could indicate if only certain versions of the scheme(s) are endorsed."
+        creators:
+          type: array
+          description: "Authors of the endorsement document"
+          items:
+            $ref: '#/components/schemas/Creator'
+        publication:
+          type: string
+          description: "Other bibliographic information (excluding date)."
+        issued:
+          type: string
+          pattern: '^\d{4}(-\d{2}(-\d{2})?)?$'
+          description: "The date on which the endorsement was made. Use of this element does not imply that the originating organization reviews the endorsement for validity. If both `issued` and `valid` are given, issued is ignored."
+        valid:
+          allOf:
+          - description: "The start date expresses when the endorsement was made. If there is no end date, this implies that the originating organization currently endorses the standard. (If that implication is inappropriate, the date should be given under `issued` instead.)
+
+If an end date is provided, it expresses the date on which the endorsement was withdrawn."
+          - $ref: '#/components/schemas/DateRange'
+        locations:
+          type: array
+          description: "Locations where further information about the endorsement may be accessed."
+          items:
+            $ref: '#/components/schemas/Location'
+        identifiers:
+          type: array
+          description: "Strings used to identify the endorsement."
+          items:
+            $ref: '#/components/schemas/Identifier'
+        relatedEntities:
+          type: array
+          description: "Other entities in the MSC database."
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                description: "Full MSC ID of the entity."
+                pattern: '^msc:(m|g|t|c|e)\d+$'
+              role:
+                type: string
+                description: "The manner of the relationship between the entity and the endorsement."
+                enum:
+                - "endorsed scheme"
+                - "originator"
+              details:
+                type: object
+                readOnly: true
+                oneOf:
+                - $ref: '#/components/schemas/MetadataScheme'
+                - $ref: '#/components/schemas/Organization'
+    DataType:
+      type: object
+      properties:
+        slug:
+          $ref: '#/components/schemas/Slug'
+        mscid:
+          $ref: '#/components/schemas/MSCID'
+        uri:
+          $ref: '#/components/schemas/URI'
+        id:
+          type: string
+          description: "URL identifying this type of data."
+        label:
+          type: string
+          description: "Descriptor for this type of data."
+    EntitySpecificType:
+      type: object
+      properties:
+        slug:
+          $ref: '#/components/schemas/Slug'
+        mscid:
+          $ref: '#/components/schemas/MSCID'
+        uri:
+          $ref: '#/components/schemas/URI'
+        label:
+          type: string
+          description: "Human-readable descriptor for this type."
+        applies:
+          type: array
+          description: "Entities for which this type may be used."
+          items:
+            type: string
+            enum:
+            - "scheme"
+            - "organization"
+            - "tool"
+            - "mapping"
+            - "endorsement"
+      required:
+      - label
+    EntitySpecificTypeNew:
+      allOf:
+      - $ref: '#/components/schemas/EntitySpecificType'
+      - properties:
+          id:
+            type: string
+            description: "String used to identify this type in records."
+        required:
+        - id
+    EntitySpecificTypeOld:
+      allOf:
+      - $ref: '#/components/schemas/EntitySpecificType'
+      - properties:
+          id:
+            type: string
+            description: "String used to identify this type in records."
+            readOnly: true
+    ThesaurusTerm:
+      type: object
+    ThesaurusTree:
+      type: object
     DeleteResponse:
       type: object
       properties:
