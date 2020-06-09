@@ -263,12 +263,9 @@ paths:
         schema:
           type: integer
       responses:
-        200:
+        204:
           description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
+          content: {}
         404:
           description: "Metadata scheme not found"
           content: {}
@@ -322,12 +319,9 @@ paths:
         schema:
           type: integer
       responses:
-        200:
+        204:
           description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
+          content: {}
         401:
           $ref: '#/components/responses/UnauthorizedError'
         404:
@@ -393,12 +387,9 @@ paths:
         schema:
           type: integer
       responses:
-        200:
+        204:
           description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
+          content: {}
         404:
           description: "Organization not found"
           content: {}
@@ -452,12 +443,9 @@ paths:
         schema:
           type: integer
       responses:
-        200:
+        204:
           description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
+          content: {}
         401:
           $ref: '#/components/responses/UnauthorizedError'
         404:
@@ -523,12 +511,9 @@ paths:
         schema:
           type: integer
       responses:
-        200:
+        204:
           description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
+          content: {}
         404:
           description: "Tool not found"
           content: {}
@@ -582,12 +567,9 @@ paths:
         schema:
           type: integer
       responses:
-        200:
+        204:
           description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
+          content: {}
         401:
           $ref: '#/components/responses/UnauthorizedError'
         404:
@@ -653,12 +635,9 @@ paths:
         schema:
           type: integer
       responses:
-        200:
+        204:
           description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
+          content: {}
         404:
           description: "Mapping not found"
           content: {}
@@ -712,12 +691,9 @@ paths:
         schema:
           type: integer
       responses:
-        200:
+        204:
           description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
+          content: {}
         401:
           $ref: '#/components/responses/UnauthorizedError'
         404:
@@ -783,12 +759,9 @@ paths:
         schema:
           type: integer
       responses:
-        200:
+        204:
           description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
+          content: {}
         404:
           description: "Endorsement not found"
           content: {}
@@ -842,12 +815,9 @@ paths:
         schema:
           type: integer
       responses:
-        200:
+        204:
           description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
+          content: {}
         401:
           $ref: '#/components/responses/UnauthorizedError'
         404:
@@ -913,12 +883,9 @@ paths:
         schema:
           type: integer
       responses:
-        200:
+        204:
           description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
+          content: {}
         404:
           description: "Data type not found"
           content: {}
@@ -972,12 +939,9 @@ paths:
         schema:
           type: integer
       responses:
-        200:
+        204:
           description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
+          content: {}
         401:
           $ref: '#/components/responses/UnauthorizedError'
         404:
@@ -1043,12 +1007,9 @@ paths:
         schema:
           type: integer
       responses:
-        200:
+        204:
           description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
+          content: {}
         404:
           description: "Data type not found"
           content: {}
@@ -1102,12 +1063,9 @@ paths:
         schema:
           type: integer
       responses:
-        200:
+        204:
           description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
+          content: {}
         401:
           $ref: '#/components/responses/UnauthorizedError'
         404:
@@ -1173,12 +1131,9 @@ paths:
         schema:
           type: integer
       responses:
-        200:
+        204:
           description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
+          content: {}
         404:
           description: "Data type not found"
           content: {}
@@ -1232,12 +1187,9 @@ paths:
         schema:
           type: integer
       responses:
-        200:
+        204:
           description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
+          content: {}
         401:
           $ref: '#/components/responses/UnauthorizedError'
         404:
@@ -1303,12 +1255,9 @@ paths:
         schema:
           type: integer
       responses:
-        200:
+        204:
           description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
+          content: {}
         404:
           description: "Data type not found"
           content: {}
@@ -1362,12 +1311,9 @@ paths:
         schema:
           type: integer
       responses:
-        200:
+        204:
           description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
+          content: {}
         401:
           $ref: '#/components/responses/UnauthorizedError'
         404:
@@ -1375,6 +1321,86 @@ paths:
           content: {}
       security:
       - api_user: []
+  /api2/thesaurus:
+    get:
+      tags:
+      - thesaurus
+      summary: "Retrieve SKOS Concept Scheme for RDAMSC Thesaurus"
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThesaurusConceptScheme'
+  /api2/thesaurus/{level}{int}:
+    get:
+      tags:
+      - thesaurus
+      summary: "Retrieve SKOS Concept from RDAMSC Thesaurus"
+      parameters:
+      - name: level
+        in: path
+        required: true
+        description: "String portion of the concept ID."
+        schema:
+          type: string
+          enum:
+          - "domain"
+          - "subdomain"
+          - "concept"
+      - name: int
+        in: path
+        required: true
+        description: "Numeric portion of the concept ID."
+        schema:
+          type: integer
+      - name: form
+        in: query
+        description: "Level of detail to include in the entry.
+
+  - `concept` (default) provides the normal SKOS properties.
+
+  - `tree` additionally provides the hierarchy of broader terms (starting with the broadest) and narrower terms (as a nested set of arrays of objects)"
+        schema:
+          type: string
+          enum:
+          - concept
+          - tree
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThesaurusConcept'
+        404:
+          description: "Concept not found"
+          content: {}
+  /api2/thesaurus/concepts:
+    get:
+      tags:
+      - thesaurus
+      summary: "Retrieve array of all concepts in the RDAMSC Thesaurus"
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThesaurusConceptList'
+  /api2/thesaurus/concepts/used:
+    get:
+      tags:
+      - thesaurus
+      summary: "Retrieve array of concepts in the RDAMSC Thesaurus that are currently in use in the Catalog."
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThesaurusConceptList'
   /api2/reset-password:
     post:
       tags:
@@ -1561,7 +1587,7 @@ components:
                 - "user"
                 - "tool"
                 - "endorsement"
-              details:
+              data:
                 type: object
                 readOnly: true
                 oneOf:
@@ -1669,7 +1695,7 @@ components:
                 - "funded mapping"
                 - "used scheme"
                 - "endorsement"
-              details:
+              data:
                 type: object
                 readOnly: true
                 oneOf:
@@ -1734,7 +1760,7 @@ components:
                 - "supported scheme"
                 - "maintainer"
                 - "funder"
-              details:
+              data:
                 type: object
                 readOnly: true
                 oneOf:
@@ -1819,7 +1845,7 @@ This could recommend steps to be taken before or after applying the mapping in o
                 - "output scheme"
                 - "maintainer"
                 - "funder"
-              details:
+              data:
                 type: object
                 readOnly: true
                 oneOf:
@@ -1912,7 +1938,7 @@ If an end date is provided, it expresses the date on which the endorsement was w
                 enum:
                 - "endorsed scheme"
                 - "originator"
-              details:
+              data:
                 type: object
                 readOnly: true
                 oneOf:
@@ -1975,74 +2001,119 @@ If an end date is provided, it expresses the date on which the endorsement was w
             type: string
             description: "String used to identify this type in records."
             readOnly: true
-    ThesaurusTerm:
+    ThesaurusConceptScheme:
       type: object
-    ThesaurusTree:
+    ThesaurusConcept:
       type: object
-    DeleteResponse:
+    ThesaurusConceptList:
       type: object
-      properties:
-        success:
-          type: boolean
-          description: "Whether the record was deleted successfully."
-        id:
-          type: string
-          description: "Full MSC ID of deleted record."
-          pattern: '^msc:(m|g|t|c|e)\d+$'
     ItemResponse:
       type: object
       properties:
-        id:
-          type: integer
-          description: "Numeric portion of the MSC ID."
-        slug:
+        apiVersion:
           type: string
-          description: "A less opaque identifying string for the record, derived from the title of a metadata scheme, the name of an organization, etc."
+        data:
+          oneOf:
+          - $ref: '#/components/schemas/MetadataScheme'
+          - $ref: '#/components/schemas/Organization'
+          - $ref: '#/components/schemas/Tool'
+          - $ref: '#/components/schemas/Mapping'
+          - $ref: '#/components/schemas/Endorsement'
+          - $ref: '#/components/schemas/DataType'
+          - $ref: '#/components/schemas/EntitySpecificTypeOld'
+          - $ref: '#/components/schemas/ThesaurusConcept'
     QueryResponse:
       type: object
       properties:
-        ids:
-          type: array
-          items:
-            type: string
-            description: "Full MSC ID."
-            pattern: '^msc:(m|g|t|c|e)\d+$'
+        apiVersion:
+          type: string
+        data:
+          type: object
+          properties:
+            itemsPerPage:
+              type: integer
+              description: "Number of items per page of results."
+            currentItemCount:
+              type: integer
+              description: "Number of items in the current page of results."
+            startIndex:
+              type: integer
+              description: "Index of the first item in the current page of results. Items are counted from 1."
+            totalItems:
+              type: integer
+              description: "Total number of items in the result set (equal to the index of the last item)."
+            pageIndex:
+              type: integer
+              description: "Index of the current page of results. Pages are counted from 1."
+            totalPages:
+              type: integer
+              description: "Total number of pages in the result"
+            nextLink:
+              type: string
+              description: "URL from which to obtain the next page of results."
+            previousLink:
+              type: string
+              description: "URL from which to obtain the previous page of results."
+            items:
+              type: array
+              description: "Items in the current page of results"
+              items:
+                oneOf:
+                - $ref: '#/components/schemas/MetadataScheme'
+                - $ref: '#/components/schemas/Organization'
+                - $ref: '#/components/schemas/Tool'
+                - $ref: '#/components/schemas/Mapping'
+                - $ref: '#/components/schemas/Endorsement'
+                - $ref: '#/components/schemas/DataType'
+                - $ref: '#/components/schemas/EntitySpecificTypeOld'
+                - $ref: '#/components/schemas/ThesaurusConcept'
     SubmissionResponseSuccess:
       type: object
       properties:
-        success:
-          type: boolean
-          description: "Whether record passed validation."
-          enum:
-          - true
-        conformance:
+        apiVersion:
           type: string
-          description: "Conformance level of the record."
-          enum:
-            - complete
-            - useful
-            - valid
-        id:
-          type: string
-          description: "Full MSC ID of newly created record."
-          pattern: '^msc:(m|g|t|c|e)\d+$'
+        meta:
+          type: object
+          properties:
+            conformance:
+              type: string
+              description: "Conformance level of the record."
+              enum:
+                - complete
+                - useful
+                - valid
+        data:
+          oneOf:
+          - $ref: '#/components/schemas/MetadataScheme'
+          - $ref: '#/components/schemas/Organization'
+          - $ref: '#/components/schemas/Tool'
+          - $ref: '#/components/schemas/Mapping'
+          - $ref: '#/components/schemas/Endorsement'
+          - $ref: '#/components/schemas/DataType'
+          - $ref: '#/components/schemas/EntitySpecificTypeOld'
     SubmissionResponseFailure:
       type: object
       properties:
-        success:
-          type: boolean
-          description: "Whether record passed validation."
-          enum:
-          - false
-        conformance:
+        apiVersion:
           type: string
-          description: "Conformance level of the record."
-          enum:
-            - invalid
-        errors:
-          type: object
-          description: "Errors returned by form validation, listed under the places where they occurred."
-          example: { "locations": [ { "type": [ "Not a valid choice" ] } ] }
+        error:
+          type: array
+          properties:
+            message:
+              type: string
+              description: "Summary of the error(s)."
+            errors:
+              type: array
+              description: "Errors returned by form validation."
+              items:
+                type: array
+                properties:
+                  message:
+                    type: string
+                    description: "Nature of validation error."
+                  location:
+                    type: string
+                    description: "Object key where the error occurred."
   responses:
     UnauthorizedError:
       description: Unauthorized access
