@@ -47,12 +47,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  metadata-schemes:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/ItemResponse'
+                $ref: '#/components/schemas/ResponsePageMetadataScheme'
     post:
       tags:
       - m
@@ -174,12 +169,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  organizations:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/ItemResponse'
+                $ref: '#/components/schemas/ResponsePageOrganization'
     post:
       tags:
       - g
@@ -301,12 +291,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  organizations:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/ItemResponse'
+                $ref: '#/components/schemas/ResponsePageTool'
     post:
       tags:
       - t
@@ -428,12 +413,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  mappings:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/ItemResponse'
+                $ref: '#/components/schemas/ResponsePageMapping'
     post:
       tags:
       - c
@@ -555,12 +535,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  endorsements:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/ItemResponse'
+                $ref: '#/components/schemas/ResponsePageEndorsement'
     post:
       tags:
       - e
@@ -682,12 +657,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  dataTypes:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/ItemResponse'
+                $ref: '#/components/schemas/ResponsePageDataType'
     post:
       tags:
       - datatype
@@ -809,12 +779,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  dataTypes:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/ItemResponse'
+                $ref: '#/components/schemas/ResponsePageEntityType'
     post:
       tags:
       - type
@@ -936,12 +901,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  dataTypes:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/ItemResponse'
+                $ref: '#/components/schemas/ResponsePageLocationType'
     post:
       tags:
       - location
@@ -1063,12 +1023,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  dataTypes:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/ItemResponse'
+                $ref: '#/components/schemas/ResponsePageIDScheme'
     post:
       tags:
       - id_scheme
@@ -1385,11 +1340,12 @@ components:
           $ref: '#/components/schemas/URI'
         title:
           type: string
-          description: "The full, human understandable name of the metadata scheme.
+          description: >
+            "The full, human understandable name of the metadata scheme.
 
-      - If the scheme is known by an abbreviation, put this at the start of the title, then give the expanded form in parentheses, e.g. “SDMX (Statistical Data and Metadata Exchange)”.
+            If the scheme is known by an abbreviation, put this at the start of the title, then give the expanded form in parentheses, e.g. “SDMX (Statistical Data and Metadata Exchange)”.
 
-      - If the title is in English, use title case, i.e. give each significant word a capital letter. Do not use an irregular case to indicate how an abbreviation was defined, e.g. do not write “Statistical Data and Metadata eXchange”."
+            If the title is in English, use title case, i.e. give each significant word a capital letter. Do not use an irregular case to indicate how an abbreviation was defined, e.g. do not write “Statistical Data and Metadata eXchange”."
         description:
           type: string
           description: "A few sentences describing the nature of the standard and for what it is meant to be used. If any of the information in the remainder of the record needs be clarified, perhaps because the reality is more nuanced than the coarse semantics provide for, then an explanation can be given here."
@@ -1572,11 +1528,12 @@ components:
           $ref: '#/components/schemas/URI'
         title:
           type: string
-          description: "The full, human understandable name of the tool.
+          description: >
+            "The full, human understandable name of the tool.
 
-  - If the tool is known by an abbreviation, put this at the start of the title, then give the expanded form in parentheses, e.g. “CMOR (Climate Model Output Rewriter)”.
+            If the tool is known by an abbreviation, put this at the start of the title, then give the expanded form in parentheses, e.g. “CMOR (Climate Model Output Rewriter)”.
 
-  - If the title is in English, use title case, i.e. give each significant word a capital letter. Do not use an irregular case to indicate how an abbreviation was defined, e.g. do not write “eXtensible Editor”."
+            If the title is in English, use title case, i.e. give each significant word a capital letter. Do not use an irregular case to indicate how an abbreviation was defined, e.g. do not write “eXtensible Editor”."
         description:
           type: string
           description: "A short description of the intended use of the tool, and its capabilities."
@@ -1665,11 +1622,12 @@ components:
           description: "Name or descriptor for the mapping."
         description:
           type: string
-          description: "A short description of the mapping.
+          description: >
+            "A short description of the mapping.
 
-This could indicate if only certain versions of the input and output schemes are supported; if the mapping has been tailored to the outputs or inputs of specific repositories or services; if certain parts of the input or output schemes have been ignored; or if specific conventions in the input scheme are preferred (or necessary).
+            This could indicate if only certain versions of the input and output schemes are supported; if the mapping has been tailored to the outputs or inputs of specific repositories or services; if certain parts of the input or output schemes have been ignored; or if specific conventions in the input scheme are preferred (or necessary).
 
-This could recommend steps to be taken before or after applying the mapping in order to improve results."
+            This could recommend steps to be taken before or after applying the mapping in order to improve results."
         creators:
           type: array
           description: "Persons or organizations responsible for creating, maintaining, or approving the mapping (the emphasis here is on establishing provenance/responsibility rather than a strict understanding of creation). If a maintaining organization has an entry in the MSC, it should be given under `relatedEntities` with type ‘maintainer’ rather than here."
@@ -1747,11 +1705,12 @@ This could recommend steps to be taken before or after applying the mapping in o
           description: "The title of the endorsement document."
         description:
           type: string
-          description: "Description of the endorsement document.
+          description: >
+            "Description of the endorsement document.
 
-      - Use this to record any caveats to the endorsement.
+            Use this to record any caveats to the endorsement.
 
-      - This could indicate if only certain versions of the scheme(s) are endorsed."
+            This could indicate if only certain versions of the scheme(s) are endorsed."
         creators:
           type: array
           description: "Authors of the endorsement document"
@@ -2002,7 +1961,7 @@ If an end date is provided, it expresses the date on which the endorsement was w
       - properties:
           data:
             $ref: '#/components/schemas/LocationTypeOld'
-    ResponseIDSchemeType:
+    ResponseItemIDScheme:
       allOf:
       - $ref: '#/components/schemas/Response'
       - properties:
@@ -2014,66 +1973,160 @@ If an end date is provided, it expresses the date on which the endorsement was w
       - properties:
           data:
             $ref: '#/components/schemas/ThesaurusConcept'
+    Page:
+      type: object
+      properties:
+        itemsPerPage:
+          type: integer
+          description: "Number of items per page of results."
+        currentItemCount:
+          type: integer
+          description: "Number of items in the current page of results."
+        startIndex:
+          type: integer
+          description: "Index of the first item in the current page of results. Items are counted from 1."
+        totalItems:
+          type: integer
+          description: "Total number of items in the result set (equal to the index of the last item)."
+        pageIndex:
+          type: integer
+          description: "Index of the current page of results. Pages are counted from 1."
+        totalPages:
+          type: integer
+          description: "Total number of pages in the result"
+        nextLink:
+          type: string
+          description: "URL from which to obtain the next page of results."
+        previousLink:
+          type: string
+          description: "URL from which to obtain the previous page of results."
+    ResponsePageMetadataScheme:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            allOf:
+              - $ref: '#/components/schemas/Page'
+              - properties:
+                  items:
+                    type: array
+                    description: "Items in the current page of results"
+                    items:
+                      $ref: '#/components/schemas/MetadataScheme'
+    ResponsePageOrganization:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            allOf:
+              - $ref: '#/components/schemas/Page'
+              - properties:
+                  items:
+                    type: array
+                    description: "Items in the current page of results"
+                    items:
+                      $ref: '#/components/schemas/Organization'
+    ResponsePageTool:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            allOf:
+              - $ref: '#/components/schemas/Page'
+              - properties:
+                  items:
+                    type: array
+                    description: "Items in the current page of results"
+                    items:
+                      $ref: '#/components/schemas/Tool'
+    ResponsePageMapping:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            allOf:
+              - $ref: '#/components/schemas/Page'
+              - properties:
+                  items:
+                    type: array
+                    description: "Items in the current page of results"
+                    items:
+                      $ref: '#/components/schemas/Mapping'
+    ResponsePageEndorsement:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            allOf:
+              - $ref: '#/components/schemas/Page'
+              - properties:
+                  items:
+                    type: array
+                    description: "Items in the current page of results"
+                    items:
+                      $ref: '#/components/schemas/Endorsement'
+    ResponsePageDataType:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            allOf:
+              - $ref: '#/components/schemas/Page'
+              - properties:
+                  items:
+                    type: array
+                    description: "Items in the current page of results"
+                    items:
+                      $ref: '#/components/schemas/DataType'
+    ResponsePageEntityType:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            allOf:
+              - $ref: '#/components/schemas/Page'
+              - properties:
+                  items:
+                    type: array
+                    description: "Items in the current page of results"
+                    items:
+                      $ref: '#/components/schemas/EntityTypeOld'
+    ResponsePageLocationType:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            allOf:
+              - $ref: '#/components/schemas/Page'
+              - properties:
+                  items:
+                    type: array
+                    description: "Items in the current page of results"
+                    items:
+                      $ref: '#/components/schemas/LocationTypeOld'
+    ResponsePageIDScheme:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            allOf:
+              - $ref: '#/components/schemas/Page'
+              - properties:
+                  items:
+                    type: array
+                    description: "Items in the current page of results"
+                    items:
+                      $ref: '#/components/schemas/IDSchemeOld'
     ItemResponse:
       type: object
       properties:
-        apiVersion:
+        DEPRECATED:
           type: string
-        data:
-          oneOf:
-          - $ref: '#/components/schemas/MetadataScheme'
-          - $ref: '#/components/schemas/Organization'
-          - $ref: '#/components/schemas/Tool'
-          - $ref: '#/components/schemas/Mapping'
-          - $ref: '#/components/schemas/Endorsement'
-          - $ref: '#/components/schemas/DataType'
-          - $ref: '#/components/schemas/EntityTypeOld'
-          - $ref: '#/components/schemas/ThesaurusConcept'
     QueryResponse:
       type: object
       properties:
-        apiVersion:
+        DEPRECATED:
           type: string
-        data:
-          type: object
-          properties:
-            itemsPerPage:
-              type: integer
-              description: "Number of items per page of results."
-            currentItemCount:
-              type: integer
-              description: "Number of items in the current page of results."
-            startIndex:
-              type: integer
-              description: "Index of the first item in the current page of results. Items are counted from 1."
-            totalItems:
-              type: integer
-              description: "Total number of items in the result set (equal to the index of the last item)."
-            pageIndex:
-              type: integer
-              description: "Index of the current page of results. Pages are counted from 1."
-            totalPages:
-              type: integer
-              description: "Total number of pages in the result"
-            nextLink:
-              type: string
-              description: "URL from which to obtain the next page of results."
-            previousLink:
-              type: string
-              description: "URL from which to obtain the previous page of results."
-            items:
-              type: array
-              description: "Items in the current page of results"
-              items:
-                oneOf:
-                - $ref: '#/components/schemas/MetadataScheme'
-                - $ref: '#/components/schemas/Organization'
-                - $ref: '#/components/schemas/Tool'
-                - $ref: '#/components/schemas/Mapping'
-                - $ref: '#/components/schemas/Endorsement'
-                - $ref: '#/components/schemas/DataType'
-                - $ref: '#/components/schemas/EntityTypeOld'
-                - $ref: '#/components/schemas/ThesaurusConcept'
     SubmissionResponseSuccess:
       type: object
       properties:
