@@ -263,9 +263,12 @@ paths:
         schema:
           type: integer
       responses:
-        204:
+        200:
           description: Success
-          content: {}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseItemMetadataScheme'
         404:
           description: "Metadata scheme not found"
           content: {}
@@ -387,9 +390,12 @@ paths:
         schema:
           type: integer
       responses:
-        204:
+        200:
           description: Success
-          content: {}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseItemOrganization'
         404:
           description: "Organization not found"
           content: {}
@@ -511,9 +517,12 @@ paths:
         schema:
           type: integer
       responses:
-        204:
+        200:
           description: Success
-          content: {}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseItemTool'
         404:
           description: "Tool not found"
           content: {}
@@ -635,9 +644,12 @@ paths:
         schema:
           type: integer
       responses:
-        204:
+        200:
           description: Success
-          content: {}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseItemMapping'
         404:
           description: "Mapping not found"
           content: {}
@@ -759,9 +771,12 @@ paths:
         schema:
           type: integer
       responses:
-        204:
+        200:
           description: Success
-          content: {}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseItemEndorsement'
         404:
           description: "Endorsement not found"
           content: {}
@@ -883,9 +898,12 @@ paths:
         schema:
           type: integer
       responses:
-        204:
+        200:
           description: Success
-          content: {}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseItemDataType'
         404:
           description: "Data type not found"
           content: {}
@@ -930,7 +948,7 @@ paths:
     delete:
       tags:
       - datatype
-      summary: "Remove an existing datatype record"
+      summary: "Remove an existing data type record"
       parameters:
       - name: int
         in: path
@@ -976,7 +994,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EntitySpecificTypeNew'
+              $ref: '#/components/schemas/EntityTypeNew'
       responses:
         200:
           description: Success
@@ -1007,11 +1025,14 @@ paths:
         schema:
           type: integer
       responses:
-        204:
+        200:
           description: Success
-          content: {}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseItemEntityType'
         404:
-          description: "Data type not found"
+          description: "Entity type not found"
           content: {}
     put:
       tags:
@@ -1030,7 +1051,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EntitySpecificTypeOld'
+              $ref: '#/components/schemas/EntityTypeOld'
       responses:
         200:
           description: Success
@@ -1047,14 +1068,14 @@ paths:
         401:
           $ref: '#/components/responses/UnauthorizedError'
         404:
-          description: "Data type not found"
+          description: "Entity type not found"
           content: {}
       security:
       - api_user: []
     delete:
       tags:
       - type
-      summary: "Remove an existing type record"
+      summary: "Remove an existing entity type record"
       parameters:
       - name: int
         in: path
@@ -1100,7 +1121,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EntitySpecificTypeNew'
+              $ref: '#/components/schemas/EntityTypeNew'
       responses:
         200:
           description: Success
@@ -1131,11 +1152,14 @@ paths:
         schema:
           type: integer
       responses:
-        204:
+        200:
           description: Success
-          content: {}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseItemLocationType'
         404:
-          description: "Data type not found"
+          description: "Location (URL) type not found"
           content: {}
     put:
       tags:
@@ -1154,7 +1178,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EntitySpecificTypeOld'
+              $ref: '#/components/schemas/LocationTypeOld'
       responses:
         200:
           description: Success
@@ -1171,14 +1195,14 @@ paths:
         401:
           $ref: '#/components/responses/UnauthorizedError'
         404:
-          description: "Data type not found"
+          description: "Location (URL) type not found"
           content: {}
       security:
       - api_user: []
     delete:
       tags:
       - location
-      summary: "Remove an existing location record"
+      summary: "Remove an existing location (URL) type record"
       parameters:
       - name: int
         in: path
@@ -1193,7 +1217,7 @@ paths:
         401:
           $ref: '#/components/responses/UnauthorizedError'
         404:
-          description: "Data type not found"
+          description: "Location (URL) type not found"
           content: {}
       security:
       - api_user: []
@@ -1224,7 +1248,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EntitySpecificTypeNew'
+              $ref: '#/components/schemas/EntityTypeNew'
       responses:
         200:
           description: Success
@@ -1255,11 +1279,14 @@ paths:
         schema:
           type: integer
       responses:
-        204:
+        200:
           description: Success
-          content: {}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseItemIDScheme'
         404:
-          description: "Data type not found"
+          description: "ID scheme not found"
           content: {}
     put:
       tags:
@@ -1278,7 +1305,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EntitySpecificTypeOld'
+              $ref: '#/components/schemas/IDSchemeOld'
       responses:
         200:
           description: Success
@@ -1302,7 +1329,7 @@ paths:
     delete:
       tags:
       - id_scheme
-      summary: "Remove an existing id_scheme record"
+      summary: "Remove an existing ID scheme record"
       parameters:
       - name: int
         in: path
@@ -1317,7 +1344,7 @@ paths:
         401:
           $ref: '#/components/responses/UnauthorizedError'
         404:
-          description: "Data type not found"
+          description: "ID Scheme not found"
           content: {}
       security:
       - api_user: []
@@ -1959,7 +1986,7 @@ If an end date is provided, it expresses the date on which the endorsement was w
         label:
           type: string
           description: "Descriptor for this type of data."
-    EntitySpecificType:
+    EntityType:
       type: object
       properties:
         slug:
@@ -1984,22 +2011,106 @@ If an end date is provided, it expresses the date on which the endorsement was w
             - "endorsement"
       required:
       - label
-    EntitySpecificTypeNew:
+    EntityTypeNew:
       allOf:
-      - $ref: '#/components/schemas/EntitySpecificType'
+      - $ref: '#/components/schemas/EntityType'
       - properties:
           id:
             type: string
             description: "String used to identify this type in records."
         required:
         - id
-    EntitySpecificTypeOld:
+    EntityTypeOld:
       allOf:
-      - $ref: '#/components/schemas/EntitySpecificType'
+      - $ref: '#/components/schemas/EntityType'
       - properties:
           id:
             type: string
             description: "String used to identify this type in records."
+            readOnly: true
+    LocationType:
+      type: object
+      properties:
+        slug:
+          $ref: '#/components/schemas/Slug'
+        mscid:
+          $ref: '#/components/schemas/MSCID'
+        uri:
+          $ref: '#/components/schemas/URI'
+        label:
+          type: string
+          description: "Human-readable descriptor for this type."
+        applies:
+          type: array
+          description: "Entities for which this type may be used."
+          items:
+            type: string
+            enum:
+            - "scheme"
+            - "organization"
+            - "tool"
+            - "mapping"
+            - "endorsement"
+      required:
+      - label
+    LocationTypeNew:
+      allOf:
+      - $ref: '#/components/schemas/LocationType'
+      - properties:
+          id:
+            type: string
+            description: "String used to identify this type in records."
+        required:
+        - id
+    LocationTypeOld:
+      allOf:
+      - $ref: '#/components/schemas/LocationType'
+      - properties:
+          id:
+            type: string
+            description: "String used to identify this type in records."
+            readOnly: true
+    IDSchemeType:
+      type: object
+      properties:
+        slug:
+          $ref: '#/components/schemas/Slug'
+        mscid:
+          $ref: '#/components/schemas/MSCID'
+        uri:
+          $ref: '#/components/schemas/URI'
+        label:
+          type: string
+          description: "Human-readable descriptor for this ID scheme."
+        applies:
+          type: array
+          description: "Entities for which this ID scheme may be used."
+          items:
+            type: string
+            enum:
+            - "scheme"
+            - "organization"
+            - "tool"
+            - "mapping"
+            - "endorsement"
+      required:
+      - label
+    IDSchemeNew:
+      allOf:
+      - $ref: '#/components/schemas/EntityType'
+      - properties:
+          id:
+            type: string
+            description: "String used to identify this ID scheme in records."
+        required:
+        - id
+    IDSchemeOld:
+      allOf:
+      - $ref: '#/components/schemas/EntityType'
+      - properties:
+          id:
+            type: string
+            description: "String used to identify this ID scheme in records."
             readOnly: true
     ThesaurusConceptScheme:
       type: object
@@ -2007,6 +2118,71 @@ If an end date is provided, it expresses the date on which the endorsement was w
       type: object
     ThesaurusConceptList:
       type: object
+    Response:
+      type: object
+      properties:
+        apiVersion:
+          type: string
+    ResponseItemMetadataScheme:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            $ref: '#/components/schemas/MetadataScheme'
+    ResponseItemOrganization:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            $ref: '#/components/schemas/Organization'
+    ResponseItemTool:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            $ref: '#/components/schemas/Tool'
+    ResponseItemMapping:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            $ref: '#/components/schemas/Mapping'
+    ResponseItemEndorsement:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            $ref: '#/components/schemas/Endorsement'
+    ResponseItemDataType:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            $ref: '#/components/schemas/DataType'
+    ResponseItemEntityType:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            $ref: '#/components/schemas/EntityTypeOld'
+    ResponseItemLocationType:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            $ref: '#/components/schemas/LocationTypeOld'
+    ResponseIDSchemeType:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            $ref: '#/components/schemas/IDSchemeOld'
+    ResponseItemThesaurusConcept:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            $ref: '#/components/schemas/ThesaurusConcept'
     ItemResponse:
       type: object
       properties:
@@ -2020,7 +2196,7 @@ If an end date is provided, it expresses the date on which the endorsement was w
           - $ref: '#/components/schemas/Mapping'
           - $ref: '#/components/schemas/Endorsement'
           - $ref: '#/components/schemas/DataType'
-          - $ref: '#/components/schemas/EntitySpecificTypeOld'
+          - $ref: '#/components/schemas/EntityTypeOld'
           - $ref: '#/components/schemas/ThesaurusConcept'
     QueryResponse:
       type: object
@@ -2065,7 +2241,7 @@ If an end date is provided, it expresses the date on which the endorsement was w
                 - $ref: '#/components/schemas/Mapping'
                 - $ref: '#/components/schemas/Endorsement'
                 - $ref: '#/components/schemas/DataType'
-                - $ref: '#/components/schemas/EntitySpecificTypeOld'
+                - $ref: '#/components/schemas/EntityTypeOld'
                 - $ref: '#/components/schemas/ThesaurusConcept'
     SubmissionResponseSuccess:
       type: object
@@ -2090,14 +2266,14 @@ If an end date is provided, it expresses the date on which the endorsement was w
           - $ref: '#/components/schemas/Mapping'
           - $ref: '#/components/schemas/Endorsement'
           - $ref: '#/components/schemas/DataType'
-          - $ref: '#/components/schemas/EntitySpecificTypeOld'
+          - $ref: '#/components/schemas/EntityTypeOld'
     SubmissionResponseFailure:
       type: object
       properties:
         apiVersion:
           type: string
         error:
-          type: array
+          type: object
           properties:
             message:
               type: string
@@ -2106,7 +2282,7 @@ If an end date is provided, it expresses the date on which the endorsement was w
               type: array
               description: "Errors returned by form validation."
               items:
-                type: array
+                type: object
                 properties:
                   message:
                     type: string
