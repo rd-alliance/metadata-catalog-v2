@@ -779,7 +779,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResponsePageEntityType'
+                $ref: '#/components/schemas/ResponsePageVocabularyTerm'
     post:
       tags:
       - type
@@ -790,14 +790,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EntityTypeNew'
+              $ref: '#/components/schemas/VocabularyTermNew'
       responses:
         200:
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResponseSuccessEntityType'
+                $ref: '#/components/schemas/ResponseSuccessVocabularyTerm'
         400:
           description: Failure
           content:
@@ -826,7 +826,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResponseItemEntityType'
+                $ref: '#/components/schemas/ResponseItemVocabularyTerm'
         404:
           description: "Entity type not found"
           content: {}
@@ -847,14 +847,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EntityTypeOld'
+              $ref: '#/components/schemas/VocabularyTermOld'
       responses:
         200:
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResponseSuccessEntityType'
+                $ref: '#/components/schemas/ResponseSuccessVocabularyTerm'
         400:
           description: Failure
           content:
@@ -901,7 +901,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResponsePageLocationType'
+                $ref: '#/components/schemas/ResponsePageVocabularyTerm'
     post:
       tags:
       - location
@@ -912,14 +912,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LocationTypeNew'
+              $ref: '#/components/schemas/VocabularyTermNew'
       responses:
         200:
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResponseSuccessLocationType'
+                $ref: '#/components/schemas/ResponseSuccessVocabularyTerm'
         400:
           description: Failure
           content:
@@ -948,7 +948,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResponseItemLocationType'
+                $ref: '#/components/schemas/ResponseItemVocabularyTerm'
         404:
           description: "Location (URL) type not found"
           content: {}
@@ -969,14 +969,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LocationTypeOld'
+              $ref: '#/components/schemas/VocabularyTermOld'
       responses:
         200:
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResponseSuccessLocationType'
+                $ref: '#/components/schemas/ResponseSuccessVocabularyTerm'
         400:
           description: Failure
           content:
@@ -1023,7 +1023,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResponsePageIDScheme'
+                $ref: '#/components/schemas/ResponsePageVocabularyTerm'
     post:
       tags:
       - id_scheme
@@ -1034,14 +1034,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/IDSchemeNew'
+              $ref: '#/components/schemas/VocabularyTermNew'
       responses:
         200:
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResponseSuccessIDScheme'
+                $ref: '#/components/schemas/ResponseSuccessVocabularyTerm'
         400:
           description: Failure
           content:
@@ -1070,7 +1070,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResponseItemIDScheme'
+                $ref: '#/components/schemas/ResponseItemVocabularyTerm'
         404:
           description: "ID scheme not found"
           content: {}
@@ -1091,14 +1091,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/IDSchemeOld'
+              $ref: '#/components/schemas/VocabularyTermOld'
       responses:
         200:
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResponseSuccessIDScheme'
+                $ref: '#/components/schemas/ResponseSuccessVocabularyTerm'
         400:
           description: Failure
           content:
@@ -1776,7 +1776,7 @@ If an end date is provided, it expresses the date on which the endorsement was w
         label:
           type: string
           description: "Descriptor for this type of data."
-    EntityType:
+    VocabularyTerm:
       type: object
       properties:
         slug:
@@ -1787,10 +1787,10 @@ If an end date is provided, it expresses the date on which the endorsement was w
           $ref: '#/components/schemas/URI'
         label:
           type: string
-          description: "Human-readable descriptor for this type."
+          description: "Human-readable descriptor for this term."
         applies:
           type: array
-          description: "Entities for which this type may be used."
+          description: "Entities for which this term may be used."
           items:
             type: string
             enum:
@@ -1801,106 +1801,22 @@ If an end date is provided, it expresses the date on which the endorsement was w
             - "endorsement"
       required:
       - label
-    EntityTypeNew:
+    VocabularyTermNew:
       allOf:
-      - $ref: '#/components/schemas/EntityType'
+      - $ref: '#/components/schemas/VocabularyTerm'
       - properties:
           id:
             type: string
-            description: "String used to identify this type in records."
+            description: "String used to identify this term in records."
         required:
         - id
-    EntityTypeOld:
+    VocabularyTermOld:
       allOf:
-      - $ref: '#/components/schemas/EntityType'
+      - $ref: '#/components/schemas/VocabularyTerm'
       - properties:
           id:
             type: string
-            description: "String used to identify this type in records."
-            readOnly: true
-    LocationType:
-      type: object
-      properties:
-        slug:
-          $ref: '#/components/schemas/Slug'
-        mscid:
-          $ref: '#/components/schemas/MSCID'
-        uri:
-          $ref: '#/components/schemas/URI'
-        label:
-          type: string
-          description: "Human-readable descriptor for this type."
-        applies:
-          type: array
-          description: "Entities for which this type may be used."
-          items:
-            type: string
-            enum:
-            - "scheme"
-            - "organization"
-            - "tool"
-            - "mapping"
-            - "endorsement"
-      required:
-      - label
-    LocationTypeNew:
-      allOf:
-      - $ref: '#/components/schemas/LocationType'
-      - properties:
-          id:
-            type: string
-            description: "String used to identify this type in records."
-        required:
-        - id
-    LocationTypeOld:
-      allOf:
-      - $ref: '#/components/schemas/LocationType'
-      - properties:
-          id:
-            type: string
-            description: "String used to identify this type in records."
-            readOnly: true
-    IDSchemeType:
-      type: object
-      properties:
-        slug:
-          $ref: '#/components/schemas/Slug'
-        mscid:
-          $ref: '#/components/schemas/MSCID'
-        uri:
-          $ref: '#/components/schemas/URI'
-        label:
-          type: string
-          description: "Human-readable descriptor for this ID scheme."
-        applies:
-          type: array
-          description: "Entities for which this ID scheme may be used."
-          items:
-            type: string
-            enum:
-            - "scheme"
-            - "organization"
-            - "tool"
-            - "mapping"
-            - "endorsement"
-      required:
-      - label
-    IDSchemeNew:
-      allOf:
-      - $ref: '#/components/schemas/EntityType'
-      - properties:
-          id:
-            type: string
-            description: "String used to identify this ID scheme in records."
-        required:
-        - id
-    IDSchemeOld:
-      allOf:
-      - $ref: '#/components/schemas/EntityType'
-      - properties:
-          id:
-            type: string
-            description: "String used to identify this ID scheme in records."
+            description: "String used to identify this term in records."
             readOnly: true
     ThesaurusConceptScheme:
       type: object
@@ -1949,24 +1865,12 @@ If an end date is provided, it expresses the date on which the endorsement was w
       - properties:
           data:
             $ref: '#/components/schemas/DataType'
-    ResponseItemEntityType:
+    ResponseItemVocabularyTerm:
       allOf:
       - $ref: '#/components/schemas/Response'
       - properties:
           data:
-            $ref: '#/components/schemas/EntityTypeOld'
-    ResponseItemLocationType:
-      allOf:
-      - $ref: '#/components/schemas/Response'
-      - properties:
-          data:
-            $ref: '#/components/schemas/LocationTypeOld'
-    ResponseItemIDScheme:
-      allOf:
-      - $ref: '#/components/schemas/Response'
-      - properties:
-          data:
-            $ref: '#/components/schemas/IDSchemeOld'
+            $ref: '#/components/schemas/VocabularyTermOld'
     ResponseItemThesaurusConcept:
       allOf:
       - $ref: '#/components/schemas/Response'
@@ -2078,7 +1982,7 @@ If an end date is provided, it expresses the date on which the endorsement was w
                     description: "Items in the current page of results."
                     items:
                       $ref: '#/components/schemas/DataType'
-    ResponsePageEntityType:
+    ResponsePageVocabularyTerm:
       allOf:
       - $ref: '#/components/schemas/Response'
       - properties:
@@ -2090,33 +1994,7 @@ If an end date is provided, it expresses the date on which the endorsement was w
                     type: array
                     description: "Items in the current page of results."
                     items:
-                      $ref: '#/components/schemas/EntityTypeOld'
-    ResponsePageLocationType:
-      allOf:
-      - $ref: '#/components/schemas/Response'
-      - properties:
-          data:
-            allOf:
-              - $ref: '#/components/schemas/Page'
-              - properties:
-                  items:
-                    type: array
-                    description: "Items in the current page of results."
-                    items:
-                      $ref: '#/components/schemas/LocationTypeOld'
-    ResponsePageIDScheme:
-      allOf:
-      - $ref: '#/components/schemas/Response'
-      - properties:
-          data:
-            allOf:
-              - $ref: '#/components/schemas/Page'
-              - properties:
-                  items:
-                    type: array
-                    description: "Items in the current page of results."
-                    items:
-                      $ref: '#/components/schemas/IDSchemeOld'
+                      $ref: '#/components/schemas/VocabularyTermOld'
     QA:
       type: object
       properties:
@@ -2173,27 +2051,13 @@ If an end date is provided, it expresses the date on which the endorsement was w
       - properties:
           data:
             $ref: '#/components/schemas/DataType'
-    ResponseSuccessEntityType:
+    ResponseSuccessVocabularyTerm:
       allOf:
       - $ref: '#/components/schemas/Response'
       - $ref: '#/components/schemas/QA'
       - properties:
           data:
-            $ref: '#/components/schemas/EntityTypeOld'
-    ResponseSuccessLocationType:
-      allOf:
-      - $ref: '#/components/schemas/Response'
-      - $ref: '#/components/schemas/QA'
-      - properties:
-          data:
-            $ref: '#/components/schemas/LocationTypeOld'
-    ResponseSuccessIDScheme:
-      allOf:
-      - $ref: '#/components/schemas/Response'
-      - $ref: '#/components/schemas/QA'
-      - properties:
-          data:
-            $ref: '#/components/schemas/IDSchemeOld'
+            $ref: '#/components/schemas/VocabularyTermOld'
     SubmissionResponseFailure:
       type: object
       properties:
