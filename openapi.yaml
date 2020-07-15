@@ -2194,21 +2194,6 @@ If an end date is provided, it expresses the date on which the endorsement was w
       - properties:
           data:
             $ref: '#/components/schemas/IDSchemeOld'
-    ItemResponse:
-      type: object
-      properties:
-        DEPRECATED:
-          type: string
-    QueryResponse:
-      type: object
-      properties:
-        DEPRECATED:
-          type: string
-    SubmissionResponseSuccess:
-      type: object
-      properties:
-        DEPRECATED:
-          type: string
     SubmissionResponseFailure:
       type: object
       properties:
