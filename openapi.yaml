@@ -65,7 +65,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubmissionResponseSuccess'
+                $ref: '#/components/schemas/ResponseSuccessMetadataScheme'
         400:
           description: Failure
           content:
@@ -122,7 +122,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubmissionResponseSuccess'
+                $ref: '#/components/schemas/ResponseSuccessMetadataScheme'
         400:
           description: Failure
           content:
@@ -187,7 +187,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubmissionResponseSuccess'
+                $ref: '#/components/schemas/ResponseSuccessOrganization'
         400:
           description: Failure
           content:
@@ -244,7 +244,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubmissionResponseSuccess'
+                $ref: '#/components/schemas/ResponseSuccessOrganization'
         400:
           description: Failure
           content:
@@ -309,7 +309,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubmissionResponseSuccess'
+                $ref: '#/components/schemas/ResponseSuccessTool'
         400:
           description: Failure
           content:
@@ -366,7 +366,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubmissionResponseSuccess'
+                $ref: '#/components/schemas/ResponseSuccessTool'
         400:
           description: Failure
           content:
@@ -431,7 +431,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubmissionResponseSuccess'
+                $ref: '#/components/schemas/ResponseSuccessMapping'
         400:
           description: Failure
           content:
@@ -488,7 +488,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubmissionResponseSuccess'
+                $ref: '#/components/schemas/ResponseSuccessMapping'
         400:
           description: Failure
           content:
@@ -553,7 +553,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubmissionResponseSuccess'
+                $ref: '#/components/schemas/ResponseSuccessEndorsement'
         400:
           description: Failure
           content:
@@ -610,7 +610,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubmissionResponseSuccess'
+                $ref: '#/components/schemas/ResponseSuccessEndorsement'
         400:
           description: Failure
           content:
@@ -675,7 +675,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubmissionResponseSuccess'
+                $ref: '#/components/schemas/ResponseSuccessDataType'
         400:
           description: Failure
           content:
@@ -732,7 +732,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubmissionResponseSuccess'
+                $ref: '#/components/schemas/ResponseSuccessDataType'
         400:
           description: Failure
           content:
@@ -797,7 +797,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubmissionResponseSuccess'
+                $ref: '#/components/schemas/ResponseSuccessEntityType'
         400:
           description: Failure
           content:
@@ -854,7 +854,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubmissionResponseSuccess'
+                $ref: '#/components/schemas/ResponseSuccessEntityType'
         400:
           description: Failure
           content:
@@ -912,14 +912,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EntityTypeNew'
+              $ref: '#/components/schemas/LocationTypeNew'
       responses:
         200:
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubmissionResponseSuccess'
+                $ref: '#/components/schemas/ResponseSuccessLocationType'
         400:
           description: Failure
           content:
@@ -976,7 +976,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubmissionResponseSuccess'
+                $ref: '#/components/schemas/ResponseSuccessLocationType'
         400:
           description: Failure
           content:
@@ -1034,14 +1034,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EntityTypeNew'
+              $ref: '#/components/schemas/IDSchemeNew'
       responses:
         200:
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubmissionResponseSuccess'
+                $ref: '#/components/schemas/ResponseSuccessIDScheme'
         400:
           description: Failure
           content:
@@ -1098,7 +1098,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubmissionResponseSuccess'
+                $ref: '#/components/schemas/ResponseSuccessIDScheme'
         400:
           description: Failure
           content:
@@ -2010,7 +2010,7 @@ If an end date is provided, it expresses the date on which the endorsement was w
               - properties:
                   items:
                     type: array
-                    description: "Items in the current page of results"
+                    description: "Items in the current page of results."
                     items:
                       $ref: '#/components/schemas/MetadataScheme'
     ResponsePageOrganization:
@@ -2023,7 +2023,7 @@ If an end date is provided, it expresses the date on which the endorsement was w
               - properties:
                   items:
                     type: array
-                    description: "Items in the current page of results"
+                    description: "Items in the current page of results."
                     items:
                       $ref: '#/components/schemas/Organization'
     ResponsePageTool:
@@ -2036,7 +2036,7 @@ If an end date is provided, it expresses the date on which the endorsement was w
               - properties:
                   items:
                     type: array
-                    description: "Items in the current page of results"
+                    description: "Items in the current page of results."
                     items:
                       $ref: '#/components/schemas/Tool'
     ResponsePageMapping:
@@ -2049,7 +2049,7 @@ If an end date is provided, it expresses the date on which the endorsement was w
               - properties:
                   items:
                     type: array
-                    description: "Items in the current page of results"
+                    description: "Items in the current page of results."
                     items:
                       $ref: '#/components/schemas/Mapping'
     ResponsePageEndorsement:
@@ -2062,7 +2062,7 @@ If an end date is provided, it expresses the date on which the endorsement was w
               - properties:
                   items:
                     type: array
-                    description: "Items in the current page of results"
+                    description: "Items in the current page of results."
                     items:
                       $ref: '#/components/schemas/Endorsement'
     ResponsePageDataType:
@@ -2075,7 +2075,7 @@ If an end date is provided, it expresses the date on which the endorsement was w
               - properties:
                   items:
                     type: array
-                    description: "Items in the current page of results"
+                    description: "Items in the current page of results."
                     items:
                       $ref: '#/components/schemas/DataType'
     ResponsePageEntityType:
@@ -2088,7 +2088,7 @@ If an end date is provided, it expresses the date on which the endorsement was w
               - properties:
                   items:
                     type: array
-                    description: "Items in the current page of results"
+                    description: "Items in the current page of results."
                     items:
                       $ref: '#/components/schemas/EntityTypeOld'
     ResponsePageLocationType:
@@ -2101,7 +2101,7 @@ If an end date is provided, it expresses the date on which the endorsement was w
               - properties:
                   items:
                     type: array
-                    description: "Items in the current page of results"
+                    description: "Items in the current page of results."
                     items:
                       $ref: '#/components/schemas/LocationTypeOld'
     ResponsePageIDScheme:
@@ -2114,9 +2114,86 @@ If an end date is provided, it expresses the date on which the endorsement was w
               - properties:
                   items:
                     type: array
-                    description: "Items in the current page of results"
+                    description: "Items in the current page of results."
                     items:
                       $ref: '#/components/schemas/IDSchemeOld'
+    QA:
+      type: object
+      properties:
+        meta:
+          type: object
+          description: "Information concerning this response."
+          properties:
+            conformance:
+              type: string
+              description: "Conformance level of the record."
+              enum:
+                - complete
+                - useful
+                - valid
+    ResponseSuccessMetadataScheme:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - $ref: '#/components/schemas/QA'
+      - properties:
+          data:
+            $ref: '#/components/schemas/MetadataScheme'
+    ResponseSuccessOrganization:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - $ref: '#/components/schemas/QA'
+      - properties:
+          data:
+            $ref: '#/components/schemas/Organization'
+    ResponseSuccessTool:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - $ref: '#/components/schemas/QA'
+      - properties:
+          data:
+            $ref: '#/components/schemas/Tool'
+    ResponseSuccessMapping:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - $ref: '#/components/schemas/QA'
+      - properties:
+          data:
+            $ref: '#/components/schemas/Mapping'
+    ResponseSuccessEndorsement:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - $ref: '#/components/schemas/QA'
+      - properties:
+          data:
+            $ref: '#/components/schemas/Endorsement'
+    ResponseSuccessDataType:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - $ref: '#/components/schemas/QA'
+      - properties:
+          data:
+            $ref: '#/components/schemas/DataType'
+    ResponseSuccessEntityType:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - $ref: '#/components/schemas/QA'
+      - properties:
+          data:
+            $ref: '#/components/schemas/EntityTypeOld'
+    ResponseSuccessLocationType:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - $ref: '#/components/schemas/QA'
+      - properties:
+          data:
+            $ref: '#/components/schemas/LocationTypeOld'
+    ResponseSuccessIDScheme:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - $ref: '#/components/schemas/QA'
+      - properties:
+          data:
+            $ref: '#/components/schemas/IDSchemeOld'
     ItemResponse:
       type: object
       properties:
@@ -2130,27 +2207,8 @@ If an end date is provided, it expresses the date on which the endorsement was w
     SubmissionResponseSuccess:
       type: object
       properties:
-        apiVersion:
+        DEPRECATED:
           type: string
-        meta:
-          type: object
-          properties:
-            conformance:
-              type: string
-              description: "Conformance level of the record."
-              enum:
-                - complete
-                - useful
-                - valid
-        data:
-          oneOf:
-          - $ref: '#/components/schemas/MetadataScheme'
-          - $ref: '#/components/schemas/Organization'
-          - $ref: '#/components/schemas/Tool'
-          - $ref: '#/components/schemas/Mapping'
-          - $ref: '#/components/schemas/Endorsement'
-          - $ref: '#/components/schemas/DataType'
-          - $ref: '#/components/schemas/EntityTypeOld'
     SubmissionResponseFailure:
       type: object
       properties:
