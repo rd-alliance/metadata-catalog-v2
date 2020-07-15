@@ -1170,11 +1170,12 @@ paths:
           type: integer
       - name: form
         in: query
-        description: "Level of detail to include in the entry.
+        description: >
+          "Level of detail to include in the entry.
 
-  - `concept` (default) provides the normal SKOS properties.
+          - `concept` (default) provides the normal SKOS properties.
 
-  - `tree` additionally provides the hierarchy of broader terms (starting with the broadest) and narrower terms (as a nested set of arrays of objects)"
+          - `tree` additionally provides the hierarchy of broader terms (starting with the broadest) and narrower terms (as a nested set of arrays of objects)"
         schema:
           type: string
           enum:
@@ -1820,6 +1821,36 @@ If an end date is provided, it expresses the date on which the endorsement was w
             readOnly: true
     ThesaurusConceptScheme:
       type: object
+      properties:
+        "@context":
+          type: object
+          properties:
+            ConceptScheme:
+              type: string
+            hasTopConcept:
+              type: string
+            prefLabel:
+              type: string
+        "@id":
+          type: string
+        "@type":
+          type: string
+        prefLabel:
+          type: array
+          items:
+            type: object
+            properties:
+              "@value":
+                type: string
+              "@language":
+                type: string
+        hasTopConcept:
+          type: array
+          items:
+            type: object
+            properties:
+              "@id":
+                type: string
     ThesaurusConcept:
       type: object
     ThesaurusConceptList:
