@@ -1145,7 +1145,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ThesaurusConceptScheme'
+                $ref: '#/components/schemas/ResponseItemThesaurusConceptScheme'
   /api2/thesaurus/{level}{int}:
     get:
       tags:
@@ -1171,11 +1171,11 @@ paths:
       - name: form
         in: query
         description: >
-          "Level of detail to include in the entry.
+          Level of detail to include in the entry.
 
-          - `concept` (default) provides the normal SKOS properties.
+          - `concept` (default) provides the relationships for just this concept.
 
-          - `tree` additionally provides the hierarchy of broader terms (starting with the broadest) and narrower terms (as a nested set of arrays of objects)"
+          - `tree` recursively provides the IDs for narrower concepts of narrower concepts, and broader concepts of broader concepts.
         schema:
           type: string
           enum:
@@ -1187,7 +1187,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ThesaurusConcept'
+                $ref: '#/components/schemas/ResponseItemThesaurusConcept'
         404:
           description: "Concept not found"
           content: {}
@@ -1202,7 +1202,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ThesaurusConceptList'
+                $ref: '#/components/schemas/ResponsePageThesaurusConcept'
   /api2/thesaurus/concepts/used:
     get:
       tags:
@@ -1214,7 +1214,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ThesaurusConceptList'
+                $ref: '#/components/schemas/ResponsePageThesaurusConcept'
   /api2/reset-password:
     post:
       tags:
@@ -1342,11 +1342,11 @@ components:
         title:
           type: string
           description: >
-            "The full, human understandable name of the metadata scheme.
+            The full, human understandable name of the metadata scheme.
 
-            If the scheme is known by an abbreviation, put this at the start of the title, then give the expanded form in parentheses, e.g. “SDMX (Statistical Data and Metadata Exchange)”.
+            - If the scheme is known by an abbreviation, put this at the start of the title, then give the expanded form in parentheses, e.g. “SDMX (Statistical Data and Metadata Exchange)”.
 
-            If the title is in English, use title case, i.e. give each significant word a capital letter. Do not use an irregular case to indicate how an abbreviation was defined, e.g. do not write “Statistical Data and Metadata eXchange”."
+            - If the title is in English, use title case, i.e. give each significant word a capital letter. Do not use an irregular case to indicate how an abbreviation was defined, e.g. do not write “Statistical Data and Metadata eXchange”.
         description:
           type: string
           description: "A few sentences describing the nature of the standard and for what it is meant to be used. If any of the information in the remainder of the record needs be clarified, perhaps because the reality is more nuanced than the coarse semantics provide for, then an explanation can be given here."
@@ -1530,11 +1530,11 @@ components:
         title:
           type: string
           description: >
-            "The full, human understandable name of the tool.
+            The full, human understandable name of the tool.
 
-            If the tool is known by an abbreviation, put this at the start of the title, then give the expanded form in parentheses, e.g. “CMOR (Climate Model Output Rewriter)”.
+            - If the tool is known by an abbreviation, put this at the start of the title, then give the expanded form in parentheses, e.g. “CMOR (Climate Model Output Rewriter)”.
 
-            If the title is in English, use title case, i.e. give each significant word a capital letter. Do not use an irregular case to indicate how an abbreviation was defined, e.g. do not write “eXtensible Editor”."
+            - If the title is in English, use title case, i.e. give each significant word a capital letter. Do not use an irregular case to indicate how an abbreviation was defined, e.g. do not write “eXtensible Editor”.
         description:
           type: string
           description: "A short description of the intended use of the tool, and its capabilities."
@@ -1624,11 +1624,11 @@ components:
         description:
           type: string
           description: >
-            "A short description of the mapping.
+            A short description of the mapping.
 
-            This could indicate if only certain versions of the input and output schemes are supported; if the mapping has been tailored to the outputs or inputs of specific repositories or services; if certain parts of the input or output schemes have been ignored; or if specific conventions in the input scheme are preferred (or necessary).
+            - This could indicate if only certain versions of the input and output schemes are supported; if the mapping has been tailored to the outputs or inputs of specific repositories or services; if certain parts of the input or output schemes have been ignored; or if specific conventions in the input scheme are preferred (or necessary).
 
-            This could recommend steps to be taken before or after applying the mapping in order to improve results."
+            - This could recommend steps to be taken before or after applying the mapping in order to improve results.
         creators:
           type: array
           description: "Persons or organizations responsible for creating, maintaining, or approving the mapping (the emphasis here is on establishing provenance/responsibility rather than a strict understanding of creation). If a maintaining organization has an entry in the MSC, it should be given under `relatedEntities` with type ‘maintainer’ rather than here."
@@ -1707,11 +1707,11 @@ components:
         description:
           type: string
           description: >
-            "Description of the endorsement document.
+            Description of the endorsement document.
 
-            Use this to record any caveats to the endorsement.
+            - Use this to record any caveats to the endorsement.
 
-            This could indicate if only certain versions of the scheme(s) are endorsed."
+            - This could indicate if only certain versions of the scheme(s) are endorsed.
         creators:
           type: array
           description: "Authors of the endorsement document"
@@ -1819,23 +1819,19 @@ If an end date is provided, it expresses the date on which the endorsement was w
             type: string
             description: "String used to identify this term in records."
             readOnly: true
-    ThesaurusConceptScheme:
+    ThesaurusBase:
       type: object
       properties:
         "@context":
           type: object
           properties:
-            ConceptScheme:
-              type: string
-            hasTopConcept:
-              type: string
-            prefLabel:
+            skos:
               type: string
         "@id":
           type: string
         "@type":
           type: string
-        prefLabel:
+        "skos:prefLabel":
           type: array
           items:
             type: object
@@ -1844,17 +1840,55 @@ If an end date is provided, it expresses the date on which the endorsement was w
                 type: string
               "@language":
                 type: string
-        hasTopConcept:
+    ThesaurusConceptBroader:
+      type: object
+      properties:
+        "skos:broader":
+          type: array
+          items:
+            allOf:
+            - properties:
+                "@id":
+                  type: string
+                "@type":
+                  type: string
+            - $ref: '#/components/schemas/ThesaurusConceptBroader'
+        "skos:topConceptOf":
           type: array
           items:
             type: object
             properties:
               "@id":
                 type: string
+    ThesaurusConceptNarrower:
+      type: object
+      properties:
+        "skos:narrower":
+          type: array
+          items:
+            allOf:
+            - properties:
+                "@id":
+                  type: string
+                "@type":
+                  type: string
+            - $ref: '#/components/schemas/ThesaurusConceptNarrower'
+    ThesaurusConceptScheme:
+      allOf:
+      - $ref: '#/components/schemas/ThesaurusBase'
+      - properties:
+          "skos:hasTopConcept":
+            type: array
+            items:
+              type: object
+              properties:
+                "@id":
+                  type: string
     ThesaurusConcept:
-      type: object
-    ThesaurusConceptList:
-      type: object
+      allOf:
+      - $ref: '#/components/schemas/ThesaurusBase'
+      - $ref: '#/components/schemas/ThesaurusConceptBroader'
+      - $ref: '#/components/schemas/ThesaurusConceptNarrower'
     Response:
       type: object
       properties:
@@ -1902,6 +1936,12 @@ If an end date is provided, it expresses the date on which the endorsement was w
       - properties:
           data:
             $ref: '#/components/schemas/VocabularyTermOld'
+    ResponseItemThesaurusConceptScheme:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            $ref: '#/components/schemas/ThesaurusConceptScheme'
     ResponseItemThesaurusConcept:
       allOf:
       - $ref: '#/components/schemas/Response'
@@ -2026,6 +2066,19 @@ If an end date is provided, it expresses the date on which the endorsement was w
                     description: "Items in the current page of results."
                     items:
                       $ref: '#/components/schemas/VocabularyTermOld'
+    ResponsePageThesaurusConcept:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            allOf:
+              - $ref: '#/components/schemas/Page'
+              - properties:
+                  items:
+                    type: array
+                    description: "Items in the current page of results."
+                    items:
+                      $ref: '#/components/schemas/ThesaurusConcept'
     QA:
       type: object
       properties:
