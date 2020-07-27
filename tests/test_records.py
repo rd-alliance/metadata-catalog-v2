@@ -403,11 +403,11 @@ def test_create_view_records(client, auth, app, page, data_db):
         assert orig == entry
         rel_entry = db.get('rel', dict()).get('1', dict())
         rel_orig = json.loads(json.dumps(data_db.rel1))
-        del rel_orig['originator']
+        del rel_orig['originators']
         assert rel_orig == rel_entry
         rel_entry = db.get('rel', dict()).get('2', dict())
         rel_orig = json.loads(json.dumps(data_db.rel2))
-        del rel_orig['maintainer']
+        del rel_orig['maintainers']
         assert rel_orig == rel_entry
 
     # Test adding inverse relationships:

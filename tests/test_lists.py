@@ -12,7 +12,7 @@ def test_record_index(client, page, data_db):
         '  ' * 5 +
         '<p><a href="/msc/m2">Test scheme 2</a></p>')
 
-    response = client.get('/scheme-index/endorsed scheme')
+    response = client.get('/scheme-index/endorsed schemes')
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     page.read(html)
@@ -28,7 +28,7 @@ def test_record_index(client, page, data_db):
         '  ' * 3 +
         '<p><a href="/msc/t1">Test tool 1</a></p>')
 
-    response = client.get('/organization-index/funder')
+    response = client.get('/organization-index/funders')
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     page.read(html)
@@ -51,10 +51,10 @@ def test_record_index(client, page, data_db):
     response = client.get('/mapping-index/badrole')
     assert response.status_code == 404
 
-    response = client.get('/organization-index/endorsed scheme')
+    response = client.get('/organization-index/endorsed schemes')
     assert response.status_code == 404
 
-    response = client.get('/endorsement-index/funder')
+    response = client.get('/endorsement-index/funders')
     assert response.status_code == 404
 
 

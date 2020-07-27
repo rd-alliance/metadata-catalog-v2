@@ -135,7 +135,7 @@ def scheme_search():
                 sub_results_by_id = dict()
                 for f in funder_mscids:
                     for m in rel.subject_records(
-                            predicate='funder', object=f, filter=Scheme):
+                            predicate='funders', object=f, filter=Scheme):
                         sub_results_by_id[m.mscid] = m
                 flash_result(len(sub_results_by_id),
                              f'with funder matching "{funder_wild}"')
@@ -206,7 +206,7 @@ def scheme_search():
         for type_id in scheme.get('dataTypes', list()):
             type = Datatype.load_by_mscid(type_id)
             type_set.add(type.get('label'))
-        for group in rel.object_records(predicate='funder'):
+        for group in rel.object_records(predicate='funders'):
             funder_set.add(group.name)
         for id in scheme.get('identifiers', list()):
             id_set.add(id.get('id'))
@@ -274,8 +274,7 @@ def dataType(number):
         flash('No schemes have been reported to be used for this type of'
               ' data.', 'error')
     return render_template(
-        'search-results.html', title=datatype.get('label', f'Type {number}'),
-        results=results)
+        'search-results.html', title=datatype.name, results=results)
 
 
 @bp.route('/<any(funder, maintainer, user):role>/g<int:number>')
@@ -286,7 +285,8 @@ def group(role, number):
 
     rel = Relation()
     verb = role[0:-1] + 'd'
-    results = rel.subject_records(predicate=role, object=group.mscid, filter=Scheme)
+    results = rel.subject_records(
+        predicate=f"{role}s", object=group.mscid, filter=Scheme)
     no_of_hits = len(results)
     if no_of_hits:
         flash('Found {:N scheme/s} {} by this organization.'

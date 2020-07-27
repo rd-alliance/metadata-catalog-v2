@@ -221,23 +221,23 @@ class DataDBActions(object):
                     "scheme": "DOI"}]}
         self.rel1 = {
             "@id": "msc:e1",
-            "endorsed scheme": ["msc:m1", "msc:m2"],
-            "originator": ["msc:g1"]}
+            "endorsed schemes": ["msc:m1", "msc:m2"],
+            "originators": ["msc:g1"]}
         self.rel2 = {
             "@id": "msc:c2",
-            "input scheme": ["msc:m1"],
-            "output scheme": ["msc:m2"],
-            "maintainer": ["msc:g1"]}
+            "input schemes": ["msc:m1"],
+            "output schemes": ["msc:m2"],
+            "maintainers": ["msc:g1"]}
         self.rel3 = {
             "@id": "msc:m1",
-            "funder": ["msc:g1"]}
+            "funders": ["msc:g1"]}
         self.rel4 = {
             "@id": "msc:m2",
-            "parent scheme": ["msc:m1"],
-            "user": ["msc:g1"]}
+            "parent schemes": ["msc:m1"],
+            "users": ["msc:g1"]}
         self.rel5 = {
             "@id": "msc:t1",
-            "supported scheme": ["msc:m3"]}
+            "supported schemes": ["msc:m3"]}
         self.datatype1 = {
             "id": "https://www.w3.org/TR/vocab-dcat/#class-dataset",
             "label": "Dataset"}
@@ -246,26 +246,26 @@ class DataDBActions(object):
             "label": "Catalog"}
 
         fw_tags = {
-            "parent scheme": "parent_schemes",
-            "supported scheme": "supported_schemes",
-            "input scheme": "input_schemes",
-            "output scheme": "output_schemes",
-            "endorsed scheme": "endorsed_schemes",
-            "maintainer": "maintainers",
-            "funder": "funders",
-            "user": "users",
-            "originator": "originators"}
+            "parent schemes": "parent_schemes",
+            "supported schemes": "supported_schemes",
+            "input schemes": "input_schemes",
+            "output schemes": "output_schemes",
+            "endorsed schemes": "endorsed_schemes",
+            "maintainers": "maintainers",
+            "funders": "funders",
+            "users": "users",
+            "originators": "originators"}
         rv_tags = {
-            "parent scheme": "child_schemes",
-            "supported scheme": "tools",
-            "input scheme": "input_to_mappings",
-            "output scheme": "output_from_mappings",
-            "endorsed scheme": "endorsements",
-            "maintainer": "maintained_{}s",
-            "funder": "funded_{}s",
-            "user": "used_schemes",
-            "originator": "endorsements"}
-        rc_cls = {'m': 'scheme', 't': 'tool', 'c': 'crosswalk'}
+            "parent schemes": "child_schemes",
+            "supported schemes": "tools",
+            "input schemes": "input_to_mappings",
+            "output schemes": "output_from_mappings",
+            "endorsed schemes": "endorsements",
+            "maintainers": "maintained_{}s",
+            "funders": "funded_{}s",
+            "users": "used_schemes",
+            "originators": "endorsements"}
+        rc_cls = {'m': 'scheme', 't': 'tool', 'c': 'mapping'}
         rels = dict()
         i = 1
         while hasattr(self, f'rel{i}'):

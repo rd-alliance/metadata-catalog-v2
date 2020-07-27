@@ -847,9 +847,9 @@ class Crosswalk(Record):
 
         rel = Relation()
         inputs = rel.object_records(
-            subject=self.mscid, predicate="input scheme")
+            subject=self.mscid, predicate="input schemes")
         outputs = rel.object_records(
-            subject=self.mscid, predicate="output scheme")
+            subject=self.mscid, predicate="output schemes")
 
         if inputs and outputs:
             return f"{inputs[0].name} to {outputs[0].name}"
@@ -897,9 +897,9 @@ class Crosswalk(Record):
         else:
             rel = Relation()
             inputs.extend(rel.object_records(
-                subject=self.mscid, predicate="input scheme"))
+                subject=self.mscid, predicate="input schemes"))
             outputs.extend(rel.object_records(
-                subject=self.mscid, predicate="output scheme"))
+                subject=self.mscid, predicate="output schemes"))
 
         if inputs and outputs:
             slug = "{}_TO_{}".format(
@@ -1068,6 +1068,10 @@ class Datatype(Record):
     @property
     def form(self):
         return DatatypeForm
+
+    @property
+    def name(self):
+        return self.get('label', f'Type {self.doc_id}')
 
     def get_form(self):
         # Get data from database:
@@ -1471,31 +1475,31 @@ class SchemeForm(FlaskForm):
         min_entries=1)
     parent_schemes = SelectRelatedField(
         'Parent metadata schemes', Scheme,
-        description='parent scheme')
+        description='parent schemes')
     child_schemes = SelectRelatedField(
         'Profiles of this scheme', Scheme,
-        description='parent scheme', inverse=True)
+        description='parent schemes', inverse=True)
     input_to_mappings = SelectRelatedField(
         'Mappings that take this scheme as input', Crosswalk,
-        description='input scheme', inverse=True)
+        description='input schemes', inverse=True)
     output_from_mappings = SelectRelatedField(
         'Mappings that give this scheme as output', Crosswalk,
-        description='output scheme', inverse=True)
+        description='output schemes', inverse=True)
     maintainers = SelectRelatedField(
         'Organizations that maintain this scheme', Group,
-        description='maintainer')
+        description='maintainers')
     funders = SelectRelatedField(
         'Organizations that funded this scheme', Group,
-        description='funder')
+        description='funders')
     users = SelectRelatedField(
         'Organizations that use this scheme', Group,
-        description='user')
+        description='users')
     tools = SelectRelatedField(
         'Tools that support this scheme', Tool,
-        description='supported scheme', inverse=True)
+        description='supported schemes', inverse=True)
     endorsements = SelectRelatedField(
         'Endorsements of this scheme', Endorsement,
-        description='endorsed scheme', inverse=True)
+        description='endorsed schemes', inverse=True)
     old_relations = HiddenField()
 
 
@@ -1532,13 +1536,13 @@ class ToolForm(FlaskForm):
         min_entries=1)
     supported_schemes = SelectRelatedField(
         'Metadata scheme(s) supported by this tool', Scheme,
-        description="supported scheme")
+        description="supported schemes")
     maintainers = SelectRelatedField(
         'Organizations that maintain this tool', Group,
-        description='maintainer')
+        description='maintainers')
     funders = SelectRelatedField(
         'Organizations that funded this tool', Group,
-        description='funder')
+        description='funders')
     old_relations = HiddenField()
 
 
@@ -1569,16 +1573,16 @@ class CrosswalkForm(FlaskForm):
         min_entries=1)
     input_schemes = SelectRelatedField(
         'Input metadata scheme(s)', Scheme,
-        description='input scheme')
+        description='input schemes')
     output_schemes = SelectRelatedField(
         'Output metadata scheme(s)', Scheme,
-        description='output scheme')
+        description='output schemes')
     maintainers = SelectRelatedField(
         'Organizations that maintain this mapping', Group,
-        description='maintainer')
+        description='maintainers')
     funders = SelectRelatedField(
         'Organizations that funded this mapping', Group,
-        description='funder')
+        description='funders')
     old_relations = HiddenField()
 
 
@@ -1607,28 +1611,28 @@ class GroupForm(FlaskForm):
         min_entries=1)
     maintained_schemes = SelectRelatedField(
         'Schemes maintained by this organization', Scheme,
-        description='maintainer', inverse=True)
+        description='maintainers', inverse=True)
     maintained_tools = SelectRelatedField(
         'Tools maintained by this organization', Tool,
-        description='maintainer', inverse=True)
+        description='maintainers', inverse=True)
     maintained_mappings = SelectRelatedField(
         'Mappings maintained by this organization', Crosswalk,
-        description='maintainer', inverse=True)
+        description='maintainers', inverse=True)
     funded_schemes = SelectRelatedField(
         'Schemes funded by this organization', Scheme,
-        description='funder', inverse=True)
+        description='funders', inverse=True)
     funded_tools = SelectRelatedField(
         'Tools funded by this organization', Tool,
-        description='funder', inverse=True)
+        description='funders', inverse=True)
     funded_mappings = SelectRelatedField(
         'Mappings funded by this organization', Crosswalk,
-        description='funder', inverse=True)
+        description='funders', inverse=True)
     used_schemes = SelectRelatedField(
         'Schemes used by this organization', Scheme,
-        description='user', inverse=True)
+        description='users', inverse=True)
     endorsements = SelectRelatedField(
         'Endorsements made by this organization', Endorsement,
-        description='originator', inverse=True)
+        description='originators', inverse=True)
     old_relations = HiddenField()
 
 
@@ -1648,10 +1652,10 @@ class EndorsementForm(FlaskForm):
         min_entries=1)
     endorsed_schemes = SelectRelatedField(
         'Endorsed schemes', Scheme,
-        description='endorsed scheme')
+        description='endorsed schemes')
     originators = SelectRelatedField(
         'Endorsing organizations', Group,
-        description='originator')
+        description='originators')
     old_relations = HiddenField()
 
 
@@ -2091,7 +2095,7 @@ def display(table, number, field=None, api=False):
         if field.type != 'SelectRelatedField':
             continue
         if (field.description in [
-                'parent scheme', 'input scheme', 'output scheme']):
+                'parent schemes', 'input schemes', 'output schemes']):
             scheme_scheme_fields.append(field.name)
         if field.flags.inverse:
             others = rel.subject_records(
@@ -2105,20 +2109,20 @@ def display(table, number, field=None, api=False):
             if field.name == 'input_to_mappings':
                 for crosswalk in others:
                     crosswalk['output_schemes'] = rel.object_records(
-                        subject=crosswalk.mscid, predicate='output scheme')
+                        subject=crosswalk.mscid, predicate='output schemes')
             elif field.name == 'output_from_mappings':
                 for crosswalk in others:
                     crosswalk['input_schemes'] = rel.object_records(
-                        subject=crosswalk.mscid, predicate='input scheme')
+                        subject=crosswalk.mscid, predicate='input schemes')
             elif field.name == 'endorsements':
-                if field.description == 'originator':
+                if field.description == 'originators':
                     for endorsement in others:
                         endorsement['endorsed_schemes'] = rel.object_records(
-                            subject=endorsement.mscid, predicate='endorsed scheme')
-                elif field.description == 'endorsed scheme':
+                            subject=endorsement.mscid, predicate='endorsed schemes')
+                elif field.description == 'endorsed schemes':
                     for endorsement in others:
                         endorsement['originators'] = rel.object_records(
-                            subject=endorsement.mscid, predicate='originator')
+                            subject=endorsement.mscid, predicate='originators')
             relations[field.name] = others
 
     # We add some helper logic where relations to other schemes are grouped
@@ -2137,7 +2141,7 @@ def display(table, number, field=None, api=False):
             'creators' in record)
     elif table == 'g':
         records_seen = {
-            'schemes': dict(), 'tools': dict(), 'crosswalks': dict()}
+            'schemes': dict(), 'tools': dict(), 'mappings': dict()}
         relrec = dict()
         relids = dict()
         for ser in records_seen.keys():

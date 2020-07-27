@@ -28,7 +28,7 @@ def get_scheme_tree(records: List[Scheme]) -> Mapping[str, str]:
     tree = list()
     rel = Relation()
     for record in records:
-        children = rel.subject_records("parent scheme", record.mscid)
+        children = rel.subject_records("parent schemes", record.mscid)
         node = {
             'name': record.name,
             'url': url_for(
@@ -41,9 +41,9 @@ def get_scheme_tree(records: List[Scheme]) -> Mapping[str, str]:
 
 # List of standards
 # =================
-@bp.route('/<string:series>-index/<any("parent scheme", "supported scheme",'
-          ' "input scheme", "output scheme", "endorsed scheme", maintainer,'
-          ' funder, user, originator):role>')
+@bp.route('/<string:series>-index/<any("parent schemes", "supported schemes",'
+          ' "input schemes", "output schemes", "endorsed schemes",'
+          ' maintainers, funders, users, originators):role>')
 @bp.route('/<string:series>-index')
 def record_index(series=None, role=None):
     '''The contents template takes a 'tree' variable, which is a list of
@@ -59,17 +59,17 @@ def record_index(series=None, role=None):
         # Listing metadata schemes.
         rel = Relation()
 
-        heading = "metadata standard"
+        heading = "metadata standards"
         records = Scheme.all()
 
         # Get blacklist of child schemes
-        children = rel.subjects(predicate="parent scheme")
+        children = rel.subjects(predicate="parent schemes")
 
         # Assemble tree of records that are not on blacklist:
         tree = get_scheme_tree([
             record for record in records if record.mscid not in children])
         return render_template(
-            'contents.html', title=f"Index of {heading}s", tree=tree)
+            'contents.html', title=f"Index of {heading}", tree=tree)
 
     # Abort if series is a vocabulary item:
     elif series == "datatype" or series in [
@@ -81,7 +81,7 @@ def record_index(series=None, role=None):
         if series == record_cls.series:
             # Get all of them in alphabetical order:
             if role:
-                if role.endswith("scheme"):
+                if role.endswith("schemes"):
                     if series != "scheme":
                         abort(404)
                 elif series != "organization":
@@ -98,7 +98,7 @@ def record_index(series=None, role=None):
                     'main.display', table=record.table, number=record.doc_id)
                 } for record in records]
             return render_template(
-                'contents.html', title=f"Index of {heading}s", tree=tree)
+                'contents.html', title=f"Index of {heading}", tree=tree)
     else:
         abort(404)
 
