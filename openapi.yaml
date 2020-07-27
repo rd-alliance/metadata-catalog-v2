@@ -25,6 +25,8 @@ tags:
   description: Endorsements
 - name: rel
   description: Entity relations
+- name: invrel
+  description: Inverse entity relations
 - name: datatype
   description: Data types
 - name: type
@@ -849,6 +851,96 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         404:
           description: "Entity relation not found"
+          content: {}
+      security:
+      - api_user: []
+  /api2/invrel:
+    get:
+      tags:
+      - invrel
+      summary: "List virtual records of inverse entity relations"
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponsePageInvRelation'
+  /api2/invrel/{table}{int}:
+    get:
+      tags:
+      - invrel
+      summary: "Retrieve a virtual record of inverse entity relations"
+      parameters:
+      - name: table
+        in: path
+        required: true
+        description: "Table name portion of the MSC ID."
+        schema:
+          type: string
+          enum:
+          - m
+          - g
+      - name: int
+        in: path
+        required: true
+        description: "Numeric portion of the MSC ID."
+        schema:
+          type: integer
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseItemInvRelation'
+        404:
+          description: "Subject entity not found"
+          content: {}
+    patch:
+      tags:
+      - invrel
+      summary: "Add or remove an individual entity relation"
+      parameters:
+      - name: table
+        in: path
+        required: true
+        description: "Table name portion of the MSC ID."
+        schema:
+          type: string
+          enum:
+          - m
+          - g
+      - name: int
+        in: path
+        required: true
+        description: "Numeric portion of the MSC ID."
+        schema:
+          type: integer
+      requestBody:
+        description: "JSON Patch."
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchInvRelation'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseSuccessInvRelation'
+        400:
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponseFailure'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        404:
+          description: "Subject entity not found"
           content: {}
       security:
       - api_user: []
@@ -1973,68 +2065,129 @@ If an end date is provided, it expresses the date on which the endorsement was w
       properties:
         "@id":
           $ref: '#/components/schemas/MSCID'
-        parent scheme:
+        parent schemes:
           type: array
           description: "Schemes of which the current scheme is a profile. In practice, this means either that the current scheme explicitly “borrows” elements from the parent scheme, or that all instances of the current scheme would be valid instances of the parent scheme."
           items:
             type: string
             description: "Non-semantic internal identifier for the related record."
             pattern: '^msc:m\d+$'
-        supported scheme:
+        supported schemes:
           type: array
           description: "Schemes to which the tool’s input metadata should conform, or output metadata does conform."
           items:
             type: string
             description: "Non-semantic internal identifier for the related record."
             pattern: '^msc:m\d+$'
-        input scheme:
+        input schemes:
           type: array
-          description: "Schemes to which an input metadata record must conform."
+          description: "Schemes to which a metadata record input to the current mapping must conform."
           items:
             type: string
             description: "Non-semantic internal identifier for the related record."
             pattern: '^msc:m\d+$'
-        output scheme:
+        output schemes:
           type: array
-          description: "Schemes to which the output metadata records conform."
+          description: "Schemes to which metadata records output from the current mapping conform."
           items:
             type: string
             description: "Non-semantic internal identifier for the related record."
             pattern: '^msc:m\d+$'
-        endorsed scheme:
+        endorsed schemes:
           type: array
+          description: "Schemes endorsed by the current endorsement."
           items:
             type: string
-            description: "Schemes endorsed by this endorsement."
+            description: "Non-semantic internal identifier for the related record."
             pattern: '^msc:m\d+$'
-        maintainer:
+        maintainers:
           type: array
-          description: "Organizations that maintain this resource."
+          description: "Organizations that maintain the current scheme, tool or mapping."
           items:
             type: string
             description: "Non-semantic internal identifier for the related record."
             pattern: '^msc:g\d+$'
-        funder:
+        funders:
           type: array
-          description: "Organizations that fund this resource."
+          description: "Organizations that fund the current scheme, tool or mapping."
           items:
             type: string
             description: "Non-semantic internal identifier for the related record."
             pattern: '^msc:g\d+$'
-        user:
+        users:
           type: array
-          description: "Organizations that are known to use this resource."
+          description: "Organizations that are known to use the current scheme."
           items:
             type: string
             description: "Non-semantic internal identifier for the related record."
             pattern: '^msc:g\d+$'
-        originator:
+        originators:
           type: array
-          description: "Organizations that have made this endorsement."
+          description: "Organizations that have made the current endorsement."
           items:
             type: string
             description: "Non-semantic internal identifier for the related record."
             pattern: '^msc:g\d+$'
+    InvRelation:
+      type: object
+      properties:
+        "@id":
+          $ref: '#/components/schemas/MSCID'
+        child schemes:
+          type: array
+          description: "Schemes that are profiles of the current scheme. In practice, this means either that the child scheme explicitly “borrows” elements from the current scheme, or that all instances of the child scheme would be valid instances of the current scheme."
+          items:
+            type: string
+            description: "Non-semantic internal identifier for the related record."
+            pattern: '^msc:m\d+$'
+        tools:
+          type: array
+          description: "Tools that either accept metadata conforming to the current scheme as input, or output such metadata."
+          items:
+            type: string
+            description: "Non-semantic internal identifier for the related record."
+            pattern: '^msc:t\d+$'
+        input to mappings:
+          type: array
+          description: "Mappings that may be used to convert records conforming to the current scheme into records conforming to other schemes."
+          items:
+            type: string
+            description: "Non-semantic internal identifier for the related record."
+            pattern: '^msc:c\d+$'
+        output from mappings:
+          type: array
+          description: "Mappings that can be used to convert records conforming to another scheme into records conforming to the current schemes."
+          items:
+            type: string
+            description: "Non-semantic internal identifier for the related record."
+            pattern: '^msc:c\d+$'
+        endorsements:
+          type: array
+          items:
+            type: string
+            description: "Endorsements of the current scheme or made by the current organization."
+            pattern: '^msc:e\d+$'
+        maintained resources:
+          type: array
+          description: "Schemes, tools and mappings maintained by the current organization."
+          items:
+            type: string
+            description: "Non-semantic internal identifier for the related record."
+            pattern: '^msc:(m|t|c)\d+$'
+        funded resources:
+          type: array
+          description: "Schemes, tools and mappings funded by the current organization."
+          items:
+            type: string
+            description: "Non-semantic internal identifier for the related record."
+            pattern: '^msc:(m|t|c)\d+$'
+        used schemes:
+          type: array
+          description: "Schemes that are known to be used by the current organization."
+          items:
+            type: string
+            description: "Non-semantic internal identifier for the related record."
+            pattern: '^msc:m\d+$'
     DataType:
       type: object
       properties:
@@ -2179,15 +2332,15 @@ If an end date is provided, it expresses the date on which the endorsement was w
             type: string
             description: "Type of relationship on which to perform the operation."
             enum:
-            - "/parent scheme"
-            - "/supported scheme"
-            - "/input scheme"
-            - "/output scheme"
-            - "/endorsed scheme"
-            - "/maintainer"
-            - "/funder"
-            - "/user"
-            - "/originator"
+            - "/parent schemes"
+            - "/supported schemes"
+            - "/input schemes"
+            - "/output schemes"
+            - "/endorsed schemes"
+            - "/maintainers"
+            - "/funders"
+            - "/users"
+            - "/originators"
           value:
             type: array
             description: "When adding, the MSCIDs to add; when removing, the MSCIDs to remove; when replacing, the MSCIDs with which to replace the current array; when testing, the MSCIDs with which to compare the current array."
@@ -2195,6 +2348,38 @@ If an end date is provided, it expresses the date on which the endorsement was w
               type: string
               description: "Non-semantic internal identifier for the related record."
               pattern: '^msc:(m|g)\d+$'
+    PatchInvRelation:
+      type: array
+      items:
+        type: object
+        properties:
+          op:
+            type: string
+            description: "Operation to perform."
+            enum:
+            - add
+            - remove
+            - replace
+            - test
+          path:
+            type: string
+            description: "Type of relationship on which to perform the operation."
+            enum:
+            - "/child schemes"
+            - "/tools"
+            - "/input to mappings"
+            - "/output to mappings"
+            - "/endorsements"
+            - "/maintained resources"
+            - "/funded resources"
+            - "/used schemes"
+          value:
+            type: array
+            description: "When adding, the MSCIDs to add; when removing, the MSCIDs to remove; when replacing, the MSCIDs with which to replace the current array; when testing, the MSCIDs with which to compare the current array."
+            items:
+              type: string
+              description: "Non-semantic internal identifier for the related record."
+              pattern: '^msc:(m|t|c|e)\d+$'
     Response:
       type: object
       properties:
@@ -2236,6 +2421,12 @@ If an end date is provided, it expresses the date on which the endorsement was w
       - properties:
           data:
             $ref: '#/components/schemas/Relation'
+    ResponseItemInvRelation:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            $ref: '#/components/schemas/InvRelation'
     ResponseItemDataType:
       allOf:
       - $ref: '#/components/schemas/Response'
@@ -2365,6 +2556,19 @@ If an end date is provided, it expresses the date on which the endorsement was w
                     description: "Items in the current page of results."
                     items:
                       $ref: '#/components/schemas/Relation'
+    ResponsePageInvRelation:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            allOf:
+              - $ref: '#/components/schemas/Page'
+              - properties:
+                  items:
+                    type: array
+                    description: "Items in the current page of results."
+                    items:
+                      $ref: '#/components/schemas/InvRelation'
     ResponsePageDataType:
       allOf:
       - $ref: '#/components/schemas/Response'
@@ -2459,6 +2663,12 @@ If an end date is provided, it expresses the date on which the endorsement was w
       - properties:
           data:
             $ref: '#/components/schemas/Relation'
+    ResponseSuccessInvRelation:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            $ref: '#/components/schemas/InvRelation'
     ResponseSuccessDataType:
       allOf:
       - $ref: '#/components/schemas/Response'
