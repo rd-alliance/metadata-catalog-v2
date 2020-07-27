@@ -23,6 +23,8 @@ tags:
   description: Mappings (crosswalks)
 - name: e
   description: Endorsements
+- name: rel
+  description: Entity relations
 - name: datatype
   description: Data types
 - name: type
@@ -646,6 +648,210 @@ paths:
           content: {}
       security:
       - api_user: []
+  /api2/rel:
+    get:
+      tags:
+      - rel
+      summary: "List all entity relation records"
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponsePageRelation'
+    post:
+      tags:
+      - rel
+      summary: "Submit a new entity relation record"
+      requestBody:
+        description: "Complete record in JSON."
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Relation'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseSuccessRelation'
+        400:
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponseFailure'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+      security:
+      - api_user: []
+  /api2/rel/{table}{int}:
+    get:
+      tags:
+      - rel
+      summary: "Retrieve an existing entity relation record"
+      parameters:
+      - name: table
+        in: path
+        required: true
+        description: "Table name portion of the MSC ID."
+        schema:
+          type: string
+          enum:
+          - m
+          - t
+          - c
+          - e
+      - name: int
+        in: path
+        required: true
+        description: "Numeric portion of the MSC ID."
+        schema:
+          type: integer
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseItemRelation'
+        404:
+          description: "Entity relation not found"
+          content: {}
+    put:
+      tags:
+      - rel
+      summary: "Modify an existing entity relation record"
+      parameters:
+      - name: table
+        in: path
+        required: true
+        description: "Table name portion of the MSC ID."
+        schema:
+          type: string
+          enum:
+          - m
+          - t
+          - c
+          - e
+      - name: int
+        in: path
+        required: true
+        description: "Numeric portion of the MSC ID."
+        schema:
+          type: integer
+      requestBody:
+        description: "Complete record in JSON."
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Relation'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseSuccessRelation'
+        400:
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponseFailure'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        404:
+          description: "Entity relation not found"
+          content: {}
+      security:
+      - api_user: []
+    patch:
+      tags:
+      - rel
+      summary: "Add or remove an individual entity relation"
+      parameters:
+      - name: table
+        in: path
+        required: true
+        description: "Table name portion of the MSC ID."
+        schema:
+          type: string
+          enum:
+          - m
+          - t
+          - c
+          - e
+      - name: int
+        in: path
+        required: true
+        description: "Numeric portion of the MSC ID."
+        schema:
+          type: integer
+      requestBody:
+        description: "JSON Patch."
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchRelation'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseSuccessRelation'
+        400:
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponseFailure'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        404:
+          description: "Entity relation not found"
+          content: {}
+      security:
+      - api_user: []
+    delete:
+      tags:
+      - rel
+      summary: "Remove an existing entity relation record"
+      parameters:
+      - name: table
+        in: path
+        required: true
+        description: "Table name portion of the MSC ID."
+        schema:
+          type: string
+          enum:
+          - m
+          - t
+          - c
+          - e
+      - name: int
+        in: path
+        required: true
+        description: "Numeric portion of the MSC ID."
+        schema:
+          type: integer
+      responses:
+        204:
+          description: Success
+          content: {}
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        404:
+          description: "Entity relation not found"
+          content: {}
+      security:
+      - api_user: []
   /api2/datatype:
     get:
       tags:
@@ -1215,7 +1421,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResponsePageThesaurusConcept'
-  /api2/reset-password:
+  /api2/user/reset-password:
     post:
       tags:
       - user
@@ -1252,7 +1458,7 @@ paths:
           content: {}
       security:
       - api_user: []
-  /api2/token:
+  /api2/user/token:
     get:
       tags:
       - user
@@ -1381,7 +1587,7 @@ components:
             $ref: '#/components/schemas/Identifier'
         relatedEntities:
           type: array
-          description: "Other entities in the MSC database."
+          description: "Other entities in the MSC database. Note that relationships may be added but may not be deleted through this endpoint."
           items:
             type: object
             properties:
@@ -1490,7 +1696,7 @@ components:
             $ref: '#/components/schemas/Identifier'
         relatedEntities:
           type: array
-          description: "Other entities in the MSC database."
+          description: "Other entities in the MSC database. Note that relationships may be added but may not be deleted through this endpoint."
           items:
             type: object
             properties:
@@ -1561,7 +1767,7 @@ components:
             $ref: '#/components/schemas/Creator'
         relatedEntities:
           type: array
-          description: "Other entities in the MSC database."
+          description: "Other entities in the MSC database. Note that relationships may be added but may not be deleted through this endpoint."
           items:
             type: object
             properties:
@@ -1646,7 +1852,7 @@ components:
             $ref: '#/components/schemas/Identifier'
         relatedEntities:
           type: array
-          description: "Other entities in the MSC database."
+          description: "Other entities in the MSC database. Note that relationships may be added but may not be deleted through this endpoint."
           items:
             type: object
             properties:
@@ -1742,7 +1948,7 @@ If an end date is provided, it expresses the date on which the endorsement was w
             $ref: '#/components/schemas/Identifier'
         relatedEntities:
           type: array
-          description: "Other entities in the MSC database."
+          description: "Other entities in the MSC database. Note that relationships may be added but may not be deleted through this endpoint."
           items:
             type: object
             properties:
@@ -1762,6 +1968,73 @@ If an end date is provided, it expresses the date on which the endorsement was w
                 oneOf:
                 - $ref: '#/components/schemas/MetadataScheme'
                 - $ref: '#/components/schemas/Organization'
+    Relation:
+      type: object
+      properties:
+        "@id":
+          $ref: '#/components/schemas/MSCID'
+        parent scheme:
+          type: array
+          description: "Schemes of which the current scheme is a profile. In practice, this means either that the current scheme explicitly “borrows” elements from the parent scheme, or that all instances of the current scheme would be valid instances of the parent scheme."
+          items:
+            type: string
+            description: "Non-semantic internal identifier for the related record."
+            pattern: '^msc:m\d+$'
+        supported scheme:
+          type: array
+          description: "Schemes to which the tool’s input metadata should conform, or output metadata does conform."
+          items:
+            type: string
+            description: "Non-semantic internal identifier for the related record."
+            pattern: '^msc:m\d+$'
+        input scheme:
+          type: array
+          description: "Schemes to which an input metadata record must conform."
+          items:
+            type: string
+            description: "Non-semantic internal identifier for the related record."
+            pattern: '^msc:m\d+$'
+        output scheme:
+          type: array
+          description: "Schemes to which the output metadata records conform."
+          items:
+            type: string
+            description: "Non-semantic internal identifier for the related record."
+            pattern: '^msc:m\d+$'
+        endorsed scheme:
+          type: array
+          items:
+            type: string
+            description: "Schemes endorsed by this endorsement."
+            pattern: '^msc:m\d+$'
+        maintainer:
+          type: array
+          description: "Organizations that maintain this resource."
+          items:
+            type: string
+            description: "Non-semantic internal identifier for the related record."
+            pattern: '^msc:g\d+$'
+        funder:
+          type: array
+          description: "Organizations that fund this resource."
+          items:
+            type: string
+            description: "Non-semantic internal identifier for the related record."
+            pattern: '^msc:g\d+$'
+        user:
+          type: array
+          description: "Organizations that are known to use this resource."
+          items:
+            type: string
+            description: "Non-semantic internal identifier for the related record."
+            pattern: '^msc:g\d+$'
+        originator:
+          type: array
+          description: "Organizations that have made this endorsement."
+          items:
+            type: string
+            description: "Non-semantic internal identifier for the related record."
+            pattern: '^msc:g\d+$'
     DataType:
       type: object
       properties:
@@ -1889,6 +2162,39 @@ If an end date is provided, it expresses the date on which the endorsement was w
       - $ref: '#/components/schemas/ThesaurusBase'
       - $ref: '#/components/schemas/ThesaurusConceptBroader'
       - $ref: '#/components/schemas/ThesaurusConceptNarrower'
+    PatchRelation:
+      type: array
+      items:
+        type: object
+        properties:
+          op:
+            type: string
+            description: "Operation to perform."
+            enum:
+            - add
+            - remove
+            - replace
+            - test
+          path:
+            type: string
+            description: "Type of relationship on which to perform the operation."
+            enum:
+            - "/parent scheme"
+            - "/supported scheme"
+            - "/input scheme"
+            - "/output scheme"
+            - "/endorsed scheme"
+            - "/maintainer"
+            - "/funder"
+            - "/user"
+            - "/originator"
+          value:
+            type: array
+            description: "When adding, the MSCIDs to add; when removing, the MSCIDs to remove; when replacing, the MSCIDs with which to replace the current array; when testing, the MSCIDs with which to compare the current array."
+            items:
+              type: string
+              description: "Non-semantic internal identifier for the related record."
+              pattern: '^msc:(m|g)\d+$'
     Response:
       type: object
       properties:
@@ -1924,6 +2230,12 @@ If an end date is provided, it expresses the date on which the endorsement was w
       - properties:
           data:
             $ref: '#/components/schemas/Endorsement'
+    ResponseItemRelation:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            $ref: '#/components/schemas/Relation'
     ResponseItemDataType:
       allOf:
       - $ref: '#/components/schemas/Response'
@@ -2040,6 +2352,19 @@ If an end date is provided, it expresses the date on which the endorsement was w
                     description: "Items in the current page of results."
                     items:
                       $ref: '#/components/schemas/Endorsement'
+    ResponsePageRelation:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            allOf:
+              - $ref: '#/components/schemas/Page'
+              - properties:
+                  items:
+                    type: array
+                    description: "Items in the current page of results."
+                    items:
+                      $ref: '#/components/schemas/Relation'
     ResponsePageDataType:
       allOf:
       - $ref: '#/components/schemas/Response'
@@ -2128,17 +2453,21 @@ If an end date is provided, it expresses the date on which the endorsement was w
       - properties:
           data:
             $ref: '#/components/schemas/Endorsement'
+    ResponseSuccessRelation:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            $ref: '#/components/schemas/Relation'
     ResponseSuccessDataType:
       allOf:
       - $ref: '#/components/schemas/Response'
-      - $ref: '#/components/schemas/QA'
       - properties:
           data:
             $ref: '#/components/schemas/DataType'
     ResponseSuccessVocabularyTerm:
       allOf:
       - $ref: '#/components/schemas/Response'
-      - $ref: '#/components/schemas/QA'
       - properties:
           data:
             $ref: '#/components/schemas/VocabularyTermOld'
