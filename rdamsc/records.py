@@ -460,7 +460,7 @@ class Record(Document):
         if self.doc_id:
             with transaction(tb) as t:
                 for key in (k for k in self if k not in value):
-                    t.update_callable(delete(key), doc_ids=[self.doc_id])
+                    t.update(delete(key), doc_ids=[self.doc_id])
                 t.update(value, doc_ids=[self.doc_id])
         else:
             self.doc_id = tb.insert(value)
