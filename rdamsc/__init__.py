@@ -105,6 +105,9 @@ def create_app(test_config=None):
     from . import search
     app.register_blueprint(search.bp)
 
+    from . import api2
+    app.register_blueprint(api2.bp)
+
     @app.context_processor
     def utility_processor():
         return {

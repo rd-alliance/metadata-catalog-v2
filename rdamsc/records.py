@@ -79,6 +79,23 @@ disallowed_tagblocks = [
 class Relation(object):
     '''Utility class for handling common operations on the relations table.
     Relations are stored using MSCIDs to identify records.'''
+
+    _inversions = {
+        'parent schemes': 'child scheme',
+        'supported schemes': 'tool',
+        'input schemes': 'input to mapping',
+        'output schemes': 'output from mapping',
+        'endorsed schemes': 'endorsement',
+        'maintainers': 'maintained {}',
+        'funders': 'funded {}',
+        'users': 'used scheme',
+        'originators': 'endorsement',
+    }
+
+    @property
+    def inversions(self):
+        return type(self)._inversions
+
     def __init__(self):
         db = get_data_db()
         self.tb = db.table('rel')
@@ -129,7 +146,7 @@ class Relation(object):
                     if not relation[p]:
                         print(f"DEBUG Relation.remove: removing empty key {p}")
                         del relation[p]
-                        t.update_callable(delete(p), doc_ids=[relation.doc_id])
+                        t.update(delete(p), doc_ids=[relation.doc_id])
                     else:
                         print(f"DEBUG Relation.remove: not removing non-empty key {p} = {relation[p]}")
                 t.update(relation, doc_ids=[relation.doc_id])
@@ -212,6 +229,68 @@ class Relation(object):
         optionally filtered by subject and predicate.'''
         mscids = self.objects(subject, predicate)
         return [Record.load_by_mscid(mscid) for mscid in mscids]
+
+    def related(self, mscid: str, direction=None) -> Mapping[str, List[str]]:
+        '''Returns dictionary where the keys are predicates (relationships)
+        and the values are lists of MSCIDs of records related to the identified
+        record by that predicate. The types of predicate can optionally be
+        filtered by direction: "forward" indicates native predicates used in
+        the database, "inverse" indicates their inverses, None indicates no
+        filtering.
+        '''
+        Q = Query()
+        results = dict()
+
+        n = len(mscid_prefix) + 1
+
+        if direction is None or direction == 'forward':
+            relations = self.tb.search(Q['@id'] == mscid)
+            for relation in relations:
+                for predicate, objects in relation.items():
+                    if predicate == '@id':
+                        continue
+                    # We strip off the final 's' to form singular
+                    results[predicate[:-1]] = objects
+
+        if direction is None or direction == 'inverse':
+            series_map = dict()
+            for subcls in Record.__subclasses__():
+                series_map[subcls.table] = subcls.series
+            relations = self.tb.all()
+            for relation in relations:
+                for predicate, objects in relation.items():
+                    if isinstance(objects, list) and mscid in objects:
+                        rel_mscid = relation.get('@id')
+                        inv_predicate = self.inversions.get(predicate)
+                        if inv_predicate is None:
+                            continue
+                        if predicate in ['maintainers', 'funders']:
+                            series = series_map.get(rel_mscid[n-1:n])
+                            inv_predicate = inv_predicate.format(series)
+                        if inv_predicate not in results.keys():
+                            results[inv_predicate] = list()
+                        results[inv_predicate].append(rel_mscid)
+
+        if results:
+            for predicate in results.keys():
+                results[predicate].sort(
+                    key=lambda k: k[:n] + k[n:].zfill(5))
+
+        return results
+
+    def related_records(self, mscid: str, direction=None) -> Mapping[str, List[dict]]:
+        '''Returns dictionary where the keys are predicates (relationships)
+        and the values are lists of records related to the identified
+        record by that predicate. The types of predicate can optionally be
+        filtered by direction: "forward" indicates native predicates used in
+        the database, "inverse" indicates their inverses, None indicates no
+        filtering.
+        '''
+        id_results = self.related(mscid, direction)
+        results = dict()
+        for predicate, mscids in id_results.items():
+            results[predicate] = [Record.load_by_mscid(mscid) for mscid in mscids]
+        return results
 
 
 class Record(Document):

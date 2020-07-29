@@ -342,6 +342,32 @@ class DataDBActions(object):
         formdata = MultiDict(multi_dict_items)
         return formdata
 
+    def get_apidata(self, record: str, with_embedded=True):
+        dbdata = getattr(self, record)
+        apidata = dict()
+        apidata['mscid'] = f'msc:{record}'
+        apidata['uri'] = f'http://localhost/api2/{record}'
+        for key, value in dbdata.items():
+            apidata[key] = value
+        related_entities = list()
+        print(self.rels.get(record, list()))
+        for k, vs in self.rels.get(record, dict()).items():
+            for v in vs:
+                related_entity = {
+                    'id': v,
+                    'role': k.replace('_', ' ')[:-1],
+                }
+                if with_embedded:
+                    related_entity['data'] = self.get_apidata(
+                        v.replace('msc:', ''), with_embedded=False)
+                related_entities.append(related_entity)
+        if related_entities:
+            n = 5
+            related_entities.sort(
+                key=lambda k: k['role'] + k['id'][:n] + k['id'][n:].zfill(5))
+            apidata['relatedEntities'] = related_entities
+        return apidata
+
     def write_db(self):
         db_file = self._app.config['MAIN_DATABASE_PATH']
         if os.path.isfile(db_file):
