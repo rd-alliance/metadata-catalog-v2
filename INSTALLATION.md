@@ -1,6 +1,46 @@
 # Installing and running the Metadata Standards Catalog
 
-## Development
+## Pre-requisite software
+
+The Metadata Standards Catalog is written in [Python 3.6+], so as a first step
+this will need to be installed on your machine.
+
+You will also need quite a few non-standard packages; the instructions below
+will install these for you in an isolated virtual environment, but here they
+are if you want to look up the documentation:
+
+  - [Flask], [Flask-WTF] (and hence [WTForms]), and [Flask-Login] are needed for
+    the actual rendering of the pages.
+  - [Email validator] is used for email address validation in forms.
+  - [Flask-OpenID] provides Open ID v2.x login support.
+  - [RAuth] (which depends on [Requests]), and Google's [oauth2client] are used
+    for Open ID Connect (OAuth) support.
+  - [Flask-HTTPAuth] and [PassLib] are used for API authentication.
+  - The database is implemented using [TinyDB] v4+ and [tinyrecord].
+  - The subject thesaurus is converted from RDF to JSON via [RDFLib].
+  - [Dulwich] is used to apply version control to the database.
+  - [Flask-CORS] is used to allow requests from JavaScript.
+
+[Python 3]: https://www.python.org/
+[Flask]: http://flask.pocoo.org/
+[Flask-WTF]: https://flask-wtf.readthedocs.io/
+[WTForms]: https://wtforms.readthedocs.io/
+[Flask-Login]: https://flask-login.readthedocs.io/
+[Email validator]: https://pypi.org/project/email-validator/
+[Flask-OpenID]: https://pythonhosted.org/Flask-OpenID/
+[RAuth]: https://rauth.readthedocs.io/
+[Requests]: http://docs.python-requests.org/
+[oauth2client]: https://developers.google.com/api-client-library/python/guide/aaa_oauth
+[Flask-HTTPAuth]: https://flask-httpauth.readthedocs.io/
+[PassLib]: https://passlib.readthedocs.io/
+[TinyDB]: http://tinydb.readthedocs.io/
+[tinyrecord]: https://pypi.org/project/tinyrecord/
+[RDFLib]: http://rdflib.readthedocs.io/
+[Dulwich]: https://www.dulwich.io/
+[Flask-CORS]: http://flask-cors.readthedocs.io/
+
+
+## Installation
 
 Use `git clone` as normal to get a copy of this code folder where you want it on your file system, then enter the folder on the command line.
 
@@ -22,13 +62,27 @@ Activate it:
 venv\Scripts\activate
 ```
 
+Optionally, upgrade your sandboxed copy of `pip`:
+
+```bash
+pip install --upgrade pip
+```
+
 Install the Catalog and its dependencies to your virtual environment:
 
 ```bash
 pip install -e .
 ```
 
-Run the application:
+
+### Running unit tests
+
+See the [Guide for Contributors](CONTRIBUTING.md) for how to run the unit tests.
+
+
+### Running a development version
+
+Run the application like this to get development mode:
 
 ```bash
 # *nix
@@ -43,62 +97,107 @@ $env:FLASK_ENV = "development"
 flask run
 ```
 
-## Pre-requisite software
+You will get feedback on the command line about what URL to use to access the
+application.
 
-The Metadata Standards Catalog is written in [Python 3], so as a first step
-this will need to be installed on your machine. You will also need quite a few
-non-standard packages, but all of them are easily available via the `pip`
-utility:
 
-  - For the actual rendering of the pages you will need [Flask], [Flask-WTF]
-    (and hence [WTForms]), and [Flask-Login].
-  - For Open ID v2.x login support, you will need [Flask-OpenID].
-  - For Open ID Connect (OAuth) support, you will need [RAuth] (and hence
-    [Requests]), and Google's [oauth2client].
-  - For API authentication, you will need [Flask-HTTPAuth] and [PassLib]
-  - For database capability, you will need [TinyDB] v3.6.0+, [tinyrecord],
-    and [RDFLib].
-  - For version control of the databases, you will need [Dulwich].
-  - To allow requests from JavaScript, you will need [Flask-CORS].
+### Running in production using mod_wsgi on Apache
 
-[Python 3]: https://www.python.org/
-[Flask]: http://flask.pocoo.org/
-[Flask-WTF]: https://flask-wtf.readthedocs.io/
-[WTForms]: https://wtforms.readthedocs.io/
-[Flask-Login]: https://flask-login.readthedocs.io/
-[Flask-OpenID]: https://pythonhosted.org/Flask-OpenID/
-[RAuth]: https://rauth.readthedocs.io/
-[Requests]: http://docs.python-requests.org/
-[oauth2client]: https://developers.google.com/api-client-library/python/guide/aaa_oauth
-[Flask-HTTPAuth]: https://flask-httpauth.readthedocs.io/
-[PassLib]: https://passlib.readthedocs.io/
-[TinyDB]: http://tinydb.readthedocs.io/
-[tinyrecord]: https://github.com/eugene-eeo/tinyrecord
-[RDFLib]: http://rdflib.readthedocs.io/
-[Dulwich]: https://www.dulwich.io/
-[Flask-CORS]: http://flask-cors.readthedocs.io/
+These instructions are one way to go about using the Catalog in production.
+For other options, please refer to the [deployment options] documented by the
+Flask developers.
 
-The Catalog is compatible with Flask 0.10 (this is what `python3-flask` gives
-you in Ubuntu 16.04 LTS), but can be used with later versions.
+[deployment options]: https://flask.palletsprojects.com/en/1.1.x/deploying/
 
-## Installing the Catalog
+On the Web server, let's assume for example that you have installed the
+application using the above instructions in `/opt/rdamsc`.
 
-If you are testing the Catalog on your own machine, you can run it directly
-from the working directory (see below).
+These instructions are for mod_wsgi on Apache, so these need to be installed. On
+Debian or a derivative like Ubuntu, you'd do this:
 
-If you are setting up an instance of the Catalog on a live Web server, please
-refer to the [deployment options] documented by the Flask developers.
+```bash
+sudo apt install apache2 libapache2-mod-wsgi-py3
+```
 
-[deployment options]: http://flask.pocoo.org/docs/0.12/deploying/
+It is recommended that you set up a non-privileged system user to run the
+Catalog (say, `rdamsc`) and that this user and the Apache user (`www-data` on
+Debian-based Linux distros) are in each other's groups. Be sure to assign
+ownership of the source code directory to this user. Example:
 
-The key files and folders you need are these:
+```bash
+sudo adduser --system --group rdamsc
+sudo usermod -aG www-data rdamsc
+sudo usermod -aG rdamsc www-data
+sudo chown rdamsc:www-data /opt/rdamsc
+```
 
-  - the application itself, `serve.py`;
-  - the base configuration folder `config`;
-  - the `static` and `templates` folders;
-  - the vocabulary RDF file, `simple-unesco-thesaurus.ttl`.
+You should create an instance folder where the Catalog can keep its data. The
+application will look for it in the source code folder, but you could put it in
+`/var/rdamsc`:
 
-If you do not set an instance folder for yourself, one will be created for you.
+```bash
+sudo mkdir /var/rdamsc
+sudo chown rdamsc:www-data /var/rdamsc
+cd /opt/rdamsc
+sudo -u rdamsc ln -s /var/rdamsc instance
+```
+
+Inside your virtual environment, you need the `activate_this.py` script so you
+can activate it with the system's Python installation. The latest copy is
+available from the GitHub repository for [virtualenv]. Install it to
+`venv/bin/activate_this.py`.
+
+[virtualenv]: https://github.com/pypa/virtualenv/blob/master/src/virtualenv/activation/python/activate_this.py
+
+Now you need to create the WSGI file that will run the application for you.
+Let's say you want to run your website content from `/srv/` and have set this up
+in your Apache configuration (`/etc/apache2/apache2.conf`). Create the site
+directory:
+
+```bash
+sudo mkdir /srv/rdamsc
+sudo chown rdamsc:www-data /srv/rdamsc
+```
+
+Create a file `/srv/rdamsc/rdamsc.wsgi` with this content:
+
+```python
+activate_this = '/opt/rdamsc/venv/bin/activate_this.py'
+with open(activate_this) as file_:
+    exec(file_.read(), dict(__file__=activate_this))
+```
+
+Now create an Apache site (e.g. `/etc/apache2/sites-available/rdamsc.conf`) that
+points to this file:
+
+```apache
+WSGIPassAuthorization On
+
+<VirtualHost *:80>
+    ServerName example.com
+
+    WSGIDaemonProcess rdamsc user=rdamsc group=rdamsc threads=5
+    WSGIScriptAlias / /srv/rdamsc/rdamsc.wsgi
+
+    <Directory /srv/rdamsc>
+        WSGIProcessGroup rdamsc
+        WSGIApplicationGroup %{GLOBAL}
+        Require all granted
+    </Directory>
+</VirtualHost>
+```
+
+You may want extra lines to configure logging or SSL.
+
+You should then configure the Catalog (see below, it deserves its own section)
+before activating the site:
+
+```bash
+sudo a2ensite rdamsc
+sudo a2dissite 000-default
+sudo service apache2 graceful
+```
+
 
 ## Configuring the Catalog
 
@@ -107,9 +206,9 @@ If you do not set an instance folder for yourself, one will be created for you.
 The Catalog will look in the following places for configuration options, in the
 following order:
 
- 1. The `config` folder, in the file `for.py`.
- 2. The `instance` folder (in the same directory as the `serve.py` script), in
-    the file `keys.cfg`.
+ 1. the default dictionary hard-coded into the `create_app` function;
+ 2. the file `instance/config.py`, unless a configuration dictionary is passed
+    to the `create_app` function, in which case that is used instead.
  3. A file specified by the environment variable MSC_SETTINGS.
 
 Settings are applied in the order they are discovered, so later ones override
@@ -120,51 +219,30 @@ the following line in your shell profile (or issue the command from the
 command line):
 
  ```bash
- export MSC_SETTINGS=/path/to/settings.cfg
+ export MSC_SETTINGS=/path/to/config.py
  ```
 
 On Windows, you can run the following from the command prompt.
 
  ```batchfile
- set MSC_SETTINGS=\path\to\settings.cfg
+ set MSC_SETTINGS=\path\to\config.py
  ```
 
-### Database files
-
-The Catalog uses three NoSQL databases, which are saved to disk in the form of
-JSON files. You can either supply pre-populated versions of these files, or let
-the Catalog create them for you:
-
- 1. The Main database holds the records for schemes, tools, mappings, etc.
- 2. The User database holds the user profiles.
- 3. The OAuth database holds OAuth URLs discovered dynamically.
-
-The Catalog also uses an Open ID folder for holding temporary files while
-authenticating users using the Open ID v2 protocol.
-
-You can configure the names and locations of these files and the folder by
-putting the respective paths in one of your configuration files:
-
-```python
-MAIN_DATABASE_PATH = os.path.join('path', 'to', 'file.json')  # default: instance/data/db.json
-USER_DATABASE_PATH = os.path.join('path', 'to', 'file.json')  # default: instance/data/users.json
-OAUTH_DATABASE_PATH = os.path.join('path', 'to', 'file.json') # default: instance/oauth-urls.json
-OPENID_PATH = os.path.join('path', 'to', 'folder')            # default: instance/open-id
-```
-
-One way of pre-populating the Main database is to generate the JSON file from
-the YAML files in the `db` folder using the `dbctl.py` script. See the
-[Administrator's Guide] for more information on this.
-
-[Administrator's Guide]: ADMINISTRATION.md
 
 ### Security
 
-To secure the installation, you should choose your own secret key and add it
-to one of your configuration files, overriding the one in `for.py`:
+To secure the installation, you must choose your own secret key and add it
+to one of your configuration files, overriding the default one:
 
 ```python
 SECRET_KEY = 'secret string'
+```
+
+To enable automatic updating from GitHub, you will also need to set up a
+webhook key:
+
+```python
+WEBHOOK_SECRET = 'another secret string'
 ```
 
 To be able to use Open ID Connect (OAuth), you will need to include IDs and
@@ -184,212 +262,60 @@ OAUTH_CREDENTIALS = {
 ```
 
 I have registered a set of these for use in the official instance at
-<https://rdamsc.bath.ac.uk>, should there be demand.
+<https://rdamsc.bath.ac.uk>.
 
-## Running the Catalog
 
-### Local testing
+### Database files
 
-Open up a fresh terminal/command prompt (as it will block the command line for
-as long as the script is running) and run the script `serve.py`. Depending on
-your operating system you might be able to run the script directly:
+The Catalog uses multiple NoSQL databases, which are saved to disk in the form
+of JSON files. You can either supply pre-populated versions of these files, or
+let the Catalog create them for you:
 
-```bash
-./serve.py
-```
+- **Main database** contains the tables for the schemes, tools, organisations,
+  mappings, endorsements and the relationships between them.
 
-Otherwise you might need to invoke `python` or `python3`:
+  *Configuration key:* `MAIN_DATABASE_PATH`
 
-```bash
-python3 serve.py
-```
+  *Default location:* `instance/data/db.json`
 
-You should then be able to access the Catalog in your Web browser using the URL
-the script shows you, e.g. <http://127.0.0.1:5000/>.
+- **Thesaurus database** contains the controlled vocabulary used for subject
+  areas.
 
-### Production
+  *Configuration key:* `VOCAB_DATABASE_PATH`
 
-Again, please refer to the [deployment options] documented by the Flask
-developers for how to run the Catalog in production. Here is one way of doing
-it, as a WSGI application on Apache, on an Ubuntu server.
+  *Default location:* `instance/data/vocab.json`
 
-Install the requisite packages:
+- **Terms database** contains the controlled vocabulary used for data
+  types, URL location types, ID schemes, and organisation and tool types.
 
-```bash
-sudo apt install apache2 openssl-blacklist libapache2-mod-wsgi-py3 python3-venv build-essential python3-dev
-```
+  *Configuration key:* `TERM_DATABASE_PATH`
 
-Create a user as whom to run the app:
+  *Default location:* `instance/data/terms.json`
 
-```bash
-sudo adduser --system --group rdamsc
-```
+- **User database** contains the users registered with the application.
 
-If you are behind a web proxy, you can save some typing by setting some
-variables. In the user's `$HOME/.profile`:
+  *Configuration key:* `USER_DATABASE_PATH`
 
-```bash
-export http_proxy=http://proxy.example.com:99999/
-export https_proxy=http://proxy.example.com:99999/
-```
+  *Default location:* `instance/users/db.json`
 
-For Git:
-```bash
-sudo -Hu rdamsc git config --global http.proxy http://proxy.example.com:99999/
-sudo -Hu rdamsc git config --global https.proxy http://proxy.example.com:99999/
-```
+- **Open ID Connect database** contains cached details for Open ID Connect
+  providers.
 
-The app will be split across three locations: the source code folder, the data
-folder, and the WSGI app folder.
+  *Configuration key:* `OAUTH_DATABASE_PATH`
 
-Set up the source code folder in, say, `/opt/rdamsc`:
+  *Default location:* `instance/oauth/db.json`
 
-```bash
-sudo mkdir /opt/rdamsc
-sudo chown rdamsc /opt/rdamsc
-sudo -Hu rdamsc git clone https://github.com/rd-alliance/metadata-catalog-dev.git /opt/rdamsc
-```
+- **Open ID v2 folder** contains cached files for Open ID v2 authentication.
 
-Set up the data folder in, say, `/var/rdamsc`:
+  *Configuration key:* `OPENID_FS_STORE_PATH`
 
-```bash
-sudo mkdir /var/rdamsc
-sudo chown rdamsc /var/rdamsc
-cd /opt/rdamsc
-sudo ln -s /var/rdamsc instance
-```
+  *Default location:* `instance/open-id/`
 
-Create a file `/var/rdamsc/keys.cfg` with content such as the following:
-
-```config
-SECRET_KEY = 'your secret string'
-```
-
-Set up the WSGI app folder in, say, `/var/www/rdamsc`:
-
-```bash
-sudo mkdir /var/www/rdamsc
-sudo chown rdamsc /var/www/rdamsc
-```
-
-While still in the source code (`opt`) folder, set up the Python dependencies:
-
-```bash
-sudo -Hsu rdamsc
-python3 -m venv venv
-. venv/bin/activate
-pip3 install Flask Flask-WTF flask-login Flask-OpenID rauth oauth2client Flask-HTTPAuth passlib tinydb tinyrecord rdflib dulwich flask-cors pyyaml
-```
-
-Copy the `activate_this.py` script from the [virtualenv] repository to
-`venv/bin/activate_this.py`.
-
-[virtualenv]: https://github.com/pypa/virtualenv/blob/master/virtualenv_embedded/activate_this.py
-
-You now have the libraries you need to restore the database from the backup in
-the Git repo:
-
-```bash
-rdamsc python3 dbctl.py compile
-```
-
-(You will see a warning about IDs missing from the sequence. These are gaps left
-behind from erroneously added records that have since been deleted. Continue
-anyway to preserve the current internal IDs.)
-
-Install the WSGI app by creating a file `/var/www/rdamsc/rdamsc.wsgi`:
+You can configure the names and locations of these files and the folder by
+putting the respective paths in one of your configuration files:
 
 ```python
-activate_this = '/opt/rdamsc/venv/bin/activate_this.py'
-with open(activate_this) as file_:
-    exec(file_.read(), dict(__file__=activate_this))
-
-import os
-import sys
-sys.path.insert(0, '/opt/rdamsc')
-os.environ['http_proxy'] = 'http://proxy.example.com:99999/'
-os.environ['https_proxy'] = 'http://proxy.example.com:99999/'
-
-from serve import app as application
-```
-
-To enable automatic reloading of the application, add the path of the WSGI file
-to your application configuration:
-
-```python
-WSGI_PATH = '/var/www/rdamsc/rdamsc.wsgi'
-```
-
-Exit the app user account:
-
-```bash
-exit
-```
-
-As root, create a site configuration file at
-`/etc/apache2/sites-available/rdamsc.conf`, remembering to give the actual
-domain name you'll be using:
-
-```apache
-WSGIPassAuthorization On
-
-<VirtualHost *:80>
-    ServerName (whatever it is)
-
-    WSGIDaemonProcess rdamsc user=rdamsc group=rdamsc threads=5
-    WSGIScriptAlias / /var/www/rdamsc/rdamsc.wsgi
-
-    <Directory /var/www/rdamsc>
-        WSGIProcessGroup rdamsc
-        WSGIApplicationGroup %{GLOBAL}
-        WSGIScriptReloading On
-        Require all granted
-    </Directory>
-
-    ErrorLog ${APACHE_LOG_DIR}/error.log
-    CustomLog ${APACHE_LOG_DIR}/access.log combined
-
-</VirtualHost>
-
-<IfModule mod_ssl.c>
-    <VirtualHost *:443>
-        ServerName (whatever it is)
-
-        WSGIScriptAlias / /var/www/rdamsc/rdamsc.wsgi
-
-        <Directory /var/www/rdamsc>
-            WSGIProcessGroup rdamsc
-            WSGIApplicationGroup %{GLOBAL}
-            WSGIScriptReloading On
-            Require all granted
-        </Directory>
-
-        ErrorLog ${APACHE_LOG_DIR}/error.log
-        CustomLog ${APACHE_LOG_DIR}/access.log combined
-
-        SSLEngine on
-        SSLCertificateFile /path/to/fullchain.pem
-        SSLCertificateKeyFile /path/to/privkey.pem
-
-    </VirtualHost>
-</IfModule>
-```
-
-Activate the regular HTTP virtual host:
-
-```bash
-sudo a2ensite rdamsc
-# If replacing the default site:
-sudo a2dissite 000-default
-sudo service apache2 graceful
-```
-
-Once you have that working, install your SSL certificates and activate the
-HTTPS virtual host:
-
-```bash
-sudo a2enmod ssl
-sudo service apache2 graceful
+MAIN_DATABASE_PATH = os.path.join('path', 'to', 'file.json')
 ```
 
 ## Things to watch out for

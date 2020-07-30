@@ -19,7 +19,7 @@ recommended you make the changes in the following order.
     changed fields need special handling.
 
  4. Update the implementation of the data model for receiving and rendering data
-    in JSON format via the API in `rdamsc/api.py`.
+    in JSON format via the API in `rdamsc/api2.py`.
 
 ## Testing
 
