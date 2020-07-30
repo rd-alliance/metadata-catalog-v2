@@ -278,7 +278,7 @@ class Relation(object):
 
         return results
 
-    def related_records(self, mscid: str, direction=None) -> Mapping[str, List[dict]]:
+    def related_records(self, mscid: str, direction=None) -> Mapping[str, List[Mapping]]:
         '''Returns dictionary where the keys are predicates (relationships)
         and the values are lists of records related to the identified
         record by that predicate. The types of predicate can optionally be

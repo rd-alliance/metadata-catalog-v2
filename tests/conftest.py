@@ -295,6 +295,12 @@ class DataDBActions(object):
             i += 1
         self.rels = rels
 
+    def count(self, table: str):
+        i = 1
+        while hasattr(self, f'{table}{i}'):
+            i += 1
+        return i - 1
+
     def get_formdata(self, record: str, with_relations=False, version=None):
         dbdata = getattr(self, record)
         if version is not None:
@@ -367,6 +373,15 @@ class DataDBActions(object):
                 key=lambda k: k['role'] + k['id'][:n] + k['id'][n:].zfill(5))
             apidata['relatedEntities'] = related_entities
         return apidata
+
+    def get_apidataset(self, table: str):
+        apidataset = list()
+        i = 1
+        while hasattr(self, f'{table}{i}'):
+            apidataset.append(self.get_apidata(
+                f'{table}{i}', with_embedded=False))
+            i += 1
+        return apidataset
 
     def write_db(self):
         db_file = self._app.config['MAIN_DATABASE_PATH']
