@@ -227,8 +227,8 @@ def get_relations():
     # outside the page's item range. It would be better to implement a cache
     # token so the search results could be saved for, say, an hour and
     # traversed robustly using the token.
-
     rel = Relation()
+    rel_records = rel.tb.all()
 
     # Get paging parameters:
     start_raw = request.values.get('start')
@@ -241,18 +241,72 @@ def get_relations():
 
     # Return result
     return jsonify(as_response_page(
-        rel.tb.all(), url_for('.get_relations'),
+        rel_records, url_for('.get_relations'),
         page_size=page_size, start=start, page=page))
 
 
 @bp.route('/api2/rel/<string(length=1):table><int:number>', methods=['GET'])
 def get_relation(table, number):
-    '''Return (forward) relations given record.'''
-    record = Record.load(number, table)
-
+    '''Return forward relations for the given record.'''
     # Abort if series or number was wrong:
-    if record is None or record.doc_id == 0:
+    base_record = Record.load(number, table)
+    if base_record is None or base_record.doc_id == 0:
         abort(404)
 
+    rel = Relation()
+    mscid = f"{mscid_prefix}{table}{number}"
+    rel_record = {'@id': mscid}
+    rel_record.update(rel.related(mscid, direction=rel.FORWARD))
+
     # Return result
-    return jsonify(as_response_item(record))
+    return jsonify(as_response_item(rel_record))
+
+
+@bp.route('/api2/invrel', methods=['GET'])
+def get_inv_relations():
+    '''Return a page of records generated from inverting the relations table.
+    '''
+    # TODO: Note we currently do a new search each time and discard items
+    # outside the page's item range. It would be better to implement a cache
+    # token so the search results could be saved for, say, an hour and
+    # traversed robustly using the token.
+
+    rel = Relation()
+    mscids = rel.objects()
+    rel_records = list()
+
+    for mscid in mscids:
+        rel_record = {'@id': mscid}
+        rel_record.update(rel.related(mscid, direction=rel.INVERSE))
+        rel_records.append(rel_record)
+
+    # Get paging parameters:
+    start_raw = request.values.get('start')
+    start = int(start_raw) if start_raw else None
+
+    page_raw = request.values.get('page')
+    page = int(page_raw) if page_raw else None
+
+    page_size = int(request.values.get('pageSize', 10))
+
+    # Return result
+    return jsonify(as_response_page(
+        rel_records, url_for('.get_relations'),
+        page_size=page_size, start=start, page=page))
+
+
+@bp.route('/api2/invrel/<string(length=1):table><int:number>', methods=['GET'])
+def get_inv_relation(table, number):
+    '''Return inverse relations for the given record.'''
+    # Abort if series or number was wrong:
+    base_record = Record.load(number, table)
+    if base_record is None or base_record.doc_id == 0:
+        abort(404)
+
+    rel = Relation()
+    mscid = f"{mscid_prefix}{table}{number}"
+    rel_record = {'@id': mscid}
+    rel_record.update(rel.related(mscid, direction=rel.INVERSE))
+
+    # Return result
+    return jsonify(as_response_item(rel_record))

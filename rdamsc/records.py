@@ -91,6 +91,8 @@ class Relation(object):
         'users': 'used scheme',
         'originators': 'endorsement',
     }
+    FORWARD = 'forward'
+    INVERSE = 'inverse'
 
     @property
     def inversions(self):
@@ -243,7 +245,7 @@ class Relation(object):
 
         n = len(mscid_prefix) + 1
 
-        if direction is None or direction == 'forward':
+        if direction is None or direction == Relation.FORWARD:
             relations = self.tb.search(Q['@id'] == mscid)
             for relation in relations:
                 for predicate, objects in relation.items():
@@ -252,7 +254,7 @@ class Relation(object):
                     # We strip off the final 's' to form singular
                     results[predicate[:-1]] = objects
 
-        if direction is None or direction == 'inverse':
+        if direction is None or direction == Relation.INVERSE:
             series_map = dict()
             for subcls in Record.__subclasses__():
                 series_map[subcls.table] = subcls.series
