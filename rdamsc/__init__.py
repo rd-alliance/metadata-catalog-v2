@@ -9,7 +9,7 @@ import os
 # Non-standard
 # ------------
 # See https://flask.palletsprojects.com/en/1.1.x/
-from flask import Flask, render_template
+from flask import Flask, render_template, redirect, url_for
 # See https://flask-login.readthedocs.io/
 from flask_login import current_user
 
@@ -106,7 +106,16 @@ def create_app(test_config=None):
     app.register_blueprint(search.bp)
 
     from . import api2
-    app.register_blueprint(api2.bp)
+    app.register_blueprint(api2.bp, url_prefix='/api2')
+
+    @app.route('/thesaurus')
+    def redirect_thesaurus_scheme():
+        return redirect(url_for('api2.get_thesaurus_scheme'))
+
+    @app.route('/thesaurus/<any(domain, subdomain, concept):level><int:number>')
+    def redirect_thesaurus_concept(level, number):
+        return redirect(
+            url_for('api2.get_thesaurus_concept', level=level, number=number))
 
     @app.context_processor
     def utility_processor():

@@ -37,6 +37,8 @@ class Thesaurus(object):
         db = get_vocab_db()
         self.terms = db.table('thesaurus_terms')
         self.trees = db.table('thesaurus_trees')
+        self.uri = 'http://rdamsc.bath.ac.uk/thesaurus'
+        self.label_en = "RDA MSC Thesaurus"
         if len(self.terms) == 0:
             # Initialise from supplied data
             self.g = Graph()
@@ -46,25 +48,35 @@ class Thesaurus(object):
             self.g.parse(subjects_file, format='turtle')
 
             # Populate handy lookup properties
-            self.uriref = URIRef('http://rdamsc.bath.ac.uk/thesaurus')
+            self.uriref = URIRef(self.uri)
             entries = self._to_list()
-            n = 0
             with transaction(self.terms) as t:
                 for entry in entries:
-                    entry['position'] = n
                     t.insert(entry)
-                    n += 1
             trees = self._to_tree()
-            n = 0
             with transaction(self.trees) as t:
                 for tree in trees:
-                    tree['position'] = n
                     t.insert(tree)
-                    n += 1
 
     @property
     def entries(self):
         return self.terms.all()
+
+    @property
+    def as_jsonld(self):
+        rdf_object = {
+            "@context": {
+                "skos": "http://www.w3.org/2004/02/skos/core#"},
+            "@id": self.uri,
+            "@type": "skos:ConceptScheme",
+            "skos:prefLabel": [{
+                "@value": self.label_en,
+                "@language": "en"}],
+            "skos:hasTopConcept": []}
+        for top_concept in self.tree:
+            rdf_object['skos:hasTopConcept'].append({
+                "@id": top_concept['uri']})
+        return rdf_object
 
     @property
     def tree(self):
@@ -171,7 +183,6 @@ class Thesaurus(object):
                 return uris
             # 3. Traverse down to current term
             while route:
-                termtest = self.terms.get(Query().uri == tree.get('uri'))
                 children = tree.get('children', list())
                 if not children:  # pragma: no cover
                     print("DEBUG get_branch: Traversal ended early.")
@@ -186,6 +197,101 @@ class Thesaurus(object):
                 uris.extend(self._child_uris(child))
 
         return uris
+
+    def get_concept(self, name: str, recursive=False) -> Mapping:
+        '''Returns a dictionary object representing the concept, suitable for
+        conversion to JSON-LD. `name` is last part of URI, e.g. domain0.
+        '''
+        # All conceptN are in UNESCO domain:
+        if name.startswith('c'):
+            uri = f'http://vocabularies.unesco.org/thesaurus/{name}'
+        # All domainN and subdomainN are in MSC domain:
+        else:
+            uri = f'{self.uri}/{name}'
+
+        rdf_object = {
+            "@context": {
+                "skos": "http://www.w3.org/2004/02/skos/core#"},
+            "@id": uri}
+
+        rdf_object.update(
+            self.get_concept_brief(uri, broader=recursive, narrower=recursive))
+
+        return rdf_object
+
+    def get_concept_brief(self, uri: str, broader: bool=False, narrower: bool=False, children: list=None) -> Mapping:
+        '''Returns a minimal dictionary object representing the concept, suitable for
+        conversion to JSON-LD.
+        '''
+        rdf_object = dict()
+
+        # `children` is only passed in when recursing narrower, and if so we
+        # can skip all this:
+        if children is None:
+            base_entry = self.terms.get(Query().uri == uri)
+            if base_entry is None:  # pragma: no cover
+                print(f"DEBUG get_concept_brief: Could not look up term {uri}.")
+                return rdf_object
+
+            if broader == narrower:
+                rdf_object["skos:prefLabel"] = [{
+                    "@value": base_entry['label'],
+                    "@language": "en"}]
+
+            if base_entry['ancestry']:
+                # Add broader
+                if broader or not narrower:
+                    parent_uri = base_entry['ancestry'][-1]
+                    parent = {"@id": parent_uri}
+                    if broader:
+                        parent.update(
+                            self.get_concept_brief(parent_uri, broader=True))
+                    rdf_object["skos:broader"] = [parent]
+
+                # Get narrower
+                route = [uri] + base_entry['ancestry'][::-1]
+                domain_uri = route.pop()
+                tree = self.trees.get(Query().uri == domain_uri)
+                while True:
+                    children = tree.get('children', list())
+                    if not route:
+                        break
+                    child_uri = route.pop()
+                    for child in children:
+                        if child['uri'] == child_uri:
+                            tree = child
+                            break
+                    else:  # pragma: no cover
+                        print("DEBUG get_concept_brief: Traversal ended early.")
+                        break
+            else:
+                # Add broader
+                rdf_object["skos:topConceptOf"] = [{
+                    "@id": self.uri}]
+
+                # Get narrower
+                tree = self.trees.get(Query().uri == uri)
+                children = tree['children']
+
+        if children and (narrower or not broader):
+            rdf_object["skos:narrower"] = list()
+            children.sort(
+                key=lambda k: k['uri']
+                .replace(
+                    'http://vocabularies.unesco.org/thesaurus/concept', '')
+                .zfill(6))
+            for child in children:
+                child_concept = {"@id": child['uri']}
+                if narrower:
+                    child_concept.update(self.get_concept_brief(
+                        child['uri'], narrower=True,
+                        children=child.get('children', list())))
+                rdf_object["skos:narrower"].append(child_concept)
+
+        if rdf_object:
+            rdf_object["@type"] = "skos:Concept"
+
+        return rdf_object
 
     def get_label(self, uri: str) -> str:
         entry = self.terms.get(Query().uri == uri)

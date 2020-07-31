@@ -3,11 +3,10 @@ import pytest
 from flask import g, session
 
 
-def test_m_get(client, app, data_db):
+def test_main_get(client, app, data_db):
 
     # Prepare term database:
     data_db.write_db()
-    data_db.write_terms()
 
     # Test getting one record:
     response = client.get('/api2/m1', follow_redirects=True)
@@ -24,24 +23,6 @@ def test_m_get(client, app, data_db):
     ideal = json.dumps({
         'apiVersion': '2.0.0',
         'data': data_db.get_apidata('m3')
-    }, sort_keys=True)
-    actual = json.dumps(response.get_json(), sort_keys=True)
-    assert ideal == actual
-
-    response = client.get('/api2/datatype1', follow_redirects=True)
-    assert response.status_code == 200
-    ideal = json.dumps({
-        'apiVersion': '2.0.0',
-        'data': data_db.get_apidata('datatype1')
-    }, sort_keys=True)
-    actual = json.dumps(response.get_json(), sort_keys=True)
-    assert ideal == actual
-
-    response = client.get('/api2/location1', follow_redirects=True)
-    assert response.status_code == 200
-    ideal = json.dumps({
-        'apiVersion': '2.0.0',
-        'data': data_db.get_apiterm('location', 1)
     }, sort_keys=True)
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert ideal == actual
@@ -117,6 +98,28 @@ def test_m_get(client, app, data_db):
     response = client.get('/api2/m?page=9&pageSize=10', follow_redirects=True)
     assert response.status_code == 404
 
+    # Test getting one relation
+    # Test getting page of relations
+    # Test getting one inverse relation
+    # Test getting page of inverse relations
+
+
+def test_term_get(client, app, data_db):
+
+    # Prepare term database:
+    data_db.write_terms()
+
+    # Test getting one datatype
+    response = client.get('/api2/datatype1', follow_redirects=True)
+    assert response.status_code == 200
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'data': data_db.get_apidata('datatype1')
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
+
+    # Test getting page of datatypes
     response = client.get('/api2/datatype', follow_redirects=True)
     assert response.status_code == 200
     total = data_db.count('datatype')
@@ -140,6 +143,17 @@ def test_m_get(client, app, data_db):
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert json.dumps(ideal, sort_keys=True) == actual
 
+    # Test getting one vocab term
+    response = client.get('/api2/location1', follow_redirects=True)
+    assert response.status_code == 200
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'data': data_db.get_apiterm('location', 1)
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
+
+    # Test getting page of vocab terms
     response = client.get('/api2/location', follow_redirects=True)
     assert response.status_code == 200
     all_records = data_db.get_apitermset('location')
@@ -163,3 +177,92 @@ def test_m_get(client, app, data_db):
             'http://localhost/api2/location?start=11&pageSize=10')
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert json.dumps(ideal, sort_keys=True) == actual
+
+
+def test_thesaurus(client, app):
+
+    # Test getting full scheme record
+    ideal = {
+        "apiVersion": "2.0.0",
+        "data": {
+            "@context": {
+                "skos": "http://www.w3.org/2004/02/skos/core#"},
+            "@id": "http://rdamsc.bath.ac.uk/thesaurus",
+            "@type": "skos:ConceptScheme",
+            "skos:hasTopConcept": [{
+                "@id": "http://rdamsc.bath.ac.uk/thesaurus/domain0"
+            }, {
+                "@id": "http://rdamsc.bath.ac.uk/thesaurus/domain1"
+            }, {
+                "@id": "http://rdamsc.bath.ac.uk/thesaurus/domain2"
+            }, {
+                "@id": "http://rdamsc.bath.ac.uk/thesaurus/domain3"
+            }, {
+                "@id": "http://rdamsc.bath.ac.uk/thesaurus/domain4"
+            }, {
+                "@id": "http://rdamsc.bath.ac.uk/thesaurus/domain5"
+            }, {
+                "@id": "http://rdamsc.bath.ac.uk/thesaurus/domain6"
+            }, {
+                "@id": "http://rdamsc.bath.ac.uk/thesaurus/domain7"}],
+            "skos:prefLabel": [{
+                "@language": "en",
+                "@value": "RDA MSC Thesaurus"}]}}
+    response = client.get('/api2/thesaurus', follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
+    response = client.get('/thesaurus', follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
+    # Test getting domain record
+    ideal = {
+        "apiVersion": "2.0.0",
+        "data": {
+            "@context": {
+                "skos": "http://www.w3.org/2004/02/skos/core#"},
+            "@id": "http://rdamsc.bath.ac.uk/thesaurus/domain4",
+            "@type": "skos:Concept",
+            "skos:prefLabel": [{
+                "@value": "Social and human sciences",
+                "@language": "en"}],
+            "skos:narrower": [{
+                "@id": "http://rdamsc.bath.ac.uk/thesaurus/subdomain405"
+            }, {
+                "@id": "http://rdamsc.bath.ac.uk/thesaurus/subdomain410"
+            }, {
+                "@id": "http://rdamsc.bath.ac.uk/thesaurus/subdomain415"
+            }, {
+                "@id": "http://rdamsc.bath.ac.uk/thesaurus/subdomain420"
+            }, {
+                "@id": "http://rdamsc.bath.ac.uk/thesaurus/subdomain425"
+            }, {
+                "@id": "http://rdamsc.bath.ac.uk/thesaurus/subdomain430"
+            }, {
+                "@id": "http://rdamsc.bath.ac.uk/thesaurus/subdomain435"
+            }, {
+                "@id": "http://rdamsc.bath.ac.uk/thesaurus/subdomain440"
+            }, {
+                "@id": "http://rdamsc.bath.ac.uk/thesaurus/subdomain445"}],
+            "skos:topConceptOf": [{
+                "@id": "http://rdamsc.bath.ac.uk/thesaurus"}]}}
+    response = client.get('/api2/thesaurus/domain4', follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
+    response = client.get('/api2/thesaurus/domain4?form=concept', follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
+    response = client.get('/thesaurus/domain4', follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
+    # Test getting subdomain record
+    # Test getting concept record

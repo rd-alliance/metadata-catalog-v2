@@ -34,6 +34,7 @@ from .records import (
     Scheme,
     mscid_prefix,
 )
+from .vocab import Thesaurus
 
 bp = Blueprint('api2', __name__)
 api_version = "2.0.0"
@@ -122,9 +123,9 @@ def embellish_record(record: Document, with_embedded=False):
     '''Add convenience fields and related entities to a record.'''
     # Is this a Record or a regular Document?
     if not hasattr(record, 'mscid'):
-        # This is a relationship or thesaurus term.
-        # Relationships have an '@id' key and need a 'uri' key:
-        if '@id' in record:
+        # This is a relationship or thesaurus term. Thesaurus terms all have a
+        # "@context"; internal relationships don't, but need a 'uri' key:
+        if '@context' not in record:
             mscid = record['@id']
             n = len(mscid_prefix)
             table = mscid[n:n+1]
@@ -173,7 +174,7 @@ def embellish_record(record: Document, with_embedded=False):
 # Routes
 # ======
 @bp.route(
-    '/api2/<any(m, g, t, c, d, datatype, location, type, id_scheme):table>',
+    '/<any(m, g, t, c, d, datatype, location, type, id_scheme):table>',
     methods=['GET'])
 def get_records(table):
     '''Return a page of records from the given table.'''
@@ -205,7 +206,7 @@ def get_records(table):
 
 
 @bp.route(
-    '/api2/<any(m, g, t, c, d, datatype, location, type, id_scheme):table>'
+    '/<any(m, g, t, c, d, datatype, location, type, id_scheme):table>'
     '<int:number>',
     methods=['GET'])
 def get_record(table, number):
@@ -220,7 +221,7 @@ def get_record(table, number):
     return jsonify(as_response_item(record))
 
 
-@bp.route('/api2/rel', methods=['GET'])
+@bp.route('/rel', methods=['GET'])
 def get_relations():
     '''Return a page of records from the relations table.'''
     # TODO: Note we currently do a new search each time and discard items
@@ -245,7 +246,7 @@ def get_relations():
         page_size=page_size, start=start, page=page))
 
 
-@bp.route('/api2/rel/<string(length=1):table><int:number>', methods=['GET'])
+@bp.route('/rel/<string(length=1):table><int:number>', methods=['GET'])
 def get_relation(table, number):
     '''Return forward relations for the given record.'''
     # Abort if series or number was wrong:
@@ -262,7 +263,7 @@ def get_relation(table, number):
     return jsonify(as_response_item(rel_record))
 
 
-@bp.route('/api2/invrel', methods=['GET'])
+@bp.route('/invrel', methods=['GET'])
 def get_inv_relations():
     '''Return a page of records generated from inverting the relations table.
     '''
@@ -295,7 +296,7 @@ def get_inv_relations():
         page_size=page_size, start=start, page=page))
 
 
-@bp.route('/api2/invrel/<string(length=1):table><int:number>', methods=['GET'])
+@bp.route('/invrel/<string(length=1):table><int:number>', methods=['GET'])
 def get_inv_relation(table, number):
     '''Return inverse relations for the given record.'''
     # Abort if series or number was wrong:
@@ -310,3 +311,26 @@ def get_inv_relation(table, number):
 
     # Return result
     return jsonify(as_response_item(rel_record))
+
+
+@bp.route('/thesaurus')
+def get_thesaurus_scheme():
+    '''Return SKOS record for MSC Thesaurus Scheme.'''
+    th = Thesaurus()
+
+    return jsonify(as_response_item(th.as_jsonld))
+
+
+@bp.route('/thesaurus/<any(domain, subdomain, concept):level><int:number>')
+def get_thesaurus_concept(level, number):
+    '''Return SKOS record for MSC Thesaurus Concept.'''
+    th = Thesaurus()
+
+    # Get requested level of detail:
+    form = request.values.get('form', 'concept')
+
+    # Generate record
+    concept = th.get_concept(
+        f"{level}{number}", recursive=(form == 'tree'))
+
+    return jsonify(as_response_item(concept))
