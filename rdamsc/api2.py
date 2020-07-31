@@ -59,12 +59,12 @@ def as_response_page(records: List[Mapping], link: str, page_size=10,
     as `link`.
     '''
     total_pages = math.ceil(len(records) / page_size)
-    if start:
+    if start is not None:
         start_index = start
         if start_index > len(records) or start_index < 1:
             abort(404)
         page_index = math.floor(start_index / page_size) + 1
-    elif page:
+    elif page is not None:
         page_index = page
         if page_index > total_pages or page_index < 1:
             abort(404)
@@ -100,7 +100,7 @@ def as_response_page(records: List[Mapping], link: str, page_size=10,
             response['data']['previousLink'] = (
                 f"{link}?page={page - 1}&pageSize={page_size}")
     else:
-        if start_index + page_size < len(records):
+        if start_index + page_size <= len(records):
             response['data']['nextLink'] = (
                 f"{link}?start={start_index + page_size}&pageSize={page_size}")
         if start_index > 1:

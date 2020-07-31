@@ -18,6 +18,21 @@ def test_m_get(client, app, data_db):
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert ideal == actual
 
+    response = client.get('/api2/m3', follow_redirects=True)
+    assert response.status_code == 200
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'data': data_db.get_apidata('m3')
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
+
+    response = client.get('/api2/q1', follow_redirects=True)
+    assert response.status_code == 404
+
+    response = client.get('/api2/m0', follow_redirects=True)
+    assert response.status_code == 404
+
     # Test getting pages of records
     response = client.get('/api2/m', follow_redirects=True)
     assert response.status_code == 200
@@ -38,6 +53,46 @@ def test_m_get(client, app, data_db):
     }
     if total > 10:
         ideal['data']['nextLink'] = (
-            'http://localhost/api2/m?start=11&pagesize=10')
+            'http://localhost/api2/m?start=11&pageSize=10')
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert json.dumps(ideal, sort_keys=True) == actual
+
+    response = client.get('/api2/m?start=3&pageSize=2', follow_redirects=True)
+    assert response.status_code == 200
+    actual = response.get_json()
+    assert actual['data']['totalPages'] == ((total - 1) // 2) + 1
+    assert actual['data']['previousLink'].endswith('start=1&pageSize=2')
+
+    response = client.get(
+        '/api2/m?start=2&page=10&pageSize=2', follow_redirects=True)
+    assert response.status_code == 200
+    actual = response.get_json()
+    assert actual['data']['totalPages'] == ((total - 1) // 2) + 2
+    assert actual['data']['nextLink'].endswith('start=4&pageSize=2')
+    assert actual['data']['previousLink'].endswith('start=1&pageSize=1')
+
+    response = client.get('/api2/m?page=1&pageSize=2', follow_redirects=True)
+    assert response.status_code == 200
+    actual = response.get_json()
+    assert actual['data']['nextLink'].endswith('page=2&pageSize=2')
+
+    response = client.get('/api2/m?page=2&pageSize=2', follow_redirects=True)
+    assert response.status_code == 200
+    actual = response.get_json()
+    assert actual['data']['previousLink'].endswith('page=1&pageSize=2')
+
+    response = client.get('/api2/m?page=2&pageSize=2', follow_redirects=True)
+    assert response.status_code == 200
+    actual = response.get_json()
+    assert actual['data']['previousLink'].endswith('page=1&pageSize=2')
+
+    response = client.get('/api2/q', follow_redirects=True)
+    assert response.status_code == 404
+    response = client.get('/api2/m?start=0&pageSize=10', follow_redirects=True)
+    assert response.status_code == 404
+    response = client.get('/api2/m?start=99&pageSize=10', follow_redirects=True)
+    assert response.status_code == 404
+    response = client.get('/api2/m?page=0&pageSize=10', follow_redirects=True)
+    assert response.status_code == 404
+    response = client.get('/api2/m?page=9&pageSize=10', follow_redirects=True)
+    assert response.status_code == 404

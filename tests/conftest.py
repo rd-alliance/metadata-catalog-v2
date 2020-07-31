@@ -108,6 +108,12 @@ class DataDBActions(object):
                         {
                             "id": "10.1234/m2v2",
                             "scheme": "DOI"}]}]}
+        self.m3 = {
+            "title": "Test scheme 3",
+            "description": "This is only here to test paging."}
+        self.m4 = {
+            "title": "Test scheme 4",
+            "description": "This is also only here to test paging."}
         self.t1 = {
             "title": "Test tool 1",
             "description": "<p>Paragraph 1.</p><p>Paragraph 2.</p>",
@@ -238,6 +244,10 @@ class DataDBActions(object):
         self.rel5 = {
             "@id": "msc:t1",
             "supported schemes": ["msc:m3"]}
+        self.rel6 = {
+            "@id": "msc:m3",
+            "maintainers": ["msc:g1"],
+            "funders": ["msc:g1"]}
         self.datatype1 = {
             "id": "https://www.w3.org/TR/vocab-dcat/#class-dataset",
             "label": "Dataset"}
@@ -393,19 +403,11 @@ class DataDBActions(object):
                 "_default": {},
                 "m": {}, "t": {}, "c": {}, "g": {}, "e": {}, "rel": {}}
 
-        db["m"]["1"] = self.m1
-        db["m"]["2"] = self.m2
-        db["t"]["1"] = self.t1
-        db["t"]["2"] = self.t2
-        db["c"]["1"] = self.c1
-        db["c"]["2"] = self.c2
-        db["g"]["1"] = self.g1
-        db["e"]["1"] = self.e1
-        db["rel"]["1"] = self.rel1
-        db["rel"]["2"] = self.rel2
-        db["rel"]["3"] = self.rel3
-        db["rel"]["4"] = self.rel4
-        db["rel"]["5"] = self.rel5
+        for table in ["m", "t", "c", "g", "e", "rel"]:
+            i = 1
+            while hasattr(self, f'{table}{i}'):
+                db[table][i] = getattr(self, f'{table}{i}')
+                i += 1
 
         db_file = self._app.config['MAIN_DATABASE_PATH']
         with open(db_file, 'w') as f:
