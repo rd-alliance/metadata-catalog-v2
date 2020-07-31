@@ -2060,6 +2060,59 @@ If an end date is provided, it expresses the date on which the endorsement was w
                 oneOf:
                 - $ref: '#/components/schemas/MetadataScheme'
                 - $ref: '#/components/schemas/Organization'
+    DataType:
+      type: object
+      properties:
+        mscid:
+          $ref: '#/components/schemas/MSCID'
+        uri:
+          $ref: '#/components/schemas/URI'
+        id:
+          type: string
+          description: "URL identifying this type of data."
+        label:
+          type: string
+          description: "Descriptor for this type of data."
+    VocabularyTerm:
+      type: object
+      properties:
+        mscid:
+          $ref: '#/components/schemas/MSCID'
+        uri:
+          $ref: '#/components/schemas/URI'
+        label:
+          type: string
+          description: "Human-readable descriptor for this term."
+        applies:
+          type: array
+          description: "Entities for which this term may be used."
+          items:
+            type: string
+            enum:
+            - "scheme"
+            - "organization"
+            - "tool"
+            - "mapping"
+            - "endorsement"
+      required:
+      - label
+    VocabularyTermNew:
+      allOf:
+      - $ref: '#/components/schemas/VocabularyTerm'
+      - properties:
+          id:
+            type: string
+            description: "String used to identify this term in records."
+        required:
+        - id
+    VocabularyTermOld:
+      allOf:
+      - $ref: '#/components/schemas/VocabularyTerm'
+      - properties:
+          id:
+            type: string
+            description: "String used to identify this term in records."
+            readOnly: true
     Relation:
       type: object
       properties:
@@ -2133,6 +2186,8 @@ If an end date is provided, it expresses the date on which the endorsement was w
       properties:
         "@id":
           $ref: '#/components/schemas/MSCID'
+        uri:
+          $ref: '#/components/schemas/URI'
         child schemes:
           type: array
           description: "Schemes that are profiles of the current scheme. In practice, this means either that the child scheme explicitly “borrows” elements from the current scheme, or that all instances of the child scheme would be valid instances of the current scheme."
@@ -2188,63 +2243,6 @@ If an end date is provided, it expresses the date on which the endorsement was w
             type: string
             description: "Non-semantic internal identifier for the related record."
             pattern: '^msc:m\d+$'
-    DataType:
-      type: object
-      properties:
-        slug:
-          $ref: '#/components/schemas/Slug'
-        mscid:
-          $ref: '#/components/schemas/MSCID'
-        uri:
-          $ref: '#/components/schemas/URI'
-        id:
-          type: string
-          description: "URL identifying this type of data."
-        label:
-          type: string
-          description: "Descriptor for this type of data."
-    VocabularyTerm:
-      type: object
-      properties:
-        slug:
-          $ref: '#/components/schemas/Slug'
-        mscid:
-          $ref: '#/components/schemas/MSCID'
-        uri:
-          $ref: '#/components/schemas/URI'
-        label:
-          type: string
-          description: "Human-readable descriptor for this term."
-        applies:
-          type: array
-          description: "Entities for which this term may be used."
-          items:
-            type: string
-            enum:
-            - "scheme"
-            - "organization"
-            - "tool"
-            - "mapping"
-            - "endorsement"
-      required:
-      - label
-    VocabularyTermNew:
-      allOf:
-      - $ref: '#/components/schemas/VocabularyTerm'
-      - properties:
-          id:
-            type: string
-            description: "String used to identify this term in records."
-        required:
-        - id
-    VocabularyTermOld:
-      allOf:
-      - $ref: '#/components/schemas/VocabularyTerm'
-      - properties:
-          id:
-            type: string
-            description: "String used to identify this term in records."
-            readOnly: true
     ThesaurusBase:
       type: object
       properties:
@@ -2415,18 +2413,6 @@ If an end date is provided, it expresses the date on which the endorsement was w
       - properties:
           data:
             $ref: '#/components/schemas/Endorsement'
-    ResponseItemRelation:
-      allOf:
-      - $ref: '#/components/schemas/Response'
-      - properties:
-          data:
-            $ref: '#/components/schemas/Relation'
-    ResponseItemInvRelation:
-      allOf:
-      - $ref: '#/components/schemas/Response'
-      - properties:
-          data:
-            $ref: '#/components/schemas/InvRelation'
     ResponseItemDataType:
       allOf:
       - $ref: '#/components/schemas/Response'
@@ -2439,6 +2425,18 @@ If an end date is provided, it expresses the date on which the endorsement was w
       - properties:
           data:
             $ref: '#/components/schemas/VocabularyTermOld'
+    ResponseItemRelation:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            $ref: '#/components/schemas/Relation'
+    ResponseItemInvRelation:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            $ref: '#/components/schemas/InvRelation'
     ResponseItemThesaurusConceptScheme:
       allOf:
       - $ref: '#/components/schemas/Response'
@@ -2543,32 +2541,6 @@ If an end date is provided, it expresses the date on which the endorsement was w
                     description: "Items in the current page of results."
                     items:
                       $ref: '#/components/schemas/Endorsement'
-    ResponsePageRelation:
-      allOf:
-      - $ref: '#/components/schemas/Response'
-      - properties:
-          data:
-            allOf:
-              - $ref: '#/components/schemas/Page'
-              - properties:
-                  items:
-                    type: array
-                    description: "Items in the current page of results."
-                    items:
-                      $ref: '#/components/schemas/Relation'
-    ResponsePageInvRelation:
-      allOf:
-      - $ref: '#/components/schemas/Response'
-      - properties:
-          data:
-            allOf:
-              - $ref: '#/components/schemas/Page'
-              - properties:
-                  items:
-                    type: array
-                    description: "Items in the current page of results."
-                    items:
-                      $ref: '#/components/schemas/InvRelation'
     ResponsePageDataType:
       allOf:
       - $ref: '#/components/schemas/Response'
@@ -2595,6 +2567,32 @@ If an end date is provided, it expresses the date on which the endorsement was w
                     description: "Items in the current page of results."
                     items:
                       $ref: '#/components/schemas/VocabularyTermOld'
+    ResponsePageRelation:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            allOf:
+              - $ref: '#/components/schemas/Page'
+              - properties:
+                  items:
+                    type: array
+                    description: "Items in the current page of results."
+                    items:
+                      $ref: '#/components/schemas/Relation'
+    ResponsePageInvRelation:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            allOf:
+              - $ref: '#/components/schemas/Page'
+              - properties:
+                  items:
+                    type: array
+                    description: "Items in the current page of results."
+                    items:
+                      $ref: '#/components/schemas/InvRelation'
     ResponsePageThesaurusConcept:
       allOf:
       - $ref: '#/components/schemas/Response'
@@ -2657,18 +2655,6 @@ If an end date is provided, it expresses the date on which the endorsement was w
       - properties:
           data:
             $ref: '#/components/schemas/Endorsement'
-    ResponseSuccessRelation:
-      allOf:
-      - $ref: '#/components/schemas/Response'
-      - properties:
-          data:
-            $ref: '#/components/schemas/Relation'
-    ResponseSuccessInvRelation:
-      allOf:
-      - $ref: '#/components/schemas/Response'
-      - properties:
-          data:
-            $ref: '#/components/schemas/InvRelation'
     ResponseSuccessDataType:
       allOf:
       - $ref: '#/components/schemas/Response'
@@ -2681,6 +2667,18 @@ If an end date is provided, it expresses the date on which the endorsement was w
       - properties:
           data:
             $ref: '#/components/schemas/VocabularyTermOld'
+    ResponseSuccessRelation:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            $ref: '#/components/schemas/Relation'
+    ResponseSuccessInvRelation:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - properties:
+          data:
+            $ref: '#/components/schemas/InvRelation'
     SubmissionResponseFailure:
       type: object
       properties:

@@ -306,12 +306,14 @@ class DataDBActions(object):
         self.rels = rels
 
     def count(self, table: str):
+        '''Returns number of records in table.'''
         i = 1
         while hasattr(self, f'{table}{i}'):
             i += 1
         return i - 1
 
     def get_formdata(self, record: str, with_relations=False, version=None):
+        '''Returns record in the form that WTForms would produce.'''
         dbdata = getattr(self, record)
         if version is not None:
             try:
@@ -359,6 +361,7 @@ class DataDBActions(object):
         return formdata
 
     def get_apidata(self, record: str, with_embedded=True):
+        '''Returns record in form that API would respond with.'''
         dbdata = getattr(self, record)
         apidata = dict()
         apidata['mscid'] = f'msc:{record}'
@@ -366,7 +369,6 @@ class DataDBActions(object):
         for key, value in dbdata.items():
             apidata[key] = value
         related_entities = list()
-        print(self.rels.get(record, list()))
         for k, vs in self.rels.get(record, dict()).items():
             for v in vs:
                 related_entity = {
@@ -385,6 +387,7 @@ class DataDBActions(object):
         return apidata
 
     def get_apidataset(self, table: str):
+        '''Returns table in form that API would respond with.'''
         apidataset = list()
         i = 1
         while hasattr(self, f'{table}{i}'):
@@ -393,39 +396,67 @@ class DataDBActions(object):
             i += 1
         return apidataset
 
-    def write_db(self):
-        db_file = self._app.config['MAIN_DATABASE_PATH']
+    def get_apiterm(self, table: str, number: int):
+        '''Returns term record in form that API would respond with.'''
+        apidataset = self.get_apitermset(table)
+        if number < 1 or number > len(apidataset):
+            return None
+
+        return apidataset[number - 1]
+
+    def get_apitermset(self, table: str):
+        '''Returns term table in form that API would respond with.'''
+        apidataset = list()
+        db_file = self._app.config['TERM_DATABASE_PATH']
+
+        if not os.path.isfile(db_file):
+            return apidataset
+
+        with open(db_file, 'r') as f:
+            db = json.load(f)
+
+        if table not in db:
+            return apidataset
+
+        i = 1
+        while f"{i}" in db[table]:
+            record = db[table][f"{i}"]
+            record['mscid'] = f'msc:{table}{i}'
+            record['uri'] = f'http://localhost/api2/{table}{i}'
+            apidataset.append(record)
+            i += 1
+
+        return apidataset
+
+    def _tables_to_file(self, tables: list, db_file: str):
+        '''Writes a set of tables to a given DB file.'''
         if os.path.isfile(db_file):
             with open(db_file, 'r') as f:
                 db = json.load(f)
         else:
-            db = {
-                "_default": {},
-                "m": {}, "t": {}, "c": {}, "g": {}, "e": {}, "rel": {}}
+            db = {"_default": {}}
 
-        for table in ["m", "t", "c", "g", "e", "rel"]:
+        for table in tables:
+            db[table] = dict()
             i = 1
             while hasattr(self, f'{table}{i}'):
                 db[table][i] = getattr(self, f'{table}{i}')
                 i += 1
 
-        db_file = self._app.config['MAIN_DATABASE_PATH']
         with open(db_file, 'w') as f:
             json.dump(db, f, indent=1, ensure_ascii=False)
 
-    def write_terms(self):
-        terms_file = self._app.config['TERM_DATABASE_PATH']
-        if os.path.isfile(terms_file):
-            with open(terms_file, 'r') as f:
-                terms = json.load(f)
-        else:
-            terms = {"_default": {}}
+    def write_db(self):
+        '''Writes main database file.'''
+        self._tables_to_file(
+            ["m", "t", "c", "g", "e", "rel"],
+            self._app.config['MAIN_DATABASE_PATH'])
 
-        terms['datatype'] = dict()
-        terms['datatype']["1"] = self.datatype1
-        terms['datatype']["2"] = self.datatype2
-        with open(terms_file, 'w') as f:
-            json.dump(terms, f, indent=1, ensure_ascii=False)
+    def write_terms(self):
+        '''Writes term database file.'''
+        self._tables_to_file(
+            ["datatype"],
+            self._app.config['TERM_DATABASE_PATH'])
 
 
 class PageActions(object):

@@ -15,6 +15,7 @@ from typing import (
 
 # Non-standard
 # ------------
+from tinydb.database import Document
 from flask import (
     abort,
     Blueprint,
@@ -31,6 +32,7 @@ from .records import (
     Relation,
     Record,
     Scheme,
+    mscid_prefix,
 )
 
 bp = Blueprint('api2', __name__)
@@ -116,8 +118,21 @@ def as_response_page(records: List[Mapping], link: str, page_size=10,
     return response
 
 
-def embellish_record(record: Record, with_embedded=False):
+def embellish_record(record: Document, with_embedded=False):
     '''Add convenience fields and related entities to a record.'''
+    # Is this a Record or a regular Document?
+    if not hasattr(record, 'mscid'):
+        # This is a relationship or thesaurus term.
+        # Relationships have an '@id' key and need a 'uri' key:
+        if '@id' in record:
+            mscid = record['@id']
+            n = len(mscid_prefix)
+            table = mscid[n:n+1]
+            number = mscid[n+1:]
+            record['uri'] = url_for(
+                '.get_relation', table=table, number=number, _external=True)
+        return record
+
     # Form MSC ID
     mscid = record.mscid
 
@@ -126,6 +141,10 @@ def embellish_record(record: Record, with_embedded=False):
     record['uri'] = url_for(
         '.get_record', table=record.table, number=record.doc_id,
         _external=True)
+
+    # Is this a controlled term?
+    if len(record.table) > 1:
+        return record
 
     # Add related entities
     related_entities = list()
@@ -153,13 +172,15 @@ def embellish_record(record: Record, with_embedded=False):
 
 # Routes
 # ======
-@bp.route('/api2/<string(length=1):table>', methods=['GET'])
+@bp.route(
+    '/api2/<any(m, g, t, c, d, datatype, location, type, id_scheme):table>',
+    methods=['GET'])
 def get_records(table):
     '''Return a page of records from the given table.'''
     # TODO: Note we currently do a new search each time and discard items
     # outside the page's item range. It would be better to implement a cache
     # token so the search results could be saved for, say, an hour and
-    # traversed robustly while the token is used and valid.
+    # traversed robustly using the token.
     for record_cls in Record.__subclasses__():
         if table != record_cls.table:
             continue
@@ -179,13 +200,54 @@ def get_records(table):
 
     # Return result
     return jsonify(as_response_page(
-        records, url_for('.get_records', table=table),
+        records, url_for('.get_records', table=table, _external=True),
         page_size=page_size, start=start, page=page))
 
 
-@bp.route('/api2/<string(length=1):table><int:number>', methods=['GET'])
+@bp.route(
+    '/api2/<any(m, g, t, c, d, datatype, location, type, id_scheme):table>'
+    '<int:number>',
+    methods=['GET'])
 def get_record(table, number):
     '''Return given record.'''
+    record = Record.load(number, table)
+
+    # Abort if series or number was wrong:
+    if record is None or record.doc_id == 0:
+        abort(404)
+
+    # Return result
+    return jsonify(as_response_item(record))
+
+
+@bp.route('/api2/rel', methods=['GET'])
+def get_relations():
+    '''Return a page of records from the relations table.'''
+    # TODO: Note we currently do a new search each time and discard items
+    # outside the page's item range. It would be better to implement a cache
+    # token so the search results could be saved for, say, an hour and
+    # traversed robustly using the token.
+
+    rel = Relation()
+
+    # Get paging parameters:
+    start_raw = request.values.get('start')
+    start = int(start_raw) if start_raw else None
+
+    page_raw = request.values.get('page')
+    page = int(page_raw) if page_raw else None
+
+    page_size = int(request.values.get('pageSize', 10))
+
+    # Return result
+    return jsonify(as_response_page(
+        rel.tb.all(), url_for('.get_relations'),
+        page_size=page_size, start=start, page=page))
+
+
+@bp.route('/api2/rel/<string(length=1):table><int:number>', methods=['GET'])
+def get_relation(table, number):
+    '''Return (forward) relations given record.'''
     record = Record.load(number, table)
 
     # Abort if series or number was wrong:

@@ -1255,7 +1255,7 @@ class VocabTerm(Document):
         '''Processes form input and saves it. Returns error message if a problem
         arises.'''
 
-        # Override id
+        # Override id:
         old_id = self.get('id')
         if old_id:
             formdata['id'] = old_id
