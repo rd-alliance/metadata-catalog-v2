@@ -42,10 +42,10 @@ api_version = "2.0.0"
 
 # Handy functions
 # ===============
-def as_response_item(record: Mapping):
-    '''Wraps item data in a response object.'''
+def as_response_item(record: Mapping, route: str):
+    '''Wraps item data in a response object, tailored for `route`.'''
     # Embellish record
-    data = embellish_record(record, with_embedded=True)
+    data = embellish_record(record, route=route, with_embedded=True)
 
     response = {
         'apiVersion': api_version,
@@ -54,12 +54,12 @@ def as_response_item(record: Mapping):
     return response
 
 
-def as_response_page(records: List[Mapping], link: str, page_size=10,
-                     start: int=None, page: int=None):
+def as_response_page(records: List[Mapping], link: str, route: str,
+                     page_size=10, start: int=None, page: int=None):
     '''Wraps list of records in a response object representing a page of
     `page_size` items, starting with item number `start` or page number `page`
     (both counting from 1) The base URL for adjacent requests should be given
-    as `link`.
+    as `link`. The route for individual items should be given as `route`.
     '''
     total_pages = math.ceil(len(records) / page_size)
     if start is not None:
@@ -78,7 +78,7 @@ def as_response_page(records: List[Mapping], link: str, page_size=10,
 
     items = list()
     for record in records[start_index-1:start_index+page_size-1]:
-        items.append(embellish_record(record))
+        items.append(embellish_record(record, route=route))
 
     response = {
         'apiVersion': api_version,
@@ -119,19 +119,19 @@ def as_response_page(records: List[Mapping], link: str, page_size=10,
     return response
 
 
-def embellish_record(record: Document, with_embedded=False):
+def embellish_record(record: Document, route='.get_record', with_embedded=False):
     '''Add convenience fields and related entities to a record.'''
     # Is this a Record or a regular Document?
     if not hasattr(record, 'mscid'):
         # This is a relationship or thesaurus term. Thesaurus terms all have a
         # "@context"; internal relationships don't, but need a 'uri' key:
-        if '@context' not in record:
+        if route in ['.get_relation', '.get_inv_relation']:
             mscid = record['@id']
             n = len(mscid_prefix)
             table = mscid[n:n+1]
             number = mscid[n+1:]
             record['uri'] = url_for(
-                '.get_relation', table=table, number=number, _external=True)
+                route, table=table, number=number, _external=True)
         return record
 
     # Form MSC ID
@@ -202,7 +202,7 @@ def get_records(table):
     # Return result
     return jsonify(as_response_page(
         records, url_for('.get_records', table=table, _external=True),
-        page_size=page_size, start=start, page=page))
+        '.get_record', page_size=page_size, start=start, page=page))
 
 
 @bp.route(
@@ -218,7 +218,7 @@ def get_record(table, number):
         abort(404)
 
     # Return result
-    return jsonify(as_response_item(record))
+    return jsonify(as_response_item(record, '.get_record'))
 
 
 @bp.route('/rel', methods=['GET'])
@@ -242,7 +242,7 @@ def get_relations():
 
     # Return result
     return jsonify(as_response_page(
-        rel_records, url_for('.get_relations'),
+        rel_records, url_for('.get_relations'), '.get_relation',
         page_size=page_size, start=start, page=page))
 
 
@@ -260,7 +260,7 @@ def get_relation(table, number):
     rel_record.update(rel.related(mscid, direction=rel.FORWARD))
 
     # Return result
-    return jsonify(as_response_item(rel_record))
+    return jsonify(as_response_item(rel_record, route='.get_relation'))
 
 
 @bp.route('/invrel', methods=['GET'])
@@ -292,7 +292,7 @@ def get_inv_relations():
 
     # Return result
     return jsonify(as_response_page(
-        rel_records, url_for('.get_relations'),
+        rel_records, url_for('.get_inv_relations'), '.get_inv_relation',
         page_size=page_size, start=start, page=page))
 
 
@@ -310,7 +310,7 @@ def get_inv_relation(table, number):
     rel_record.update(rel.related(mscid, direction=rel.INVERSE))
 
     # Return result
-    return jsonify(as_response_item(rel_record))
+    return jsonify(as_response_item(rel_record, route='.get_inv_relation'))
 
 
 @bp.route('/thesaurus')
@@ -318,7 +318,7 @@ def get_thesaurus_scheme():
     '''Return SKOS record for MSC Thesaurus Scheme.'''
     th = Thesaurus()
 
-    return jsonify(as_response_item(th.as_jsonld))
+    return jsonify(as_response_item(th.as_jsonld, '.get_thesaurus_scheme'))
 
 
 @bp.route('/thesaurus/<any(domain, subdomain, concept):level><int:number>')
@@ -333,4 +333,4 @@ def get_thesaurus_concept(level, number):
     concept = th.get_concept(
         f"{level}{number}", recursive=(form == 'tree'))
 
-    return jsonify(as_response_item(concept))
+    return jsonify(as_response_item(concept, '.get_thesaurus_concept'))

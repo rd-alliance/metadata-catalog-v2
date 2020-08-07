@@ -99,9 +99,32 @@ def test_main_get(client, app, data_db):
     assert response.status_code == 404
 
     # Test getting one relation
+    response = client.get('/api2/rel/m1', follow_redirects=True)
+    assert response.status_code == 200
+    ideal = {
+        'apiVersion': '2.0.0',
+        'data': data_db.rel3
+    }
+    ideal['data']['uri'] = "http://localhost/api2/rel/m1"
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
     # Test getting page of relations
+    response = client.get('/api2/rel', follow_redirects=True)
+    assert response.status_code == 200
+
     # Test getting one inverse relation
+    response = client.get('/api2/invrel/m1', follow_redirects=True)
+    assert response.status_code == 200
+    ideal = {
+        'apiVersion': '2.0.0',
+        'data': {
+            '@id': 'msc:m1',
+            'uri': 'http://localhost/api2/invrel/m1'}}
+
     # Test getting page of inverse relations
+    response = client.get('/api2/invrel', follow_redirects=True)
+    assert response.status_code == 200
 
 
 def test_term_get(client, app, data_db):
@@ -266,3 +289,42 @@ def test_thesaurus(client, app):
 
     # Test getting subdomain record
     # Test getting concept record
+    ideal = {
+        "apiVersion": "2.0.0",
+        "data": {
+            "@context": {
+                "skos": "http://www.w3.org/2004/02/skos/core#"},
+            "@id": "http://vocabularies.unesco.org/thesaurus/concept1811",
+            "@type": "skos:Concept",
+            "skos:broader": [{
+                "@id": "http://vocabularies.unesco.org/thesaurus/concept634"}],
+            "skos:narrower": [{
+                "@id": "http://vocabularies.unesco.org/thesaurus/concept4918"}],
+            "skos:prefLabel": [{
+                "@language": "en",
+                "@value": "Crops"}]}}
+    response = client.get('/api2/thesaurus/concept1811', follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
+    ideal['data']['skos:broader'] = [{
+        "@id": "http://vocabularies.unesco.org/thesaurus/concept634",
+        "@type": "skos:Concept",
+        "skos:broader": [{
+            "@id": "http://rdamsc.bath.ac.uk/thesaurus/subdomain655",
+            "@type": "skos:Concept",
+            "skos:broader": [{
+                "@id": "http://rdamsc.bath.ac.uk/thesaurus/domain6",
+                "@type": "skos:Concept",
+                "skos:topConceptOf": [{
+                    "@id": "http://rdamsc.bath.ac.uk/thesaurus"}]}]}]}]
+    ideal['data']['skos:narrower'] = [{
+        "@id": "http://vocabularies.unesco.org/thesaurus/concept4918",
+        "@type": "skos:Concept",
+        "skos:narrower": [{
+            "@id": "http://vocabularies.unesco.org/thesaurus/concept2912"}]}]
+    response = client.get('/api2/thesaurus/concept1811?form=tree', follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert json.dumps(ideal, sort_keys=True) == actual
