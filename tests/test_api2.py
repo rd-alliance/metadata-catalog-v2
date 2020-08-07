@@ -109,9 +109,16 @@ def test_main_get(client, app, data_db):
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert json.dumps(ideal, sort_keys=True) == actual
 
+    response = client.get('/api2/rel/m10', follow_redirects=True)
+    assert response.status_code == 404
+
     # Test getting page of relations
     response = client.get('/api2/rel', follow_redirects=True)
     assert response.status_code == 200
+    results = data_db.get_apirelset()
+    total = len(results)
+    current = total if total < 10 else 10
+    page_total = ((total - 1) // 10) + 1
     ideal = {
         'apiVersion': '2.0.0',
         'data': {
@@ -121,22 +128,57 @@ def test_main_get(client, app, data_db):
             'totalItems': total,
             'pageIndex': 1,
             'totalPages': page_total,
-            'items': data_db.get_apirelset()
+            'items': results[:10]
         },
     }
+    if total > 10:
+        ideal['data']['nextLink'] = (
+            'http://localhost/api2/rel?start=11&pageSize=10')
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert json.dumps(ideal, sort_keys=True) == actual
 
     # Test getting one inverse relation
-    response = client.get('/api2/invrel/m1', follow_redirects=True)
+    response = client.get('/api2/invrel/g1', follow_redirects=True)
     assert response.status_code == 200
+    results = data_db.get_apirelset(inverse=True)
+    for result in results:
+        if result['@id'] == 'msc:g1':
+            g1rel = result
+            break
+    else:
+        g1rel = None
     ideal = {
         'apiVersion': '2.0.0',
-        'data': {
-            '@id': 'msc:m1',
-            'uri': 'http://localhost/api2/invrel/m1'}}
+        'data': g1rel}
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
+    response = client.get('/api2/invrel/g10', follow_redirects=True)
+    assert response.status_code == 404
 
     # Test getting page of inverse relations
     response = client.get('/api2/invrel', follow_redirects=True)
     assert response.status_code == 200
+    total = len(results)
+    current = total if total < 10 else 10
+    page_total = ((total - 1) // 10) + 1
+    ideal = {
+        'apiVersion': '2.0.0',
+        'data': {
+            'itemsPerPage': 10,
+            'currentItemCount': current,
+            'startIndex': 1,
+            'totalItems': total,
+            'pageIndex': 1,
+            'totalPages': page_total,
+            'items': results[:10]
+        },
+    }
+    if total > 10:
+        ideal['data']['nextLink'] = (
+            'http://localhost/api2/rel?start=11&pageSize=10')
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert json.dumps(ideal, sort_keys=True) == actual
 
 
 def test_term_get(client, app, data_db):

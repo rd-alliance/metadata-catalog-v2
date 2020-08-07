@@ -414,6 +414,11 @@ def test_create_view_records(client, auth, app, page, data_db):
     response = client.get('/edit/g1')
     html = response.get_data(as_text=True)
     g1 = data_db.get_formdata('g1', with_relations=True)
+    for key in ['funded_schemes']:
+        # We haven't added m3 yet:
+        values = g1.poplist(key)
+        for v in [v for v in values if v != 'msc:m3']:
+            g1.add(key, v)
     g1.update(page.get_all_hidden(html))
     response = client.post('/edit/g1', data=g1, follow_redirects=True)
     assert response.status_code == 200

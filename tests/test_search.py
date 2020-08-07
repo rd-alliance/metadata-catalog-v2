@@ -11,7 +11,7 @@ def test_scheme_search(client, page, data_db):
     page.assert_contains(
         "Could not perform search as your form session has expired.")
 
-    # Test one query, two results
+    # Test one query, four results
     hidden = page.get_all_hidden()
     query.update(hidden)
     response = client.post('/search', data=query, follow_redirects=True)
@@ -19,9 +19,9 @@ def test_scheme_search(client, page, data_db):
     html = response.get_data(as_text=True)
     page.read(html)
     page.assert_contains(
-        f"Found 2 schemes with title matching \"{query['title']}\".")
+        f"Found 4 schemes with title matching \"{query['title']}\".")
     page.assert_lacks(
-        "Found 2 schemes in total.")
+        "Found 4 schemes in total.")
 
     # Test finding version by title
     response = client.get('/search')
@@ -135,11 +135,11 @@ def test_scheme_search(client, page, data_db):
     html = response.get_data(as_text=True)
     page.read(html)
     page.assert_contains(
-        f"Found 1 scheme with funder matching \"{query['funder']}\".")
+        f"Found 2 schemes with funder matching \"{query['funder']}\".")
     page.assert_contains(
         f"Found 2 schemes used with data of type \"{query['dataType']}\".")
     page.assert_contains(
-        "Found 2 schemes in total.")
+        "Found 3 schemes in total.")
 
     # Test unknown funder
     query = {"funder": "EPSRC"}
@@ -252,7 +252,7 @@ def test_group_search(client, page, data_db):
     page.read(html)
     page.assert_contains(
         "<h1>Organization 1</h1>")
-    page.assert_contains("Found 1 scheme funded by this organization.")
+    page.assert_contains("Found 2 schemes funded by this organization.")
 
     # Test no results for role
     response = client.get('/maintainer/g1')

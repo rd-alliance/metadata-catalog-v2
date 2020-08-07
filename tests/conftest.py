@@ -246,7 +246,6 @@ class DataDBActions(object):
             "supported schemes": ["msc:m3"]}
         self.rel6 = {
             "@id": "msc:m3",
-            "maintainers": ["msc:g1"],
             "funders": ["msc:g1"]}
         self.datatype1 = {
             "id": "https://www.w3.org/TR/vocab-dcat/#class-dataset",
@@ -255,7 +254,7 @@ class DataDBActions(object):
             "id": "https://www.w3.org/TR/vocab-dcat/#class-catalog",
             "label": "Catalog"}
 
-        fw_tags = {
+        self.fw_tags = {
             "parent schemes": "parent_schemes",
             "supported schemes": "supported_schemes",
             "input schemes": "input_schemes",
@@ -265,7 +264,7 @@ class DataDBActions(object):
             "funders": "funders",
             "users": "users",
             "originators": "originators"}
-        rv_tags = {
+        self.rv_tags = {
             "parent schemes": "child_schemes",
             "supported schemes": "tools",
             "input schemes": "input_to_mappings",
@@ -275,27 +274,27 @@ class DataDBActions(object):
             "funders": "funded_{}s",
             "users": "used_schemes",
             "originators": "endorsements"}
-        rc_cls = {'m': 'scheme', 't': 'tool', 'c': 'mapping'}
+        self.rc_cls = {'m': 'scheme', 't': 'tool', 'c': 'mapping'}
         rels = dict()
         i = 1
         while hasattr(self, f'rel{i}'):
             fw_rel = dict()
             id = getattr(self, f'rel{i}').get('@id').replace('msc:', '')
             for k, v in getattr(self, f'rel{i}').items():
-                if k not in fw_tags:
+                if k not in self.fw_tags:
                     continue
 
                 # Forward relations
-                fw_rel[fw_tags[k]] = v
+                fw_rel[self.fw_tags[k]] = v
 
                 # Inverse relations
-                tag = rv_tags[k]
+                tag = self.rv_tags[k]
                 for mscid in v:
                     v_id = mscid.replace('msc:', '')
                     if v_id not in rels:
                         rels[v_id] = dict()
                     if '{}' in tag:
-                        tag = tag.format(rc_cls.get(id[0:1]))
+                        tag = tag.format(self.rc_cls.get(id[0:1]))
                     if tag not in rels[v_id]:
                         rels[v_id][tag] = list()
                     rels[v_id][tag].append(f"msc:{id}")
@@ -398,31 +397,46 @@ class DataDBActions(object):
 
     def get_apirelset(self, inverse=False):
         '''Returns table of relations in form that API would respond with.'''
-        apirelset = list()
+        apidataset = list()
         i = 1
+        n = 5
         if inverse:
             reldict = dict()
             while hasattr(self, f'rel{i}'):
                 record = getattr(self, f'rel{i}')
+                id = record['@id']
                 for predicate, objects in record.items():
-                    if predicate == '@id':
+                    if predicate in ['@id', 'uri']:
                         continue
+                    tag = self.rv_tags[predicate].replace('_', ' ')
+                    if '{}' in tag:
+                        tag = tag.format(self.rc_cls.get(id[4:5]))
                     for object in objects:
                         if object not in reldict:
                             reldict[object] = dict()
-                        if predicate not in reldict[object]:
-                            reldict[object][predicate] = list()
-                        reldict[object][predicate].append(record['@id'])
+                        if tag not in reldict[object]:
+                            reldict[object][tag] = list()
+                        reldict[object][tag].append(id)
                 i += 1
-            for id in sorted(reldict.keys()):
-                item = {"@id": id}
+            for id in sorted(reldict.keys(),
+                             key=lambda k: k[:n] + k[n:].zfill(5)):
+                item = {"@id": id, "uri": f'http://localhost/api2/invrel/{id[4:]}'}
                 item.update(reldict[id])
-                apirelset.append(item)
+                apidataset.append(item)
         else:
             while hasattr(self, f'rel{i}'):
-                apirelset.append(getattr(self, f'rel{i}'))
+                record = getattr(self, f'rel{i}')
+                record['uri'] = f'http://localhost/api2/rel/{record["@id"][4:]}'
+                apidataset.append(record)
                 i += 1
-        return apirelset
+
+        for results in apidataset:
+            for predicate in results.keys():
+                if isinstance(results[predicate], list):
+                    results[predicate].sort(
+                        key=lambda k: k[:n] + k[n:].zfill(5))
+
+        return apidataset
 
     def get_apiterm(self, table: str, number: int):
         '''Returns term record in form that API would respond with.'''

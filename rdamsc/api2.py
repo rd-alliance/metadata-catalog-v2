@@ -187,7 +187,7 @@ def get_records(table):
             continue
         records = record_cls.all()
         break
-    else:
+    else:  # pragma: no cover
         abort(404)
 
     # Get paging parameters
