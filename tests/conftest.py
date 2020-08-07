@@ -396,6 +396,34 @@ class DataDBActions(object):
             i += 1
         return apidataset
 
+    def get_apirelset(self, inverse=False):
+        '''Returns table of relations in form that API would respond with.'''
+        apirelset = list()
+        i = 1
+        if inverse:
+            reldict = dict()
+            while hasattr(self, f'rel{i}'):
+                record = getattr(self, f'rel{i}')
+                for predicate, objects in record.items():
+                    if predicate == '@id':
+                        continue
+                    for object in objects:
+                        if object not in reldict:
+                            reldict[object] = dict()
+                        if predicate not in reldict[object]:
+                            reldict[object][predicate] = list()
+                        reldict[object][predicate].append(record['@id'])
+                i += 1
+            for id in sorted(reldict.keys()):
+                item = {"@id": id}
+                item.update(reldict[id])
+                apirelset.append(item)
+        else:
+            while hasattr(self, f'rel{i}'):
+                apirelset.append(getattr(self, f'rel{i}'))
+                i += 1
+        return apirelset
+
     def get_apiterm(self, table: str, number: int):
         '''Returns term record in form that API would respond with.'''
         apidataset = self.get_apitermset(table)

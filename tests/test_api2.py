@@ -112,6 +112,18 @@ def test_main_get(client, app, data_db):
     # Test getting page of relations
     response = client.get('/api2/rel', follow_redirects=True)
     assert response.status_code == 200
+    ideal = {
+        'apiVersion': '2.0.0',
+        'data': {
+            'itemsPerPage': 10,
+            'currentItemCount': current,
+            'startIndex': 1,
+            'totalItems': total,
+            'pageIndex': 1,
+            'totalPages': page_total,
+            'items': data_db.get_apirelset()
+        },
+    }
 
     # Test getting one inverse relation
     response = client.get('/api2/invrel/m1', follow_redirects=True)
