@@ -81,15 +81,15 @@ class Relation(object):
     Relations are stored using MSCIDs to identify records.'''
 
     _inversions = {
-        'parent schemes': 'child scheme',
-        'supported schemes': 'tool',
-        'input schemes': 'input to mapping',
-        'output schemes': 'output from mapping',
-        'endorsed schemes': 'endorsement',
-        'maintainers': 'maintained {}',
-        'funders': 'funded {}',
-        'users': 'used scheme',
-        'originators': 'endorsement',
+        'parent schemes': 'child schemes',
+        'supported schemes': 'tools',
+        'input schemes': 'input to mappings',
+        'output schemes': 'output from mappings',
+        'endorsed schemes': 'endorsements',
+        'maintainers': 'maintained {}s',
+        'funders': 'funded {}s',
+        'users': 'used schemes',
+        'originators': 'endorsements',
     }
     FORWARD = 'forward'
     INVERSE = 'inverse'
@@ -251,8 +251,7 @@ class Relation(object):
                 for predicate, objects in relation.items():
                     if predicate == '@id':
                         continue
-                    # We strip off the final 's' to form singular
-                    results[predicate[:-1]] = objects
+                    results[predicate] = objects
 
         if direction is None or direction == Relation.INVERSE:
             series_map = dict()

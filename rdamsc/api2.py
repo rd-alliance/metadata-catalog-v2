@@ -156,7 +156,7 @@ def embellish_record(record: Document, route='.get_record', with_embedded=False)
         for entity in relations[role]:
             related_entity = {
                 'id': entity.mscid,
-                'role': role,
+                'role': role[:-1],  # convert to singular
             }
             if with_embedded:
                 related_entity['data'] = seen_mscids.get(entity.mscid)
