@@ -5,6 +5,7 @@
 # Standard
 # --------
 import os
+import subprocess
 
 # Non-standard
 # ------------
@@ -12,6 +13,8 @@ import os
 from flask import Flask, render_template, redirect, url_for
 # See https://flask-login.readthedocs.io/
 from flask_login import current_user
+# See https://bloomberg.github.io/python-github-webhook/
+from github_webhook import Webhook
 
 # Local
 # -----
@@ -91,6 +94,7 @@ def create_app(test_config=None):
     def terms_of_use():
         return render_template('terms-of-use.html')
 
+    # Dynamic pages:
     from . import auth
     auth.oid.init_app(app)
     auth.lm.init_app(app)
@@ -117,6 +121,27 @@ def create_app(test_config=None):
         return redirect(
             url_for('api2.get_thesaurus_concept', level=level, number=number))
 
+    # Webhook:
+    webhook = Webhook(app, secret=app.config['WEBHOOK_SECRET'])
+    script_dir = os.path.dirname(__file__)
+
+    @webhook.hook()
+    def on_push(data):
+        print("Upstream code repository has been updated.")
+        print("Initiating git pull to update codebase.")
+        call = subprocess.run(['git', '-C', script_dir, 'pull', '--rebase'],
+                              stderr=subprocess.STDOUT)
+        print("Git pull completed with exit code {}.".format(call.returncode))
+        wsgi_path = app.config.get('WSGI_PATH')
+        if wsgi_path:  # pragma: no cover
+            if os.path.isfile(wsgi_path):
+                os.utime(wsgi_path, None)
+                print("Application reloaded.")
+            else:
+                print("Value of WSGI_PATH ({}) is not a valid file."
+                      .format(wsgi_path))
+
+    # Utility functions used in templates
     @app.context_processor
     def utility_processor():
         return {

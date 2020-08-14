@@ -21,6 +21,7 @@ setup(
         'tinyrecord>=0.2.0',
         'rdflib',
         'dulwich',
+        'github-webhook',
         'flask-cors',
         'pytest',
         'coverage',

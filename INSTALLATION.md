@@ -19,6 +19,7 @@ are if you want to look up the documentation:
   - The database is implemented using [TinyDB] v4+ and [tinyrecord].
   - The subject thesaurus is converted from RDF to JSON via [RDFLib].
   - [Dulwich] is used to apply version control to the database.
+  - [GitHub-Webhook] allows the Catalog to update itself.
   - [Flask-CORS] is used to allow requests from JavaScript.
 
 [Python 3]: https://www.python.org/
@@ -37,6 +38,7 @@ are if you want to look up the documentation:
 [tinyrecord]: https://pypi.org/project/tinyrecord/
 [RDFLib]: http://rdflib.readthedocs.io/
 [Dulwich]: https://www.dulwich.io/
+[GitHub-Webhook]: https://bloomberg.github.io/python-github-webhook/
 [Flask-CORS]: http://flask-cors.readthedocs.io/
 
 
@@ -239,9 +241,10 @@ SECRET_KEY = 'secret string'
 ```
 
 To enable automatic updating from GitHub, you will also need to set up a
-webhook key:
+webhook key and record the path to the WSGI file (so it can be reloaded):
 
 ```python
+WSGI_PATH = '/srv/rdamsc/rdamsc.wsgi'
 WEBHOOK_SECRET = 'another secret string'
 ```
 
