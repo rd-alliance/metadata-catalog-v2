@@ -15,5 +15,4 @@ locally as <openapi.yaml> and may be explored interactively on [SwaggerHub].
 [Metadata Standards Catalog]: https://rdamsc.bath.ac.uk/
 [Installation Guide]: INSTALLATION.md
 [Guide for Contributors]: CONTRIBUTING.md
-[Database Guide]: /db/README.md
 [SwaggerHub]: https://app.swaggerhub.com/apis-docs/alex-ball/rda-metadata-standards-catalog/2.0.0

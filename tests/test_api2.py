@@ -342,6 +342,41 @@ def test_thesaurus(client, app):
     assert json.dumps(ideal, sort_keys=True) == actual
 
     # Test getting subdomain record
+    ideal = {
+        "apiVersion": "2.0.0",
+        "data": {
+            "@context": {
+                "skos": "http://www.w3.org/2004/02/skos/core#"},
+            "@id": "http://rdamsc.bath.ac.uk/thesaurus/subdomain655",
+            "@type": "skos:Concept",
+            "skos:broader": [{
+                "@id": "http://rdamsc.bath.ac.uk/thesaurus/domain6"}],
+            "skos:narrower": [{
+                "@id": "http://vocabularies.unesco.org/thesaurus/concept634"
+            }, {
+                "@id": "http://vocabularies.unesco.org/thesaurus/concept635"
+            }, {
+                "@id": "http://vocabularies.unesco.org/thesaurus/concept636"
+            }, {
+                "@id": "http://vocabularies.unesco.org/thesaurus/concept637"
+            }, {
+                "@id": "http://vocabularies.unesco.org/thesaurus/concept638"
+            }, {
+                "@id": "http://vocabularies.unesco.org/thesaurus/concept639"
+            }, {
+                "@id": "http://vocabularies.unesco.org/thesaurus/concept640"
+            }, {
+                "@id": "http://vocabularies.unesco.org/thesaurus/concept641"
+            }, {
+                "@id": "http://vocabularies.unesco.org/thesaurus/concept642"}],
+            "skos:prefLabel": [{
+                "@language": "en",
+                "@value": "Materials and products"}]}}
+    response = client.get('/api2/thesaurus/subdomain655', follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
     # Test getting concept record
     ideal = {
         "apiVersion": "2.0.0",
