@@ -94,6 +94,11 @@ def create_app(test_config=None):
     def terms_of_use():
         return render_template('terms-of-use.html')
 
+    # Terms of use:
+    @app.route('/accessibility')
+    def accessibility():
+        return render_template('accessibility.html')
+
     # Dynamic pages:
     from . import auth
     auth.oid.init_app(app)
