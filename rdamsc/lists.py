@@ -21,19 +21,25 @@ from .vocab import get_thesaurus
 bp = Blueprint('list', __name__)
 
 
-def get_scheme_tree(records: List[Scheme]) -> Mapping[str, str]:
+def get_scheme_tree(records: List[Scheme], seen_so_far: List=None) -> Mapping[str, str]:
     '''Takes list of parent schemes and returns tree suitable for use with the
     contents template.'''
-    records.sort(key=lambda k: k.name)
+    records.sort(key=lambda k: k.name.lower())
+    if seen_so_far is None:
+        seen_so_far = list()
     tree = list()
     rel = Relation()
     for record in records:
+        if record.mscid in seen_so_far:
+            print(f"DEBUG: recursion error detected for {record.mscid}.")
+            return tree
         children = rel.subject_records("parent schemes", record.mscid)
         node = {
             'name': record.name,
             'url': url_for(
                 'main.display', table=record.table, number=record.doc_id),
-            'children': get_scheme_tree(children)
+            'children': get_scheme_tree(
+                children, seen_so_far=seen_so_far + [record.mscid])
             }
         tree.append(node)
     return tree
@@ -45,7 +51,7 @@ def get_scheme_tree(records: List[Scheme]) -> Mapping[str, str]:
           ' "input schemes", "output schemes", "endorsed schemes",'
           ' maintainers, funders, users, originators):role>')
 @bp.route('/<string:series>-index')
-def record_index(series=None, role=None):
+def record_index(series, role=None):
     '''The contents template takes a 'tree' variable, which is a list of
     dictionaries, each with keys 'name' (human-readable name) and 'url'
     (Catalog page URL). The dictionary represents a node and if the node has
@@ -53,9 +59,7 @@ def record_index(series=None, role=None):
     another tree.
     '''
     heading = series
-    if series is None:
-        abort(404)
-    elif series == "scheme" and role is None:
+    if series == "scheme" and role is None:
         # Listing metadata schemes.
         rel = Relation()
 
@@ -67,7 +71,7 @@ def record_index(series=None, role=None):
 
         # Assemble tree of records that are not on blacklist:
         tree = get_scheme_tree([
-            record for record in records if record.mscid not in children])
+            record for record in records if record and record.mscid not in children])
         return render_template(
             'contents.html', title=f"Index of {heading}", tree=tree)
 
@@ -96,7 +100,7 @@ def record_index(series=None, role=None):
                 'name': record.name,
                 'url': url_for(
                     'main.display', table=record.table, number=record.doc_id)
-                } for record in records]
+                } for record in records if record]
             return render_template(
                 'contents.html', title=f"Index of {heading}", tree=tree)
     else:

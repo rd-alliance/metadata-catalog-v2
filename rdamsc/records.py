@@ -183,7 +183,7 @@ class Relation(object):
                             if prefix is None or mscid.startswith(prefix):
                                 mscids.add(mscid)
             else:
-                relations = self.tb.search(Q[predicate].any(object))
+                relations = self.tb.search(Q[predicate].any([object]))
                 all_mscids = [relation.get('@id') for relation in relations]
                 if prefix:
                     mscids = [m for m in all_mscids if m.startswith(prefix)]

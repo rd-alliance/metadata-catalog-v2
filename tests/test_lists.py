@@ -58,6 +58,21 @@ def test_record_index(client, page, data_db):
     assert response.status_code == 404
 
 
+def test_bad_record_index(client, page, data_db):
+    data_db.write_bad_db()  # This has an infinite loop in it
+
+    response = client.get('/scheme-index')
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains(
+        '  ' * 5 +
+        '<p><a href="/msc/m2">Test scheme 2</a></p>')
+    page.assert_contains(
+        '  ' * 7 +
+        '<p><a href="/msc/m3">Test scheme 3</a></p>')
+
+
 def test_subject_index(client, page, data_db):
     data_db.write_db()
 

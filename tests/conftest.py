@@ -488,6 +488,14 @@ class DataDBActions(object):
         with open(db_file, 'w') as f:
             json.dump(db, f, indent=1, ensure_ascii=False)
 
+    def write_bad_db(self):
+        '''Writes main database file.'''
+        self.rel4["parent schemes"] += ["msc:m3"]
+        self.rel6["parent schemes"] = ["msc:m2"]
+        self._tables_to_file(
+            ["m", "t", "c", "g", "e", "rel"],
+            self._app.config['MAIN_DATABASE_PATH'])
+
     def write_db(self):
         '''Writes main database file.'''
         self._tables_to_file(
