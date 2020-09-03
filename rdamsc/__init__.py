@@ -114,6 +114,9 @@ def create_app(test_config=None):
     from . import search
     app.register_blueprint(search.bp)
 
+    from . import api1
+    app.register_blueprint(api1.bp, url_prefix='/api')
+
     from . import api2
     app.register_blueprint(api2.bp, url_prefix='/api2')
 
