@@ -1732,7 +1732,7 @@ components:
                 description: "The date on which the version was released or published. This also implies the date on which the version was approved for use by its maintainer, unless an explicit `valid` date is also given."
               valid:
                 allOf:
-                - description: "A version of a scheme is assumed to be approved for use by its maintainer from its `issued` date until the issued date of a subsequent version. If this is not the case, (for example, where multiple versions are approved simultaneously), `valid` expresses the period for which a version is approved for use. A single date indicates that the version is still approved for use, despite the issue of subsequent versions. The second date in a range indicates the date on which approval was withdrawn."
+                - description: "A version of a scheme is assumed to be approved for use by its maintainer from its `issued` date until the issued date of a subsequent version. If this is not the case, (for example, where multiple versions are approved simultaneously), `valid` expresses the period for which a version is approved for use. If an end date is provided, this indicates the date on which approval was withdrawn; otherwise the version is still considered approved for use, despite the issue of subsequent versions."
                 - $ref: '#/components/schemas/DateRange'
               locations:
                 type: array
