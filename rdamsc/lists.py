@@ -58,7 +58,7 @@ def record_index(series, role=None):
     children, the dictionary has a 'children' key, the value of which is
     another tree.
     '''
-    heading = series
+    heading = f"{series}s"
     if series == "scheme" and role is None:
         # Listing metadata schemes.
         rel = Relation()

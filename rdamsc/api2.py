@@ -174,7 +174,7 @@ def embellish_record(record: Document, route='.get_record', with_embedded=False)
 # Routes
 # ======
 @bp.route(
-    '/<any(m, g, t, c, d, datatype, location, type, id_scheme):table>',
+    '/<any(m, g, t, c, e, datatype, location, type, id_scheme):table>',
     methods=['GET'])
 def get_records(table):
     '''Return a page of records from the given table.'''
@@ -206,7 +206,7 @@ def get_records(table):
 
 
 @bp.route(
-    '/<any(m, g, t, c, d, datatype, location, type, id_scheme):table>'
+    '/<any(m, g, t, c, e, datatype, location, type, id_scheme):table>'
     '<int:number>',
     methods=['GET'])
 def get_record(table, number):

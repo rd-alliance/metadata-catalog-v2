@@ -5,6 +5,7 @@ def test_record_index(client, page, data_db):
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     page.read(html)
+    page.assert_contains('Index of metadata standards')
     page.assert_contains(
         '  ' * 3 +
         '<p><a href="/msc/m1">Test scheme 1</a></p>')
@@ -24,9 +25,15 @@ def test_record_index(client, page, data_db):
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     page.read(html)
+    page.assert_contains('Index of tools')
     page.assert_contains(
         '  ' * 3 +
         '<p><a href="/msc/t1">Test tool 1</a></p>')
+
+    response = client.get('/organization-index')
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.assert_contains('Index of organizations', html=html)
 
     response = client.get('/organization-index/funders')
     assert response.status_code == 200
@@ -35,6 +42,16 @@ def test_record_index(client, page, data_db):
     page.assert_contains(
         '  ' * 3 +
         '<p><a href="/msc/g1">Organization 1</a></p>')
+
+    response = client.get('/mapping-index')
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.assert_contains('Index of mappings', html=html)
+
+    response = client.get('/endorsement-index')
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.assert_contains('Index of endorsements', html=html)
 
     response = client.get('/-index/')
     assert response.status_code == 404
