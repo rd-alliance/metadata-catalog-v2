@@ -10,9 +10,11 @@ For information on how to contribute to the development of the Catalog,
 see the [Guide for Contributors].
 
 The data model used by the API is documented in OpenAPI format. It is stored
-locally as <openapi.yaml> and may be explored interactively on [SwaggerHub].
+locally as [openapi.yaml] and may be explored interactively on [SwaggerHub].
+Note that the write API endpoints have not been implemented just yet.
 
 [Metadata Standards Catalog]: https://rdamsc.bath.ac.uk/
 [Installation Guide]: INSTALLATION.md
 [Guide for Contributors]: CONTRIBUTING.md
+[openapi.yaml]: openapi.yaml
 [SwaggerHub]: https://app.swaggerhub.com/apis-docs/alex-ball/rda-metadata-standards-catalog/2.0.0
