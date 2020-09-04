@@ -1,7 +1,7 @@
-# Metadata Standards Catalog Development
+# Metadata Standards Catalog code base
 
 This repository contains the code base for the Research Data Alliance [Metadata
-Standards Catalog].
+Standards Catalog], version 2. The version 1 code is kept in a [separate repository].
 
 For information on how to install and run an instance of the Catalog yourself,
 see the [Installation Guide].
@@ -14,6 +14,7 @@ locally as [openapi.yaml] and may be explored interactively on [SwaggerHub].
 Note that the write API endpoints have not been implemented just yet.
 
 [Metadata Standards Catalog]: https://rdamsc.bath.ac.uk/
+[separate repository]: https://github.com/rd-alliance/metadata-catalog-dev
 [Installation Guide]: INSTALLATION.md
 [Guide for Contributors]: CONTRIBUTING.md
 [openapi.yaml]: openapi.yaml
