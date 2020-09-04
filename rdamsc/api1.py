@@ -97,10 +97,6 @@ def embellish_record(record: Document, route='.get_record'):
         'id': mscid,
         'scheme': 'RDA-MSCWG'})
 
-    # Is this a controlled term?
-    if len(record.table) > 1:
-        return record
-
     # Add related entities
     related_entities = list()
     seen_mscids = dict()

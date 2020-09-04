@@ -42,6 +42,7 @@ class DataDBActions(object):
         self._app = app
         self.m1 = {
             "title": "Test scheme 1",
+            "slug": "test-scheme-1",
             "description": "Description without tags.",
             "keywords": [
                 "http://rdamsc.bath.ac.uk/thesaurus/subdomain235",
@@ -60,6 +61,7 @@ class DataDBActions(object):
                     "scheme": "DOI"}]}
         self.m2 = {
             "title": "Test scheme 2",
+            "slug": "test-scheme-2",
             "description": "<p>Paragraph 1.</p>"
                            "<p><a href=\"https://m.us/\">Paragraph</a> 2.</p>",
             "keywords": [
@@ -110,12 +112,15 @@ class DataDBActions(object):
                             "scheme": "DOI"}]}]}
         self.m3 = {
             "title": "Test scheme 3",
+            "slug": "test-scheme-3",
             "description": "This is only here to test paging."}
         self.m4 = {
             "title": "Test scheme 4",
+            "slug": "test-scheme-4",
             "description": "This is also only here to test paging."}
         self.t1 = {
             "title": "Test tool 1",
+            "slug": "test-tool-1",
             "description": "<p>Paragraph 1.</p><p>Paragraph 2.</p>",
             "types": ["web application"],
             "locations": [
@@ -135,6 +140,7 @@ class DataDBActions(object):
                     "familyName": "Surname"}]}
         self.t2 = {
             "title": "Test tool 2",
+            "slug": "test-tool-2",
             "description": "Test description no tags.",
             "types": ["web application"],
             "versions": [
@@ -156,6 +162,7 @@ class DataDBActions(object):
                             "scheme": "DOI"}]}]}
         self.c1 = {
             "name": "Test crosswalk 1",
+            "slug": "test-crosswalk-1",
             "description": "Description with no tags.",
             "locations": [
                 {
@@ -174,6 +181,7 @@ class DataDBActions(object):
                     "familyName": "Surname",
                     "fullName": "Given Family"}]}
         self.c2 = {
+            "slug": "test-scheme-1-TO-test-scheme-2",
             "description": "<p>Paragraph 1.</p><p>Paragraph 2.</p>",
             "versions": [
                 {
@@ -193,6 +201,7 @@ class DataDBActions(object):
                             "scheme": "DOI"}]}]}
         self.g1 = {
             "name": "Organization 1",
+            "slug": "organization-1",
             "description": "<p>Paragraph 1.</p><p>Paragraph 2.</p>",
             "types": ["standards body"],
             "locations": [
@@ -208,6 +217,7 @@ class DataDBActions(object):
                     "scheme": "DOI"}]}
         self.e1 = {
             "title": "Test endorsement 1",
+            "slug": "test-endorsement-1",
             "description": "<p>Paragraph 1.</p><p>Paragraph 2.</p>",
             "creators": [
                 {
@@ -382,6 +392,62 @@ class DataDBActions(object):
             n = 5
             related_entities.sort(
                 key=lambda k: k['role'] + k['id'][:n] + k['id'][n:].zfill(5))
+            apidata['relatedEntities'] = related_entities
+        return apidata
+
+    def get_api1data(self, record: str, with_embedded=True):
+        '''Returns record in form that API 1 would respond with.'''
+        kw_map = {
+            'http://rdamsc.bath.ac.uk/thesaurus/subdomain235':
+                "Earth sciences",
+            'http://vocabularies.unesco.org/thesaurus/concept4011':
+                "Biological diversity"}
+
+        dbdata = getattr(self, record)
+        apidata = dict()
+        apidata['identifiers'] = [
+            {'id': f'msc:{record}', 'scheme': 'RDA-MSCWG'}]
+        for key, value in dbdata.items():
+            if key == 'identifiers':
+                apidata[key] += value
+            elif key == 'dataTypes':
+                apidata[key] = list()
+                for v in value:
+                    dt = getattr(self, v[4:])
+                    dt['url'] = dt['id']
+                    del dt['id']
+                    apidata[key].append(dt)
+            elif key == 'keywords':
+                apidata[key] = list()
+                for v in value:
+                    apidata[key].append(kw_map[v])
+                apidata[key].sort()
+            elif key == 'versions':
+                apidata[key] = list()
+                for v in value:
+                    if 'valid' in v:
+                        start = v['valid']['start']
+                        end = v['valid'].get('end')
+                        if end:
+                            v['valid'] = f"{start}/{end}"
+                        else:
+                            v['valid'] = start
+                    apidata[key].append(v)
+            else:
+                apidata[key] = value
+        related_entities = list()
+        for k, vs in self.rels.get(record, dict()).items():
+            for v in vs:
+                related_entity = {
+                    'id': v,
+                    'role': k.replace('_', ' ')[:-1],
+                }
+                if k in self.fw_tags.values():
+                    related_entities.append(related_entity)
+        if related_entities:
+            n = 5
+            related_entities.sort(
+                key=lambda k: k['id'][:n] + k['id'][n:].zfill(5))
             apidata['relatedEntities'] = related_entities
         return apidata
 

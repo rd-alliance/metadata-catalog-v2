@@ -5,7 +5,7 @@ from flask import g, session
 
 def test_main_get(client, app, data_db):
 
-    # Prepare term database:
+    # Prepare database:
     data_db.write_db()
 
     # Test getting one record:
