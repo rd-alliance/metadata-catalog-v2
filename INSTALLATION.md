@@ -176,7 +176,7 @@ points to this file:
 WSGIPassAuthorization On
 
 <VirtualHost *:80>
-    ServerName example.com
+    ServerName rdamsc.example.com
 
     WSGIDaemonProcess rdamsc user=rdamsc group=rdamsc threads=5
     WSGIScriptAlias / /srv/rdamsc/rdamsc.wsgi
@@ -189,7 +189,16 @@ WSGIPassAuthorization On
 </VirtualHost>
 ```
 
-You may want extra lines to configure logging or SSL.
+If your system Python is not able to run the Catalog and you have to use the
+version in your virtual environment, you will need an extra couple of lines at
+the top (check the path for your environment):
+
+```apache
+LoadModule wsgi_module "/opt/rdamsc/venv/path/to/mod_wsgi...so"
+WSGIPythonHome "/opt/rdamsc/venv"
+```
+
+You may also want extra lines to configure logging or SSL.
 
 You should then configure the Catalog (see below, it deserves its own section)
 before activating the site:
@@ -329,3 +338,107 @@ solely of space characters.
 
 If you have problems with authenticating through a proxy, you may need to
 install the `pycurl` library as well.
+
+
+## Implementing maintenance mode in Apache (Debian-based style)
+
+### Configuration
+
+Place a standalone holding HTML page at, say, `/srv/rdamsc/maintenance.html`.
+
+Add a file at, say, `/srv/rdamsc/exceptions.map` with a list of IP addresses
+that should be allowed to see (i.e. test) the site during maintenance, putting
+each one on its own line followed by `OK`:
+
+```apache
+192.168.0.1 OK
+```
+
+In `/etc/apache2/envvars`, add a definition to `APACHE_ARGUMENTS`. This is
+normally commented out. If you are already using this for something, you'll
+probably want two lines (one with the definition and one without) and toggle
+between them:
+
+```ini
+    #export APACHE_ARGUMENTS='-D Maintenance'
+```
+
+Amend your site configuration to include the `Alias` line for the maintenance
+page (so it bypasses WSGI) and the `IfDefine` blocks:
+
+```apache
+WSGIPassAuthorization On
+
+<VirtualHost *:80>
+    ServerName rdamsc.example.com
+
+    Alias /maintenance.html /srv/rdamsc/maintenance.html
+
+    WSGIDaemonProcess rdamsc user=rdamsc group=rdamsc threads=5
+    WSGIScriptAlias / /srv/rdamsc/rdamsc.wsgi
+
+    <Directory /srv/rdamsc>
+        WSGIProcessGroup rdamsc
+        WSGIApplicationGroup %{GLOBAL}
+        Require all granted
+    </Directory>/maintenance.html
+
+    <IfDefine Maintenance>
+        ErrorDocument 503 /maintenance.html
+
+        # Set Retry-After on error pages:
+        Header always set Retry-After 7200
+        Header onsuccess unset Retry-After
+
+        RewriteEngine on
+        RewriteMap exceptions txt:/srv/rdamsc/exceptions.map
+
+        # Allow individual IP addresses through:
+        RewriteCond ${exceptions:%{REMOTE_ADDR}} =OK
+        RewriteRule ^ - [L]
+
+        # Otherwise redirect all traffic to the maintenance page:
+        RewriteCond %{REQUEST_URI} !=/maintenance.html
+        RewriteRule ^ - [R=503,L]
+    </IfDefine>
+
+    <IfDefine !Maintenance>
+        # Redirect requests for maintenance page to home page:
+        RewriteEngine on
+        RewriteRule ^/maintenance/index.html$ / [R,L]
+    </IfDefine>
+</VirtualHost>
+```
+
+
+### Switching into Maintenance Mode
+
+ 1. Edit the file `/etc/apache2/envvars` so that the Maintenance line is active:
+
+    ```ini
+    export APACHE_ARGUMENTS='-D Maintenance'
+    ```
+
+ 2. Stop and start the server (restarting it won't work properly):
+
+    ```bash
+    sudo apachectl graceful-stop
+    sudo apachectl start
+    ```
+
+
+### Switching out of Maintenance Mode
+
+ 1. Edit the file `/etc/apache2/envvars` so that the Maintenance line is
+    commented out:
+
+    ```ini
+    #export APACHE_ARGUMENTS='-D Maintenance'
+    ```
+
+ 2. Stop and start the server:
+
+    ```bash
+    sudo apachectl graceful-stop
+    sudo apachectl start
+    ```
