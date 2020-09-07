@@ -91,6 +91,8 @@ def record_index(series, role=None):
                 elif series != "organization":
                     abort(404)
                 heading = role
+                if role == 'originators':
+                    heading = 'endorsing organizations'
                 rel = Relation()
                 records = rel.object_records(predicate=role)
             else:
