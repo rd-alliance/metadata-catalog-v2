@@ -19,10 +19,10 @@
     <li><p><a href="{{ url_for('list.record_index', series='tool') }}">Browse metadata-related tools</a></p></li>
     <li><p><a href="{{ url_for('list.record_index', series='organization') }}">Browse organizations</a></p>
       <ul>
-        <li><a href="{{ url_for('list.record_index', series='organization', role='funder') }}">Browse funders</a></li>
-        <li><a href="{{ url_for('list.record_index', series='organization', role='maintainer') }}">Browse organizations that maintain schemes</a></li>
-        <li><a href="{{ url_for('list.record_index', series='organization', role='user') }}">Browse known users of schemes</a></li>
-        <li><a href="{{ url_for('list.record_index', series='organization', role='originator') }}">Browse organizations that have endorsed schemes</a></li>
+        <li><a href="{{ url_for('list.record_index', series='organization', role='funders') }}">Browse funders</a></li>
+        <li><a href="{{ url_for('list.record_index', series='organization', role='maintainers') }}">Browse organizations that maintain schemes</a></li>
+        <li><a href="{{ url_for('list.record_index', series='organization', role='users') }}">Browse known users of schemes</a></li>
+        <li><a href="{{ url_for('list.record_index', series='organization', role='originators') }}">Browse organizations that have endorsed schemes</a></li>
       </ul></li>
     <li><p><a href="{{ url_for('list.record_index', series='endorsement') }}">Browse endorsements</a></p></li>
   </ul>
