@@ -133,16 +133,23 @@ sudo usermod -aG rdamsc www-data
 sudo chown rdamsc:www-data /opt/rdamsc
 ```
 
-You should create an instance folder where the Catalog can keep its data. The
-application will look for it in the source code folder, but you could put it in
-`/var/rdamsc`:
+You should create an instance folder where the Catalog can keep its data. You
+could put it in `/var/rdamsc`:
 
 ```bash
 sudo mkdir /var/rdamsc
 sudo chown rdamsc:www-data /var/rdamsc
-cd /opt/rdamsc
-sudo -u rdamsc ln -s /var/rdamsc instance
 ```
+
+Configure the Catalog to use this folder explicitly by changing the `app`
+assignment line to include the information:
+
+```python
+# Create the app:
+app = Flask(__name__, instance_relative_config=True, instance_path='/var/rdamsc')
+```
+
+Commit this change so Git can reapply it over any other code changes.
 
 Inside your virtual environment, you need the `activate_this.py` script so you
 can activate it with the system's Python installation. The latest copy is
@@ -167,6 +174,18 @@ Create a file `/srv/rdamsc/rdamsc.wsgi` with this content:
 activate_this = '/opt/rdamsc/venv/bin/activate_this.py'
 with open(activate_this) as file_:
     exec(file_.read(), dict(__file__=activate_this))
+
+from rdamsc import create_app
+application = create_app()
+```
+
+If you are behind an HTTP proxy, you may need these lines as well:
+
+```python
+import os
+
+os.environ['http_proxy'] = 'http://proxyURL'
+os.environ['https_proxy'] = 'https://proxyURL'
 ```
 
 Now create an Apache site (e.g. `/etc/apache2/sites-available/rdamsc.conf`) that
