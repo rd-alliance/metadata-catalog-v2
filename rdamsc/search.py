@@ -219,11 +219,19 @@ def scheme_search():
     # Enable autocompletion for subject_terms:
     subject_list = th.get_labels()
     # Sort suggestions:
-    title_list = sorted(title_set, key=lambda k: k.lower())
+    title_list = (
+        sorted(title_set, key=lambda k: k.lower())
+        if title_set else list())
     n = len(mscid_prefix) + 1
-    id_list = sorted(id_set, key=lambda k: k[:n] + k[n:].zfill(5))
-    funder_list = sorted(funder_set, key=lambda k: k.lower())
-    type_list = sorted(type_set, key=lambda k: k.lower())
+    id_list = (
+        sorted(id_set, key=lambda k: k[:n] + k[n:].zfill(5))
+        if id_set else list())
+    funder_list = (
+        sorted(funder_set, key=lambda k: k.lower())
+        if funder_set else list())
+    type_list = (
+        sorted(type_set, key=lambda k: k.lower())
+        if type_set else list())
     subject_list.sort()
     return render_template(
         'search-form.html', form=form, titles=title_list,

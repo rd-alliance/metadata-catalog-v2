@@ -10,7 +10,7 @@ def test_webhook(client, app):
     ping = {
         "ref": "refs/tags/simple-tag",
         "repository": {
-            "full_name": "rd-alliance/metadata-catalog-dev",
+            "full_name": "rd-alliance/metadata-catalog-v2",
         },
         "pusher": {
             "name": "Codertocat",
