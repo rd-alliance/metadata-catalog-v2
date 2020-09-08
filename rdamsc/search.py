@@ -181,7 +181,6 @@ def scheme_search():
                    ' errors}. See below for details.'
                    .format(Pluralizer(len(form.errors))))
         flash(msg, 'error')
-        print(f"DEBUG scheme_search: {form.errors}.")
         for field, errors in form.errors.items():
             if len(errors) > 0:
                 if isinstance(errors[0], dict):

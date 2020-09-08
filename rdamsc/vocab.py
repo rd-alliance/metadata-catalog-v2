@@ -179,13 +179,11 @@ class Thesaurus(object):
             domain_uri = route.pop()
             tree = self.trees.get(Query().uri == domain_uri)
             if not tree:  # pragma: no cover
-                print("DEBUG get_branch: Domain not found.")
                 return uris
             # 3. Traverse down to current term
             while route:
                 children = tree.get('children', list())
                 if not children:  # pragma: no cover
-                    print("DEBUG get_branch: Traversal ended early.")
                     return uris
                 child_uri = route.pop()
                 for child in children:
@@ -230,7 +228,6 @@ class Thesaurus(object):
         if children is None:
             base_entry = self.terms.get(Query().uri == uri)
             if base_entry is None:  # pragma: no cover
-                print(f"DEBUG get_concept_brief: Could not look up term {uri}.")
                 return rdf_object
 
             if broader == narrower:
@@ -262,7 +259,6 @@ class Thesaurus(object):
                             tree = child
                             break
                     else:  # pragma: no cover
-                        print("DEBUG get_concept_brief: Traversal ended early.")
                         break
             else:
                 # Add broader

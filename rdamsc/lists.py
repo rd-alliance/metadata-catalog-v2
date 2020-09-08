@@ -31,7 +31,7 @@ def get_scheme_tree(records: List[Scheme], seen_so_far: List=None) -> Mapping[st
     rel = Relation()
     for record in records:
         if record.mscid in seen_so_far:
-            print(f"DEBUG: recursion error detected for {record.mscid}.")
+            print(f"WARNING: parent/child recursion error detected for {record.mscid}.")
             return tree
         children = rel.subject_records("parent schemes", record.mscid)
         node = {

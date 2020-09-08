@@ -84,10 +84,10 @@ class JSONStorageWithGit(Storage):
 
         # Avoid empty commits
         if not added:
-            print("WARNING: Failed to stage changes to {}."
+            print("WARNING JSONStorageWithGit.write: Failed to stage changes to {}."
                   .format(self.filename))
             if ignored:
-                print("DEBUG: Operation blocked by gitignore pattern.")
+                print("WARNING: Operation blocked by gitignore pattern.")
             return
         changes = 0
         for groupname, group in git.status(repo=self.repo)[0].items():

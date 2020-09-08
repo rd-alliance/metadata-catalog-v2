@@ -135,18 +135,18 @@ def create_app(test_config=None):
 
     @webhook.hook()
     def on_push(data):
-        print("Upstream code repository has been updated.")
-        print("Initiating git pull to update codebase.")
+        print("INFO: Upstream code repository has been updated.")
+        print("INFO: Initiating git pull to update codebase.")
         call = subprocess.run(['git', '-C', script_dir, 'pull', '--rebase'],
                               stderr=subprocess.STDOUT)
-        print("Git pull completed with exit code {}.".format(call.returncode))
+        print("INFO: Git pull completed with exit code {}.".format(call.returncode))
         wsgi_path = app.config.get('WSGI_PATH')
         if wsgi_path:  # pragma: no cover
             if os.path.isfile(wsgi_path):
                 os.utime(wsgi_path, None)
-                print("Application reloaded.")
+                print("INFO: Application reloaded.")
             else:
-                print("Value of WSGI_PATH ({}) is not a valid file."
+                print("WARNING: Value of WSGI_PATH ({}) is not a valid file."
                       .format(wsgi_path))
 
     # Utility functions used in templates

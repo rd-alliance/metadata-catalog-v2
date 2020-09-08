@@ -130,7 +130,6 @@ class Relation(object):
         with transaction(self.tb) as t:
             for s, properties in relations.items():
                 relation = self.tb.get(Query()['@id'] == s)
-                print(f"DEBUG Relation.remove: processing {relation}")
                 if relation is None:
                     continue
                 for p, objects in properties.items():
@@ -146,11 +145,8 @@ class Relation(object):
                         relation[p].remove(o)
                         removed_relations[s][p].append(o)
                     if not relation[p]:
-                        print(f"DEBUG Relation.remove: removing empty key {p}")
                         del relation[p]
                         t.update(delete(p), doc_ids=[relation.doc_id])
-                    else:
-                        print(f"DEBUG Relation.remove: not removing non-empty key {p} = {relation[p]}")
                 t.update(relation, doc_ids=[relation.doc_id])
         return removed_relations
 
@@ -632,7 +628,7 @@ class Record(Document):
             try:
                 old_relations = json.loads(old_relation_json)
             except json.JSONDecodeError:
-                print("DEBUG save_gui_input: ignoring bad JSON in"
+                print("WARNING Record.save_gui_input: ignoring bad JSON in"
                       " old_relations.")
 
         for field in fields:
@@ -1903,7 +1899,6 @@ def edit_record(table, number):
         flash(msg, 'error')
         for field, errors in form.errors.items():
             if len(errors) > 0:
-                print(f"DEBUG edit_record: field: {field}, errors: {errors}.")
                 if isinstance(errors[0], dict):
                     # Subform
                     for subform in errors:
@@ -1995,7 +1990,6 @@ def edit_version(table, number, index=None):
         flash(msg, 'error')
         for field, errors in form.errors.items():
             if len(errors) > 0:
-                print(f"DEBUG edit_version: field: {field}, errors: {errors}.")
                 if isinstance(errors[0], dict):
                     # Subform
                     for subform in errors:
@@ -2062,7 +2056,6 @@ def edit_vocabterm(vocab, number):
                    ' errors}. See below for details.'
                    .format(Pluralizer(len(form.errors))))
         flash(msg, 'error')
-        print(f"DEBUG edit_vocabterm: {form.errors}.")
         for field, errors in form.errors.items():
             if len(errors) > 0:
                 if isinstance(errors[0], dict):
@@ -2100,7 +2093,7 @@ def display(table, number, field=None, api=False):
             if keyword:
                 keywords.append(keyword)
             else:
-                print(f"DEBUG display: No keyword for {keyword_uri}.")
+                print(f"WARNING display: No keyword for {keyword_uri}.")
         record['keywords'] = keywords
 
     # Objectify data types:
@@ -2144,8 +2137,6 @@ def display(table, number, field=None, api=False):
             elif 'available' in v:
                 this_version['date'] = v['available']
                 this_version['status'] = 'proposed'
-            else:
-                print(f'WARNING: no dates in {v}.')
             versions.append(this_version)
         try:
             versions.sort(key=lambda k: k['date'], reverse=True)
