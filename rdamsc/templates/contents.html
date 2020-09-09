@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ title }}{% endblock %}
 {% block main %}
+{% if tree %}
   <ul class="index">
 {% for item in tree recursive %}
 {{ '    ' * loop.depth }}<li>
@@ -13,4 +14,8 @@
 {{ '    ' * loop.depth }}</li>
 {% endfor %}
   </ul>
+{% else %}
+  <p>There are no records to display here yet.</p>
+  <p>If you know of any that should be listed, please {% if current_user.is_authenticated %}add {% else %}consider <a href="{{ url_for('auth.login') }}">signing in</a> and adding {% endif %}them to the database.</p>
+{% endif %}
 {% endblock %}
