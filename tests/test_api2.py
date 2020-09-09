@@ -296,6 +296,9 @@ def test_thesaurus(client, app):
     assert json.dumps(ideal, sort_keys=True) == actual
 
     # Test getting domain record
+    response = client.get('/api2/thesaurus/domain0', follow_redirects=True)
+    assert response.status_code == 200
+
     ideal = {
         "apiVersion": "2.0.0",
         "data": {
@@ -342,6 +345,9 @@ def test_thesaurus(client, app):
     assert json.dumps(ideal, sort_keys=True) == actual
 
     # Test getting subdomain record
+    response = client.get('/api2/thesaurus/subdomain0', follow_redirects=True)
+    assert response.status_code == 404
+
     ideal = {
         "apiVersion": "2.0.0",
         "data": {
@@ -378,6 +384,9 @@ def test_thesaurus(client, app):
     assert json.dumps(ideal, sort_keys=True) == actual
 
     # Test getting concept record
+    response = client.get('/api2/thesaurus/concept0', follow_redirects=True)
+    assert response.status_code == 404
+
     ideal = {
         "apiVersion": "2.0.0",
         "data": {

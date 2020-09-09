@@ -333,4 +333,7 @@ def get_thesaurus_concept(level, number):
     concept = th.get_concept(
         f"{level}{number}", recursive=(form == 'tree'))
 
+    if concept is None:
+        abort(404)
+
     return jsonify(as_response_item(concept, '.get_thesaurus_concept'))

@@ -207,13 +207,19 @@ class Thesaurus(object):
         else:
             uri = f'{self.uri}/{name}'
 
-        rdf_object = {
+        template = {
             "@context": {
                 "skos": "http://www.w3.org/2004/02/skos/core#"},
             "@id": uri}
 
+        rdf_object = template.copy()
+
         rdf_object.update(
             self.get_concept_brief(uri, broader=recursive, narrower=recursive))
+
+        if rdf_object == template:
+            # No information in the database about this one:
+            return None
 
         return rdf_object
 
@@ -267,7 +273,7 @@ class Thesaurus(object):
 
                 # Get narrower
                 tree = self.trees.get(Query().uri == uri)
-                children = tree['children']
+                children = tree.get('children')
 
         if children and (narrower or not broader):
             rdf_object["skos:narrower"] = list()
