@@ -224,8 +224,8 @@ class Thesaurus(object):
         return rdf_object
 
     def get_concept_brief(self, uri: str, broader: bool=False, narrower: bool=False, children: list=None) -> Mapping:
-        '''Returns a minimal dictionary object representing the concept, suitable for
-        conversion to JSON-LD.
+        '''Returns a minimal dictionary object (i.e. without @context or @id)
+        representing the concept, suitable for conversion to JSON-LD.
         '''
         rdf_object = dict()
 

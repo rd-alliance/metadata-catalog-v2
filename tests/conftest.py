@@ -539,8 +539,11 @@ class DataDBActions(object):
     def _tables_to_file(self, tables: list, db_file: str):
         '''Writes a set of tables to a given DB file.'''
         if os.path.isfile(db_file):
-            with open(db_file, 'r') as f:
-                db = json.load(f)
+            try:
+                with open(db_file, 'r') as f:
+                    db = json.load(f)
+            except json.decoder.JSONDecodeError:
+                db = {"_default": {}}
         else:
             db = {"_default": {}}
 

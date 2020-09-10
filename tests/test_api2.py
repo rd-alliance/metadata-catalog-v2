@@ -256,7 +256,7 @@ def test_term_get(client, app, data_db):
     assert json.dumps(ideal, sort_keys=True) == actual
 
 
-def test_thesaurus(client, app):
+def test_thesaurus(client, app, data_db):
 
     # Test getting full scheme record
     ideal = {
@@ -426,3 +426,87 @@ def test_thesaurus(client, app):
     assert response.status_code == 200
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert json.dumps(ideal, sort_keys=True) == actual
+
+    # Test getting page of complete list of concepts
+    response = client.get('/api2/thesaurus/concepts')
+    assert response.status_code == 200
+    test_data = response.get_json()
+    assert test_data.get("apiVersion") == "2.0.0"
+    assert test_data.get("data").get("currentItemCount") == 10
+    assert len(test_data.get("data").get("items")) == 10
+    assert test_data.get("data").get("itemsPerPage") == 10
+    assert test_data.get("data").get("nextLink") == "/api2/thesaurus/concepts?start=11&pageSize=10"
+    assert test_data.get("data").get("pageIndex") == 1
+    assert test_data.get("data").get("startIndex") == 1
+    assert test_data.get("data").get("totalItems") == 4778
+    assert test_data.get("data").get("totalPages") == 478
+    assert test_data.get("data").get("items")[0] == {
+        "@context": {
+            "skos": "http://www.w3.org/2004/02/skos/core#",
+        },
+        "@id": "http://rdamsc.bath.ac.uk/thesaurus/domain0",
+        "@type": "skos:Concept",
+        "skos:prefLabel": [{
+            "@language": "en",
+            "@value": "Multidisciplinary",
+        }],
+        "skos:topConceptOf": [{
+            "@id": "http://rdamsc.bath.ac.uk/thesaurus"
+        }]}
+
+    # Test getting page of list of concepts in use: none in use
+    response = client.get('/api2/thesaurus/concepts/used')
+    assert response.status_code == 200
+    test_data = response.get_json()
+    assert test_data.get("apiVersion") == "2.0.0"
+    assert test_data.get("data").get("currentItemCount") == 0
+    assert len(test_data.get("data").get("items")) == 0
+    assert test_data.get("data").get("itemsPerPage") == 10
+    assert test_data.get("data").get("pageIndex") == 1
+    assert test_data.get("data").get("startIndex") == 1
+    assert test_data.get("data").get("totalItems") == 0
+    assert test_data.get("data").get("totalPages") == 0
+
+    # Test getting page of list of concepts in use: some in use
+    data_db.write_db()
+    response = client.get('/api2/thesaurus/concepts/used')
+    assert response.status_code == 200
+    test_data = response.get_json()
+    assert test_data.get("apiVersion") == "2.0.0"
+    assert test_data.get("data").get("currentItemCount") == 2
+    assert len(test_data.get("data").get("items")) == 2
+    assert test_data.get("data").get("itemsPerPage") == 10
+    assert test_data.get("data").get("pageIndex") == 1
+    assert test_data.get("data").get("startIndex") == 1
+    assert test_data.get("data").get("totalItems") == 2
+    assert test_data.get("data").get("totalPages") == 1
+    assert test_data.get("data").get("items")[0] == {
+        "@context": {
+            "skos": "http://www.w3.org/2004/02/skos/core#"
+        },
+        "@id": "http://rdamsc.bath.ac.uk/thesaurus/subdomain235",
+        "@type": "skos:Concept",
+        "skos:broader": [{
+            "@id": "http://rdamsc.bath.ac.uk/thesaurus/domain2"
+        }],
+        "skos:narrower":[{
+            "@id": "http://vocabularies.unesco.org/thesaurus/concept158"
+        }, {
+            "@id": "http://vocabularies.unesco.org/thesaurus/concept159"
+        }, {
+            "@id": "http://vocabularies.unesco.org/thesaurus/concept160"
+        }, {
+            "@id": "http://vocabularies.unesco.org/thesaurus/concept161"
+        }, {
+            "@id": "http://vocabularies.unesco.org/thesaurus/concept162"
+        }, {
+            "@id": "http://vocabularies.unesco.org/thesaurus/concept163"
+        }, {
+            "@id": "http://vocabularies.unesco.org/thesaurus/concept164"
+        }, {
+            "@id": "http://vocabularies.unesco.org/thesaurus/concept165"
+        }],
+        "skos:prefLabel": [{
+            "@language": "en",
+            "@value": "Earth sciences",
+        }]}
