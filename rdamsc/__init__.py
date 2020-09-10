@@ -89,12 +89,17 @@ def create_app(test_config=None):
     def hello():
         return render_template('home.html')
 
+    # Scope note:
+    @app.route('/scope')
+    def scope():
+        return render_template('scope.html')
+
     # Terms of use:
     @app.route('/terms-of-use')
     def terms_of_use():
         return render_template('terms-of-use.html')
 
-    # Terms of use:
+    # Accessibility statement:
     @app.route('/accessibility')
     def accessibility():
         return render_template('accessibility.html')
