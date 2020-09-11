@@ -1,4 +1,5 @@
 import json
+import base64
 import pytest
 from flask import g, session
 
@@ -510,3 +511,69 @@ def test_thesaurus(client, app, data_db):
             "@language": "en",
             "@value": "Earth sciences",
         }]}
+
+
+def test_apiuser_auth(client, app, user_db):
+
+    # Prepare database:
+    username = user_db.user1.get('userid')
+    password = user_db.get_password('user1')
+    user_db.write_db()
+
+    # Test bad username/token:
+    headers = {
+        'Authorization': 'Basic ' + base64.b64encode(
+            f"baduser:{password}".encode('utf-8')).decode('utf-8')
+    }
+    response = client.get(
+        '/api2/user/token', headers=headers, follow_redirects=True)
+    assert response.status_code == 401
+
+    # Test bad password:
+    headers = {
+        'Authorization': 'Basic ' + base64.b64encode(
+            f"{username}:bad password".encode('utf-8')).decode('utf-8')
+    }
+    response = client.get(
+        '/api2/user/token', headers=headers, follow_redirects=True)
+    assert response.status_code == 401
+
+    # Get a token:
+    headers = {
+        'Authorization': 'Basic ' + base64.b64encode(
+            f"{username}:{password}".encode('utf-8')).decode('utf-8')
+    }
+    response = client.get(
+        '/api2/user/token', headers=headers, follow_redirects=True)
+    assert response.status_code == 200
+    test_data = response.get_json()
+    token = test_data.get('token')
+    assert token is not None
+
+    # Using token, reset password:
+    headers = {
+        'Authorization': 'Basic ' + base64.b64encode(
+            f"{token}:".encode('utf-8')).decode('utf-8')
+    }
+    new_password = user_db.generate_password()
+    data = {'new_password': new_password}
+    response = client.post(
+        '/api2/user/reset-password', headers=headers, json=data, follow_redirects=True)
+    assert response.status_code == 200
+    test_data = response.get_json()
+    assert test_data.get('username') == username
+    assert test_data.get('password_reset') is True
+
+    # Getting a new token with the new password:
+    headers = {
+        'Authorization': 'Basic ' + base64.b64encode(
+            f"{username}:{new_password}".encode('utf-8')).decode('utf-8')
+    }
+    response = client.get(
+        '/api2/user/token', headers=headers, follow_redirects=True)
+    assert response.status_code == 200
+    test_data = response.get_json()
+    token = test_data.get('token')
+    assert token is not None
+
+    # Can we test for token expiry without locking up the system for 10 mins?

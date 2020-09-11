@@ -3,8 +3,12 @@ import re
 import tempfile
 import json
 from html import unescape
+import string
+import random
+
 import pytest
 from werkzeug.datastructures import MultiDict
+from passlib.apps import custom_app_context as pwd_context
 
 from rdamsc import create_app
 
@@ -578,6 +582,50 @@ class DataDBActions(object):
             self._app.config['TERM_DATABASE_PATH'])
 
 
+class UserDBActions(object):
+    def __init__(self, app):
+        self._app = app
+        self.user1 = {
+            "userid": "mscwg",
+            "name": "MSCWG Test User",
+            "email": "test@example.com",
+            "password_hash": None,
+        }
+
+    def generate_password(self):
+        letters = string.ascii_letters + string.digits + string.punctuation
+        password = ''.join(random.choice(letters) for _ in range(12))
+        return password
+
+    def get_password(self, user):
+        password = self.generate_password()
+        hash = pwd_context.hash(password)
+        getattr(self, user)["password_hash"] = hash
+        return password
+
+    def write_db(self):
+        '''Writes database file.'''
+        db_file = self._app.config['USER_DATABASE_PATH']
+
+        if os.path.isfile(db_file):
+            try:
+                with open(db_file, 'r') as f:
+                    db = json.load(f)
+            except json.decoder.JSONDecodeError:
+                db = {"_default": {}}
+        else:
+            db = {"_default": {}}
+
+        db["api_users"] = dict()
+        i = 1
+        while hasattr(self, f'user{i}'):
+            db["api_users"][i] = getattr(self, f'user{i}')
+            i += 1
+
+        with open(db_file, 'w') as f:
+            json.dump(db, f, indent=1, ensure_ascii=False)
+
+
 class PageActions(object):
     def __init__(self):
         self.html = ''
@@ -671,6 +719,11 @@ def auth(client, page):
 @pytest.fixture
 def data_db(app):
     return DataDBActions(app)
+
+
+@pytest.fixture
+def user_db(app):
+    return UserDBActions(app)
 
 
 @pytest.fixture

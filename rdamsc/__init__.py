@@ -125,6 +125,9 @@ def create_app(test_config=None):
     from . import api2
     app.register_blueprint(api2.bp, url_prefix='/api2')
 
+    from . import users
+    app.register_blueprint(users.bp, url_prefix='/api2/user')
+
     @app.route('/thesaurus')
     def redirect_thesaurus_scheme():
         return redirect(url_for('api2.get_thesaurus_scheme'))
