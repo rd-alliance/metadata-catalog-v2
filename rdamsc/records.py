@@ -458,8 +458,10 @@ class Record(Document):
         tb = db.table(self.table)
         if self.doc_id:
             with transaction(tb) as t:
+                # Remove fields missing from value
                 for key in (k for k in self if k not in value):
                     t.update(delete(key), doc_ids=[self.doc_id])
+                # Update or add fields present in value
                 t.update(value, doc_ids=[self.doc_id])
         else:
             self.doc_id = tb.insert(value)
@@ -512,7 +514,13 @@ class Record(Document):
 
         return ''
 
+    def assess_conformance(self, data: Mapping):
+        raise NotImplementedError
+
     def get_form(self):
+        raise NotImplementedError
+
+    def get_schema(self):
         raise NotImplementedError
 
     def get_slug(self, formdata: Mapping = None):
@@ -571,7 +579,39 @@ class Record(Document):
 
         return form
 
-    def save_gui_input(self, formdata: Mapping):
+    def save_api_input(self, jsondata: Mapping)\
+            -> (str, List[Mapping[str, str]]):
+        '''Validates input data from API. If the input is valid, saves a
+        modified version of the data as the new content of the Record, and
+        returns a tuple consisting of a conformance level string and an
+        empty list. If the input is invalid, returns a tuple consisting of
+        None and a list of dictionaries, each of which represents an error
+        (with keys "location" and "message").
+        '''
+
+        is_valid, record = self.validate_api_input(jsondata)
+
+        if not is_valid:
+            errors = list()
+            for location, error in record.items():
+                errors.append({
+                    "location": location,
+                    "message": error,
+                })
+            return (None, errors)
+
+        save_error = self._save(record)
+        if save_error:  # pragma: no cover
+            errors = [{
+                "location": "",
+                "message": save_error,
+            }]
+            return (None, errors)
+
+        conformance = self.assess_conformance(record)
+        return (conformance, list())
+
+    def save_gui_input(self, formdata: Mapping) -> str:
         '''Processes form input and saves it. Returns error message if a
         problem arises.'''
 
@@ -718,6 +758,79 @@ class Record(Document):
         error = self._save(alldata)
         if error:
             return error
+
+    def validate_api_field(self, value, spec) -> (bool, object):
+        '''Validates a field against a given specification. If the value is
+        valid according to the specification, returns a tuple consisting of
+        True and the validated value. Otherwise, returns a tuple of False and
+        an error message or mapping of errors from location to error message.
+        '''
+        if isinstance(spec, list):
+            if not isinstance(value, list):
+                return (False, "This field should contain a list of values.")
+            results = list()
+            errors = dict()
+            for i, item in enumerate(value):
+                is_valid, result = self.validate_api_field(item, spec[0])
+                if is_valid:
+                    results.append(result)
+                elif isinstance(result, dict):
+                    for location, message in result.items():
+                        errors[f"[{i}]{location}"] = message
+                else:
+                    errors[f"[{i}]"] = result
+        elif isinstance(spec, dict):
+            if not isinstance(value, dict):
+                return (False,
+                        "This field should contain subfields and values.")
+            results = dict()
+            errors = dict()
+            for field, subspec in spec.items():
+                is_valid, result = self.validate_api_field(
+                    value[field], subspec)
+                if is_valid:
+                    results[field] = result
+                elif isinstance(result, dict):
+                    for location, message in result.items():
+                        errors[f"[{field}]{location}"] = message
+                else:
+                    errors[f"[{field}]"] = result
+        else:  # Literal value
+            try:
+                func = getattr(self, f"validate_{spec}")
+            except Exception:
+                raise NotImplementedError
+            return func(value, spec)
+
+    def validate_api_input(self, jsondata: Mapping)\
+            -> (bool, Mapping[str, str]):
+        '''Attempts to convert input data from API to the internal data model.
+        If successful, returns a tuple where the first member is True and the
+        second is the converted record; otherwise, the first member is False
+        and the second is a dictionary where keys are the keys/indices needed
+        to locate a value in the input data, and the values are error messages.
+        '''
+        record = dict()
+        errors = dict()
+
+        schema = self.get_schema()
+        for field, spec in schema.items():
+            if field not in jsondata:
+                continue
+            is_valid, result = self.validate_api_field(
+                    jsondata[field], spec)
+            if is_valid:
+                record[field] = result
+            elif isinstance(result, dict):
+                for location, message in result.items():
+                    errors[f"{field}{location}"] = message
+            else:
+                errors[f"{field}"] = result
+
+        # Formulate response:
+        if errors:
+            return (False, errors)
+        return (True, record)
 
 
 class Scheme(Record):

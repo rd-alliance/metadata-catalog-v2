@@ -35,6 +35,7 @@ from .records import (
     mscid_prefix,
 )
 from .vocab import Thesaurus
+from .users import auth
 
 bp = Blueprint('api2', __name__)
 api_version = "2.0.0"
@@ -211,10 +212,9 @@ def get_records(table):
     # token so the search results could be saved for, say, an hour and
     # traversed robustly using the token.
     for record_cls in Record.__subclasses__():
-        if table != record_cls.table:
-            continue
-        records = record_cls.all()
-        break
+        if table == record_cls.table:
+            records = record_cls.all()
+            break
     else:  # pragma: no cover
         abort(404)
 
@@ -231,6 +231,44 @@ def get_records(table):
     return jsonify(as_response_page(
         records, url_for('.get_records', table=table, _external=True),
         page_size=page_size, start=start, page=page))
+
+
+@bp.route(
+    '/<any(m, g, t, c, e, datatype, location, type, id_scheme):table>',
+    methods=['POST'])
+@auth.login_required
+def add_record(table):
+    '''Add a new record to the given table.'''
+    record_cls = None
+    for cls in Record.__subclasses__():
+        if table == cls.table:
+            record_cls = cls
+            break
+    else:  # pragma: no cover
+        abort(404)
+
+    # Get new blank record
+    record = Record.load(0, table)
+
+    # Get input record:
+    new_record = request.get_json()
+
+    # TODO: Save record, get compliance and error states.
+    conformance, errors = record.save_api_input(new_record)
+
+    # Assemble response:
+    response = dict()
+    if errors:
+        response["apiVersion"] = api_version
+        response["error"] = {
+            "message": errors[0]["message"],
+            "errors": errors}
+    else:
+        response = as_response_item(record, callback=embellish_record)
+        response["meta"] = {"conformance": conformance}
+
+    # Return result
+    return jsonify(response)
 
 
 @bp.route(
