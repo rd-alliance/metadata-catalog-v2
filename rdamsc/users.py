@@ -13,8 +13,10 @@ from flask import (
     abort,
     jsonify,
     request)
-from itsdangerous import (TimedJSONWebSignatureSerializer
-                          as Serializer, BadSignature, SignatureExpired)
+from itsdangerous import (
+    TimedJSONWebSignatureSerializer as Serializer,
+    BadSignature,
+    SignatureExpired)
 # See https://flask-login.readthedocs.io/
 from flask_login import LoginManager
 # See https://passlib.readthedocs.io/

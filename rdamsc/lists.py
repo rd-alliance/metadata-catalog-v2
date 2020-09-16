@@ -21,7 +21,8 @@ from .vocab import get_thesaurus
 bp = Blueprint('list', __name__)
 
 
-def get_scheme_tree(records: List[Scheme], seen_so_far: List=None) -> Mapping[str, str]:
+def get_scheme_tree(records: List[Scheme], seen_so_far: List = None)\
+        -> Mapping[str, str]:
     '''Takes list of parent schemes and returns tree suitable for use with the
     contents template.'''
     records.sort(key=lambda k: k.name.lower())
@@ -31,7 +32,8 @@ def get_scheme_tree(records: List[Scheme], seen_so_far: List=None) -> Mapping[st
     rel = Relation()
     for record in records:
         if record.mscid in seen_so_far:
-            print(f"WARNING: parent/child recursion error detected for {record.mscid}.")
+            print("WARNING: parent/child recursion error detected for"
+                  f" {record.mscid}.")
             return tree
         children = rel.subject_records("parent schemes", record.mscid)
         node = {
@@ -71,7 +73,8 @@ def record_index(series, role=None):
 
         # Assemble tree of records that are not on blacklist:
         tree = get_scheme_tree([
-            record for record in records if record and record.mscid not in children])
+            record for record in records
+            if record and record.mscid not in children])
         return render_template(
             'contents.html', title=f"Index of {heading}", tree=tree)
 

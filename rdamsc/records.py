@@ -151,7 +151,7 @@ class Relation(object):
         return removed_relations
 
     def subjects(self, predicate=None, object=None,
-                 filter: Type[Document]=None):
+                 filter: Type[Document] = None):
         '''Returns list of MSCIDs for all records that are subjects in the
         relations database, optionally filtered by predicate, object and
         record class.'''
@@ -189,7 +189,7 @@ class Relation(object):
         return sorted(mscids, key=lambda k: k[:n] + k[n:].zfill(5))
 
     def subject_records(self, predicate=None, object=None,
-                        filter: Type[Document]=None):
+                        filter: Type[Document] = None):
         '''Returns list of Records that are subjects in the relations database,
         optionally filtered by predicate, object and record class.'''
         mscids = self.subjects(predicate, object, filter)
@@ -275,7 +275,8 @@ class Relation(object):
 
         return results
 
-    def related_records(self, mscid: str, direction=None) -> Mapping[str, List[Mapping]]:
+    def related_records(self, mscid: str, direction=None)\
+            -> Mapping[str, List[Mapping]]:
         '''Returns dictionary where the keys are predicates (relationships)
         and the values are lists of records related to the identified
         record by that predicate. The types of predicate can optionally be
@@ -286,7 +287,8 @@ class Relation(object):
         id_results = self.related(mscid, direction)
         results = dict()
         for predicate, mscids in id_results.items():
-            results[predicate] = [Record.load_by_mscid(mscid) for mscid in mscids]
+            results[predicate] = [
+                Record.load_by_mscid(mscid) for mscid in mscids]
         return results
 
 
@@ -296,10 +298,10 @@ class Record(Document):
 
     @staticmethod
     def cleanup(data):
-        """Takes dictionary and recursively removes entries where the value is (a)
-        an empty string, (b) an empty list, (c) a dictionary wherein all the
-        values are empty, (d) null. Values of 0 are not removed. Also strips
-        out csrf_token.
+        """Takes dictionary and recursively removes entries where the value is
+        (a) an empty string, (b) an empty list, (c) a dictionary wherein all
+        the values are empty, (d) null. Values of 0 are not removed. Also
+        strips out csrf_token.
         """
         for key, value in data.copy().items():
             if isinstance(value, dict):
@@ -353,7 +355,7 @@ class Record(Document):
         return dict()
 
     @classmethod
-    def load(cls, doc_id: int, table: str=None):
+    def load(cls, doc_id: int, table: str = None):
         '''Returns an instance of the Record subclass that corresponds to the
         given table, either blank or the existing record with the given doc_id.
         '''
@@ -513,7 +515,7 @@ class Record(Document):
     def get_form(self):
         raise NotImplementedError
 
-    def get_slug(self, formdata: Mapping=None):
+    def get_slug(self, formdata: Mapping = None):
         return self.get('slug')
 
     def get_vform(self):
@@ -570,8 +572,8 @@ class Record(Document):
         return form
 
     def save_gui_input(self, formdata: Mapping):
-        '''Processes form input and saves it. Returns error message if a problem
-        arises.'''
+        '''Processes form input and saves it. Returns error message if a
+        problem arises.'''
 
         # Insert slug:
         formdata['slug'] = self.get_slug(formdata)
@@ -612,10 +614,10 @@ class Record(Document):
         # - If the field is present and has a list of actual values, these are
         #   the only values that should be set.
 
-        # Forward relationships are List[Tuple[Boolean, predicate, List[object]]]
-        # Inverse relationships are List[Tuple[subject, predicate, Boolean]]
-
-        # where True indicates an addition and False indicates a deletion
+        # We will assemble lists of changes to make.
+        # Forward relationships are List[Tuple[Bool, predicate, List[object]]].
+        # Inverse relationships are List[Tuple[subject, predicate, Bool]].
+        # Bool=True indicates an addition, Bool=False indicates a deletion.
         forward = list()
         inverted = list()
 
@@ -649,9 +651,11 @@ class Record(Document):
                     rel.subjects(predicate=predicate, object=self.mscid))
                 for s in formdata[field.name]:
                     if s not in old_subjects:
+                        # Add this relationship:
                         inverted.append((s, predicate, True))
                 for s in old_subjects:
                     if s not in formdata[field.name]:
+                        # Remove this relationship:
                         inverted.append((s, predicate, False))
             else:
                 old_objects = old_relations.get(
@@ -681,9 +685,9 @@ class Record(Document):
         # Update relations
         return self._save_relations(forward, inverted)
 
-    def save_gui_vinput(self, formdata: Mapping, index: int=None):
-        '''Processes form input and saves it. Returns error message if a problem
-        arises.'''
+    def save_gui_vinput(self, formdata: Mapping, index: int = None):
+        '''Processes form input and saves it. Returns error message if a
+        problem arises.'''
 
         # Get list of fields we can iterate over:
         fields = self.vform()
@@ -800,7 +804,7 @@ class Scheme(Record):
 
         return form
 
-    def get_slug(self, formdata: Mapping=None):
+    def get_slug(self, formdata: Mapping = None):
         slug = self.get('slug')
         if slug:
             return slug
@@ -809,7 +813,7 @@ class Scheme(Record):
             return to_file_slug(name, self.search)
         return None
 
-    def get_vform(self, index: int=None):
+    def get_vform(self, index: int = None):
         # Get data from database:
         main_data = json.loads(json.dumps(self))
 
@@ -871,7 +875,7 @@ class Tool(Record):
 
         return form
 
-    def get_slug(self, formdata: Mapping=None):
+    def get_slug(self, formdata: Mapping = None):
         slug = self.get('slug')
         if slug:
             return slug
@@ -880,7 +884,7 @@ class Tool(Record):
             return to_file_slug(name, self.search)
         return None
 
-    def get_vform(self, index: int=None):
+    def get_vform(self, index: int = None):
         # Get data from database:
         main_data = json.loads(json.dumps(self))
 
@@ -952,7 +956,7 @@ class Crosswalk(Record):
 
         return form
 
-    def get_slug(self, formdata: Mapping=None):
+    def get_slug(self, formdata: Mapping = None):
         slug = self.get('slug')
         if slug:
             return slug
@@ -992,7 +996,7 @@ class Crosswalk(Record):
 
         return None
 
-    def get_vform(self, index: int=None):
+    def get_vform(self, index: int = None):
         # Get data from database:
         main_data = json.loads(json.dumps(self))
 
@@ -1052,7 +1056,7 @@ class Group(Record):
 
         return form
 
-    def get_slug(self, formdata: Mapping=None):
+    def get_slug(self, formdata: Mapping = None):
         slug = self.get('slug')
         if slug:
             return slug
@@ -1090,7 +1094,7 @@ class Endorsement(Record):
 
         return form
 
-    def get_slug(self, formdata: Mapping=None):
+    def get_slug(self, formdata: Mapping = None):
         slug = self.get('slug')
         if slug:
             return slug
@@ -1167,8 +1171,8 @@ class Datatype(Record):
         return form
 
     def save_gui_input(self, formdata: Mapping):
-        '''Processes form input and saves it. Returns error message if a problem
-        arises.'''
+        '''Processes form input and saves it. Returns error message if a
+        problem arises.'''
 
         # Save the main record:
         error = self._save(formdata)
@@ -1184,7 +1188,7 @@ class VocabTerm(Document):
         return get_term_db()
 
     @classmethod
-    def get_choices(cls, filter: Type[Record]=None):
+    def get_choices(cls, filter: Type[Record] = None):
         '''Returns choices as tuples.'''
         choices = [('', '')]
 
@@ -1249,8 +1253,8 @@ class VocabTerm(Document):
         return form
 
     def save_gui_input(self, formdata: Mapping):
-        '''Processes form input and saves it. Returns error message if a problem
-        arises.'''
+        '''Processes form input and saves it. Returns error message if a
+        problem arises.'''
 
         # Override id:
         old_id = self.get('id')
@@ -1436,11 +1440,9 @@ class CheckboxSelect(widgets.Select):
         kwargs.setdefault('id', field.id)
         attrs = {'id': field.id}
         html = list()
-        #html = [f'<div {widgets.html_params(**attrs)}>']
         for value, label, selected in field.iter_choices():
             html.append(self.render_option(
                 field, value, label, selected, **kwargs))
-        #html.append('</div>')
         return Markup('\n'.join(html))
 
     def render_option(self, field, value, label, selected, **kwargs):
@@ -1474,7 +1476,7 @@ class CheckboxSelect(widgets.Select):
 # Custom fields
 # ---------------
 class SelectRelatedField(SelectMultipleField):
-    def __init__(self, label='', record: Type[Record]=Scheme, inverse=False,
+    def __init__(self, label='', record: Type[Record] = Scheme, inverse=False,
                  **kwargs):
         choices = record.get_choices()
         super(SelectMultipleField, self).__init__(
@@ -1718,11 +1720,13 @@ class EndorsementForm(FlaskForm):
     creators = FieldList(
         FormField(CreatorForm), 'Authors of the endorsement document',
         min_entries=1)
-    publication = StringField('Other bibliographic information (excluding date)')
+    publication = StringField(
+        'Other bibliographic information (excluding date)')
     issued = NativeDateField('Endorsement date')
     valid = FormField(DateRangeForm, 'Date considered current')
     locations = FieldList(
-        FormField(EndorsementLocationForm), 'Links to this endorsement', min_entries=1)
+        FormField(EndorsementLocationForm), 'Links to this endorsement',
+        min_entries=1)
     identifiers = FieldList(
         FormField(IdentifierForm), 'Identifiers for this endorsement',
         min_entries=1)
@@ -1904,7 +1908,8 @@ def edit_record(table, number):
                     for subform in errors:
                         for subfield, suberrors in subform.items():
                             for f in form[field]:
-                                f[subfield].errors = clean_error_list(f[subfield])
+                                f[subfield].errors = clean_error_list(
+                                    f[subfield])
                 else:
                     # Simple field
                     form[field].errors = clean_error_list(form[field])
@@ -1995,7 +2000,8 @@ def edit_version(table, number, index=None):
                     for subform in errors:
                         for subfield, suberrors in subform.items():
                             for f in form[field]:
-                                f[subfield].errors = clean_error_list(f[subfield])
+                                f[subfield].errors = clean_error_list(
+                                    f[subfield])
                 else:
                     # Simple field
                     form[field].errors = clean_error_list(form[field])
@@ -2063,7 +2069,8 @@ def edit_vocabterm(vocab, number):
                     for subform in errors:
                         for subfield, suberrors in subform.items():
                             for f in form[field]:
-                                f[subfield].errors = clean_error_list(f[subfield])
+                                f[subfield].errors = clean_error_list(
+                                    f[subfield])
                 else:
                     # Simple field
                     form[field].errors = clean_error_list(form[field])
@@ -2189,7 +2196,8 @@ def display(table, number, field=None, api=False):
                 if field.description == 'originators':
                     for endorsement in others:
                         endorsement['endorsed_schemes'] = rel.object_records(
-                            subject=endorsement.mscid, predicate='endorsed schemes')
+                            subject=endorsement.mscid,
+                            predicate='endorsed schemes')
                 elif field.description == 'endorsed schemes':
                     for endorsement in others:
                         endorsement['originators'] = rel.object_records(

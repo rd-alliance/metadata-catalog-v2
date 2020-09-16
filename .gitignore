@@ -13,3 +13,5 @@ dist/
 build/
 *.egg-info/
 /test_coverage_report/
+/.kdev4
+/metadata-catalog-v2.kdev4
