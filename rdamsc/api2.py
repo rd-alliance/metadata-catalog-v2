@@ -357,8 +357,8 @@ def get_inv_relation(table, number):
     rel_record.update(rel.related(mscid, direction=rel.INVERSE))
 
     # Return result
-    return jsonify(
-        as_response_item(rel_record, callback=embellish_inv_relation))
+    return jsonify(as_response_item(
+        rel_record, callback=embellish_inv_relation))
 
 
 @bp.route('/thesaurus')

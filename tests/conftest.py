@@ -493,13 +493,16 @@ class DataDBActions(object):
                 i += 1
             for id in sorted(reldict.keys(),
                              key=lambda k: k[:n] + k[n:].zfill(5)):
-                item = {"@id": id, "uri": f'http://localhost/api2/invrel/{id[4:]}'}
+                item = {
+                    "@id": id,
+                    "uri": f'http://localhost/api2/invrel/{id[4:]}'}
                 item.update(reldict[id])
                 apidataset.append(item)
         else:
             while hasattr(self, f'rel{i}'):
                 record = getattr(self, f'rel{i}')
-                record['uri'] = f'http://localhost/api2/rel/{record["@id"][4:]}'
+                record['uri'] = (
+                    f'http://localhost/api2/rel/'f'{record["@id"][4:]}')
                 apidataset.append(record)
                 i += 1
 
@@ -689,12 +692,18 @@ def app():
     with tempfile.TemporaryDirectory() as inst_path:
         app = create_app({
             'TESTING': True,
-            'MAIN_DATABASE_PATH': os.path.join(inst_path, 'data', 'db.json'),
-            'VOCAB_DATABASE_PATH': os.path.join(inst_path, 'data', 'vocab.json'),
-            'TERM_DATABASE_PATH': os.path.join(inst_path, 'data', 'terms.json'),
-            'USER_DATABASE_PATH': os.path.join(inst_path, 'users', 'db.json'),
-            'OAUTH_DATABASE_PATH': os.path.join(inst_path, 'oauth', 'db.json'),
-            'OPENID_FS_STORE_PATH': os.path.join(inst_path, 'open-id'),
+            'MAIN_DATABASE_PATH': os.path.join(
+                inst_path, 'data', 'db.json'),
+            'VOCAB_DATABASE_PATH': os.path.join(
+                inst_path, 'data', 'vocab.json'),
+            'TERM_DATABASE_PATH': os.path.join(
+                inst_path, 'data', 'terms.json'),
+            'USER_DATABASE_PATH': os.path.join(
+                inst_path, 'users', 'db.json'),
+            'OAUTH_DATABASE_PATH': os.path.join(
+                inst_path, 'oauth', 'db.json'),
+            'OPENID_FS_STORE_PATH': os.path.join(
+                inst_path, 'open-id'),
             'OAUTH_CREDENTIALS': {
                 'test': {
                     'id': 'test-oauth-app-id',

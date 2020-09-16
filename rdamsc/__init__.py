@@ -129,7 +129,8 @@ def create_app(test_config=None):
     def redirect_thesaurus_scheme():
         return redirect(url_for('api2.get_thesaurus_scheme'))
 
-    @app.route('/thesaurus/<any(domain, subdomain, concept):level><int:number>')
+    @app.route('/thesaurus/<any(domain, subdomain, concept):level>'
+               '<int:number>')
     def redirect_thesaurus_concept(level, number):
         return redirect(
             url_for('api2.get_thesaurus_concept', level=level, number=number))
@@ -144,7 +145,7 @@ def create_app(test_config=None):
         print("INFO: Initiating git pull to update codebase.")
         call = subprocess.run(['git', '-C', script_dir, 'pull', '--rebase'],
                               stderr=subprocess.STDOUT)
-        print("INFO: Git pull completed with exit code {}.".format(call.returncode))
+        print(f"INFO: Git pull completed with exit code {call.returncode}.")
         wsgi_path = app.config.get('WSGI_PATH')
         if wsgi_path:  # pragma: no cover
             if os.path.isfile(wsgi_path):

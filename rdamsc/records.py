@@ -1068,8 +1068,8 @@ class Record(Document):
         return list()
 
     def save_gui_input(self, formdata: Mapping):
-        '''Processes form input and saves it. Returns error message if a problem
-        arises.'''
+        '''Processes form input and saves it. Returns error message if a
+        problem arises.'''
 
         # Insert slug:
         formdata['slug'] = self.get_slug(formdata=formdata)
@@ -1110,9 +1110,10 @@ class Record(Document):
         # - If the field is present and has a list of actual values, these are
         #   the only values that should be set.
 
-        # Forward relationships: List[Tuple[Boolean, predicate, List[object]]]
-        # Inverse relationships: List[Tuple[subject, predicate, Boolean]]
-        # - where True indicates an addition and False indicates a deletion
+        # We will assemble lists of changes to make.
+        # Forward relationships are List[Tuple[Bool, predicate, List[object]]].
+        # Inverse relationships are List[Tuple[subject, predicate, Bool]].
+        # Bool=True indicates an addition, Bool=False indicates a deletion.
         forward = list()
         inverted = list()
 
@@ -1146,9 +1147,11 @@ class Record(Document):
                     rel.subjects(predicate=predicate, object=self.mscid))
                 for s in formdata[field.name]:
                     if s not in old_subjects:
+                        # Add this relationship:
                         inverted.append((s, predicate, True))
                 for s in old_subjects:
                     if s not in formdata[field.name]:
+                        # Remove this relationship:
                         inverted.append((s, predicate, False))
             else:
                 old_objects = old_relations.get(
@@ -1179,8 +1182,8 @@ class Record(Document):
         return self._save_relations(forward, inverted)
 
     def save_gui_vinput(self, formdata: Mapping, index: int = None):
-        '''Processes form input and saves it. Returns error message if a problem
-        arises.'''
+        '''Processes form input and saves it. Returns error message if a
+        problem arises.'''
 
         # Get list of fields we can iterate over:
         fields = self.vform()
@@ -2112,8 +2115,8 @@ class Datatype(Record):
         return form
 
     def save_gui_input(self, formdata: Mapping):
-        '''Processes form input and saves it. Returns error message if a problem
-        arises.'''
+        '''Processes form input and saves it. Returns error message if a
+        problem arises.'''
 
         # Save the main record:
         error = self._save(formdata)
