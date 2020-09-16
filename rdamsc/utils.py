@@ -105,6 +105,6 @@ def to_file_slug(string: str, callback: Callable[[Query], List]):
 def wild_to_regex(string):
     """Transforms wildcard searches to regular expressions."""
     regex = re.escape(string)
-    regex = regex.replace('\*', '.*')
-    regex = regex.replace('\?', '.')
+    regex = regex.replace(r'\*', '.*')
+    regex = regex.replace(r'\?', '.')
     return regex
