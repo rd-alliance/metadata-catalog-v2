@@ -1248,14 +1248,50 @@ class VocabTerm(Document):
 
         return form
 
+    def get_overlaps(self, id: str = None):
+        '''Returns a list of record types for which a term with the same ID has
+        already been coined.
+        '''
+        overlaps = list()
+
+        # Optional argument is given when saving input; otherwise we are
+        # rendering the editing form:
+        is_save = True
+        if id is None:
+            is_save = False
+            id = self.get("id", "")
+
+        if not id:
+            return overlaps
+
+        Q = Query()
+        for value, label, selected in self.get_form().applies.iter_choices():
+            if is_save and not selected:
+                continue
+            records = self.search(
+                (Q.id == id) & (Q.applies.any([value])))
+            for record in records:
+                if record.doc_id != self.doc_id:
+                    overlaps.append(value)
+                    break
+        return overlaps
+
     def save_gui_input(self, formdata: Mapping):
-        '''Processes form input and saves it. Returns error message if a problem
-        arises.'''
+        '''Processes form input and saves it. Returns error message if a
+        problem arises.
+        '''
 
         # Override id:
         old_id = self.get('id')
         if old_id:
             formdata['id'] = old_id
+
+        # Check for overlaps:
+        overlaps = self.get_overlaps(formdata['id'])
+        if overlaps:
+            error = (f"A term with ID ‘{formdata['id']}’ has already been"
+                     f" coined for {' and '.join(overlaps)}.")
+            return error
 
         # Save the main record:
         error = self._save(formdata)
@@ -1436,11 +1472,9 @@ class CheckboxSelect(widgets.Select):
         kwargs.setdefault('id', field.id)
         attrs = {'id': field.id}
         html = list()
-        #html = [f'<div {widgets.html_params(**attrs)}>']
         for value, label, selected in field.iter_choices():
             html.append(self.render_option(
                 field, value, label, selected, **kwargs))
-        #html.append('</div>')
         return Markup('\n'.join(html))
 
     def render_option(self, field, value, label, selected, **kwargs):
@@ -1460,15 +1494,21 @@ class CheckboxSelect(widgets.Select):
             attrs['type'] = 'checkbox'
         else:
             attrs['type'] = 'radio'
+        disabling = kwargs.pop('disabling', list())
         attrs.update(dict(kwargs, id=choice_id, name=field.name, value=value))
-        if selected:
+
+        # If a term is both disabled and checked, this means there is an error
+        # in the database, so we force disabled options to be "off".
+        if attrs['value'] in disabling:
+            attrs['disabled'] = True
+        elif selected:
             attrs['checked'] = True
         return Markup(
-            f'  <div {widgets.html_params(**div_attrs)}>\n'
-            f'    <input {widgets.html_params(**attrs)}>\n'
-            f'    <label {widgets.html_params(**label_attrs)}>'
+            f'        <div {widgets.html_params(**div_attrs)}>\n'
+            f'          <input {widgets.html_params(**attrs)}>\n'
+            f'          <label {widgets.html_params(**label_attrs)}>'
             f'{escape(label)}</label>\n'
-            f'  </div>')
+            f'        </div>')
 
 
 # Custom fields
@@ -2067,8 +2107,10 @@ def edit_vocabterm(vocab, number):
                 else:
                     # Simple field
                     form[field].errors = clean_error_list(form[field])
+
+    overlaps = list() if vocab == 'datatype' else record.get_overlaps()
     return render_template(
-        f"edit-{vocab}.html", form=form, doc_id=number)
+        f"edit-{vocab}.html", form=form, doc_id=number, overlaps=overlaps)
 
 
 @bp.route('/msc/<string(length=1):table><int:number>')

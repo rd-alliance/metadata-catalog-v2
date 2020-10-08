@@ -509,6 +509,44 @@ def test_create_terms(client, auth, app, page, data_db):
     page.assert_contains("there was an error")
     page.assert_contains("This field is required.")
 
+    # Test overlapping terms when adding new term
+    loc2json = (
+        '{ "id": "website", "label": "homepage",'
+        '"applies": ["scheme", "mapping"]}')
+    loc2 = json.loads(loc2json)
+    loc2.update(page.get_all_hidden())
+    response = client.post('/edit/location0', data=loc2, follow_redirects=True)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains("Add new link type")
+    page.assert_contains(
+        "A term with ID ‘website’ has already been coined for scheme.")
+
+    # Disable form problem options when editing a term
+    response = client.get('/edit/location4', data=loc2, follow_redirects=True)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains("Edit link type document")
+    page.assert_contains(
+        '<input class="custom-control-input" disabled id="applies-scheme"'
+        ' name="applies" type="checkbox" value="scheme">')
+
+    # Test overlapping terms when editing a term
+    loc4json = (
+        '{ "id": "document", "label": "documentation",'
+        '"applies": ["scheme", "tool"]}')
+    loc4 = json.loads(loc4json)
+    loc4.update(page.get_all_hidden())
+    response = client.post('/edit/location4', data=loc4, follow_redirects=True)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains("Edit link type document")
+    page.assert_contains(
+        "A term with ID ‘document’ has already been coined for scheme.")
+
 
 def test_auth_protection(client, auth, app, page, data_db):
     data_db.write_db()
