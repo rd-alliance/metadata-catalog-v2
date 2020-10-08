@@ -34,7 +34,7 @@ function autoduplicate() {
 $( ".form-list > li:last-child" )
   .one( "change", autoduplicate );
 
-$( "input[list='keyword-list']" ).parent().parent().filter(":last-child")
+$( "div > span:last-child").has( "input[list='keyword-list']" )
   .one( "change", autoduplicate );
 
 /* Cleaning help text */
