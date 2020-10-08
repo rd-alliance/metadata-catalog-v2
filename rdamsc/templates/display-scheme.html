@@ -74,9 +74,11 @@
   {% if 'samples' in record %}
   <div class="samples">
     <h2>Samples</h2>
-    <ul>{% for sample in record['samples'] %}
+    <ul>
+    {% for sample in record['samples'] %}
       <li><a href="{{ sample['url'] }}">{{ sample['title'] }}</a></li>
-    {% endfor %}</ul>
+    {% endfor %}
+    </ul>
   </div>
   {% endif %}
   <div class="identifiers">
@@ -127,6 +129,20 @@
           </div>
         {% endfor %}
         </dl>
+        {% endif %}
+        {% if 'samples' in version %}
+        <div class="samples">
+          {% if version['samples']|length == 1 %}
+          <p><strong>Sample:</strong>&ensp; <a href="{{ version['samples'][0]['url'] }}">{{ version['samples'][0]['title'] }}</a></p>
+          {% else %}
+          <p><strong>Samples:</strong></p>
+          <ul>
+          {% for sample in version['samples'] %}
+            <li><a href="{{ sample['url'] }}">{{ sample['title'] }}</a></li>
+          {% endfor %}
+          </ul>
+          {% endif %}
+        </div>
         {% endif %}
         {% if 'locations' in version or current_user.is_authenticated %}
         <ul class="locations list-inline">
