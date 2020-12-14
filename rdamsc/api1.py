@@ -24,6 +24,7 @@ from flask import (
     request,
     url_for,
 )
+from flask_cors import CORS, cross_origin
 
 
 # Local
@@ -34,7 +35,7 @@ from .records import (
     Scheme,
     mscid_prefix,
 )
-from .vocab import Thesaurus
+from .vocab import get_thesaurus
 
 bp = Blueprint('api', __name__)
 api_version = "1.0.0"
@@ -116,7 +117,7 @@ def embellish_record(record: Document, route='.get_record'):
 
     # Translate keywords
     if 'keywords' in record:
-        thes = Thesaurus()
+        thes = get_thesaurus()
         old_keywords = record['keywords'][:]
         record['keywords'] = list()
         for kw_url in old_keywords:
@@ -203,3 +204,15 @@ def get_record(table, number):
 
     # Return result
     return jsonify(as_response_item(record, '.get_record'))
+
+@bp.route(
+    '/subject-index',
+    methods=['GET'])
+@cross_origin()
+def get_subject_tree():
+    th = get_thesaurus()
+    keywords_used = Scheme.get_used_keywords()
+    tree = th.get_tree(keywords_used)
+
+    # Return result
+    return jsonify(tree)
