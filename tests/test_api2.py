@@ -489,7 +489,7 @@ def test_thesaurus(client, app, data_db):
         "skos:broader": [{
             "@id": "http://rdamsc.bath.ac.uk/thesaurus/domain2"
         }],
-        "skos:narrower":[{
+        "skos:narrower": [{
             "@id": "http://vocabularies.unesco.org/thesaurus/concept158"
         }, {
             "@id": "http://vocabularies.unesco.org/thesaurus/concept159"

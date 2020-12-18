@@ -64,10 +64,11 @@ Activate it:
 venv\Scripts\activate
 ```
 
-Optionally, upgrade your sandboxed copy of `pip`:
+Optionally, upgrade your sandboxed copy of `pip` and install `wheel`:
 
 ```bash
 pip install --upgrade pip
+pip install wheel
 ```
 
 Install the Catalog and its dependencies to your virtual environment:
