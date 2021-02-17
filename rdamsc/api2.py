@@ -24,7 +24,7 @@ from flask import (
     request,
     url_for,
 )
-
+from flask_httpauth import HTTPBasicAuth, HTTPTokenAuth, MultiAuth
 
 # Local
 # -----
@@ -35,8 +35,12 @@ from .records import (
     mscid_prefix,
 )
 from .vocab import Thesaurus
+from .users import ApiUser, get_user_db
 
 bp = Blueprint('api2', __name__)
+basic_auth = HTTPBasicAuth()
+token_auth = HTTPTokenAuth('Bearer')
+multi_auth = MultiAuth(basic_auth, token_auth)
 api_version = "2.0.0"
 
 
@@ -197,6 +201,23 @@ def as_response_page(records: List[Mapping], link: str,
 
     response['data']['items'] = items
     return response
+
+
+@basic_auth.verify_password
+def verify_password(username, password):
+    user = ApiUser.load_by_userid(username)
+    if user.is_active and user.verify_password(password):
+        print(f"Password for user {user.doc_id} is correct.")
+        return user
+    return None
+
+
+@token_auth.verify_token
+def verify_token(token):
+    user = ApiUser.load_by_token(token)
+    if user.doc_id:
+        return user
+    return None
 
 
 # Routes
@@ -409,3 +430,13 @@ def get_thesaurus_concepts_used():
         entries, url_for('.get_thesaurus_concepts_used'),
         page_size=page_size, start=start, page=page,
         callback=convert_thesaurus))
+
+
+@bp.route('/user/token')
+@basic_auth.login_required
+def get_auth_token():
+    user = basic_auth.current_user()
+    token = user.generate_auth_token()
+    return jsonify({
+        'apiVersion': api_version,
+        'token': token.decode('ascii')})

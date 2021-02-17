@@ -1,6 +1,7 @@
 import json
 import pytest
 from flask import g, session
+from requests.auth import _basic_auth_str
 
 
 def test_main_get(client, app, data_db):
@@ -510,3 +511,37 @@ def test_thesaurus(client, app, data_db):
             "@language": "en",
             "@value": "Earth sciences",
         }]}
+
+
+def test_auth_api2(client, app, data_db, user_db):
+
+    # Install API user account
+    user_db.write_db()
+
+    # Reject call with no credentials
+    response = client.get(
+        '/api2/user/token',
+        follow_redirects=True)
+    assert response.status_code == 401
+
+    # Reject call with bad credentials
+    username = user_db.api_users1.get('userid')
+    password = 'wrong'
+    credentials = _basic_auth_str(username, password)
+    response = client.get(
+        '/api2/user/token',
+        headers={"Authorization": credentials},
+        follow_redirects=True)
+    assert response.status_code == 401
+
+    # Succeed with good credentials
+    username = user_db.api_users1.get('userid')
+    password = user_db.pwd1
+    credentials = _basic_auth_str(username, password)
+    response = client.get(
+        '/api2/user/token',
+        headers={"Authorization": credentials},
+        follow_redirects=True)
+    assert response.status_code == 200
+    test_data = response.get_json()
+    assert test_data.get("token")

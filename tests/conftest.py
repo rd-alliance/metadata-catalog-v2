@@ -5,6 +5,7 @@ import json
 from html import unescape
 import pytest
 from werkzeug.datastructures import MultiDict
+from passlib.apps import custom_app_context as pwd_context
 
 from rdamsc import create_app
 
@@ -632,6 +633,49 @@ class PageActions(object):
                 f"‘{substring}’ is in page. Full page:\n{self.trimmed_html}")
 
 
+class UserDBActions(object):
+    def __init__(self, app):
+        self._app = app
+        self.pwd1 = 'Not a great password'
+        self.api_users1 = {
+            'userid': 'backdoor',
+            'password_hash': pwd_context.hash(self.pwd1),
+        }
+        self.pwd2 = 'An even worse password'
+        self.api_users2 = {
+            'userid': 'compromised',
+            'password_hash': pwd_context.hash(self.pwd2),
+            'blocked': True,
+        }
+
+    def _tables_to_file(self, tables: list, db_file: str):
+        '''Writes a set of tables to a given DB file.'''
+        if os.path.isfile(db_file):
+            try:
+                with open(db_file, 'r') as f:
+                    db = json.load(f)
+            except json.decoder.JSONDecodeError:
+                db = {"_default": {}}
+        else:
+            db = {"_default": {}}
+
+        for table in tables:
+            db[table] = dict()
+            i = 1
+            while hasattr(self, f'{table}{i}'):
+                db[table][i] = getattr(self, f'{table}{i}')
+                i += 1
+
+        with open(db_file, 'w') as f:
+            json.dump(db, f, indent=1, ensure_ascii=False)
+
+    def write_db(self):
+        '''Writes main database file.'''
+        self._tables_to_file(
+            ["api_users"],
+            self._app.config['USER_DATABASE_PATH'])
+
+
 @pytest.fixture
 def app():
     with tempfile.TemporaryDirectory() as inst_path:
@@ -668,9 +712,15 @@ def auth(client, page):
     return AuthActions(client, page)
 
 
+
 @pytest.fixture
 def data_db(app):
     return DataDBActions(app)
+
+
+@pytest.fixture
+def user_db(app):
+    return UserDBActions(app)
 
 
 @pytest.fixture
