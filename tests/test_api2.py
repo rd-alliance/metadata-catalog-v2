@@ -1,7 +1,9 @@
 import json
 import pytest
+import time
 from flask import g, session
 from requests.auth import _basic_auth_str
+from itsdangerous import TimedJSONWebSignatureSerializer as JWS
 
 
 def test_main_get(client, app, data_db):
@@ -515,6 +517,11 @@ def test_thesaurus(client, app, data_db):
 
 def test_auth_api2(client, app, data_db, user_db):
 
+    # Generate expired token:
+    s = JWS(app.config['SECRET_KEY'], expires_in=1)
+    old_token = s.dumps({'id': 1}).decode('ascii')
+    expires = time.time() + 2
+
     # Install API user account
     user_db.write_db()
 
@@ -545,3 +552,68 @@ def test_auth_api2(client, app, data_db, user_db):
     assert response.status_code == 200
     test_data = response.get_json()
     assert test_data.get("token")
+    token = test_data.get("token")
+
+    # Reset password: too short
+    new_password = "short"
+    credentials = f"Bearer {token}"
+    response = client.post(
+        '/api2/user/reset-password',
+        headers={"Authorization": credentials},
+        json={"new_password": new_password},
+        follow_redirects=True)
+    assert response.status_code == 400
+    test_data = response.get_json()
+    assert test_data.get('password_reset') is False
+
+    # Reset password: not JSON
+    new_password = "Replacement password"
+    credentials = f"Bearer {token}"
+    response = client.post(
+        '/api2/user/reset-password',
+        headers={"Authorization": credentials},
+        data={"new_password": new_password},
+        follow_redirects=True)
+    assert response.status_code == 400
+    test_data = response.get_json()
+    assert test_data.get('password_reset') is False
+
+    # Reset password: bad token
+    credentials = f"Bearer GOBBLEDEGOOK"
+    response = client.post(
+        '/api2/user/reset-password',
+        headers={"Authorization": credentials},
+        data={"new_password": new_password},
+        follow_redirects=True)
+    assert response.status_code == 401
+
+    # Reset password: expired token
+    credentials = f"Bearer {old_token}"
+    while expires > time.time():
+        pass
+    response = client.post(
+        '/api2/user/reset-password',
+        headers={"Authorization": credentials},
+        json={"new_password": new_password},
+        follow_redirects=True)
+    assert response.status_code == 401
+
+    # Reset password: okay
+    credentials = f"Bearer {token}"
+    response = client.post(
+        '/api2/user/reset-password',
+        headers={"Authorization": credentials},
+        json={"new_password": new_password},
+        follow_redirects=True)
+    assert response.status_code == 200
+    test_data = response.get_json()
+    assert test_data.get('username') == username
+    assert test_data.get('password_reset') is True
+
+    # Test new password
+    credentials = _basic_auth_str(username, new_password)
+    response = client.get(
+        '/api2/user/token',
+        headers={"Authorization": credentials},
+        follow_redirects=True)
+    assert response.status_code == 200

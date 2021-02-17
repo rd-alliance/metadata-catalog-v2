@@ -1535,14 +1535,13 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  username:
-                    type: string
-                    description: "Confirmation of the username for which the password was reset."
-                  password_reset:
-                    type: boolean
-                    description: "True if the reset was successful."
+                $ref: '#/components/schemas/ResponsePassword'
+        400:
+          description: "Bad Request: no suitable password provided"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponsePassword'
         401:
           $ref: '#/components/responses/UnauthorizedError'
         500:
@@ -1563,6 +1562,8 @@ paths:
               schema:
                 type: object
                 properties:
+                  apiVersion:
+                    type: string
                   token:
                     type: string
                     description: "Authorization token valid for 600 seconds."
@@ -2702,6 +2703,17 @@ If an end date is provided, it expresses the date on which the endorsement was w
                   location:
                     type: string
                     description: "Object key where the error occurred."
+    ResponsePassword:
+      type: object
+      properties:
+        apiVersion:
+          type: string
+        username:
+          type: string
+          description: "Confirmation of the username for which the password was reset."
+        password_reset:
+          type: boolean
+          description: "True if the reset was successful, false otherwise."
   responses:
     UnauthorizedError:
       description: Unauthorized access

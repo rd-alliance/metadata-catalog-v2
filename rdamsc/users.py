@@ -115,12 +115,12 @@ class ApiUser(User):
     table = 'api_users'
 
     @classmethod
-    def load_by_token(cls, token):
+    def load_by_token(cls, token, expiration=600):
         '''If the token is valid, loads and returns the API user with the
         doc_id encoded by the token. Otherwise returns a blank instance.
         '''
 
-        s = JWS(current_app.config['SECRET_KEY'])
+        s = JWS(current_app.config['SECRET_KEY'], expires_in=expiration)
         try:
             data = s.loads(token)
         except SignatureExpired:
@@ -142,14 +142,7 @@ class ApiUser(User):
         return cls(value=dict(), doc_id=0)
 
     def hash_password(self, password):
-        try:
-            new_hash = pwd_context.hash(password)
-        except ValueError:
-            # Invalid parameter value:
-            return False
-        except TypeError:
-            # Invalid parameter type:
-            return False
+        new_hash = pwd_context.hash(password)
         error = self._save({'password_hash': new_hash})
         if error:  # pragma: no cover
             print(f"ApiUser: could not save hash: {error}.")
@@ -157,15 +150,8 @@ class ApiUser(User):
         return True
 
     def verify_password(self, password):
-        try:
-            is_verified, new_hash = pwd_context.verify_and_update(
-                password, self.get('password_hash'))
-        except ValueError:
-            # Unsupported scheme or invalid parameter value:
-            return False
-        except TypeError:
-            # Invalid parameter type:
-            return False
+        is_verified, new_hash = pwd_context.verify_and_update(
+            password, self.get('password_hash'))
         if new_hash:
             error = self._save({'password_hash': new_hash})
             if error:  # pragma: no cover

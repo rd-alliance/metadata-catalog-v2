@@ -21,6 +21,7 @@ from flask import (
     Blueprint,
     g,
     jsonify,
+    make_response,
     request,
     url_for,
 )
@@ -207,7 +208,6 @@ def as_response_page(records: List[Mapping], link: str,
 def verify_password(username, password):
     user = ApiUser.load_by_userid(username)
     if user.is_active and user.verify_password(password):
-        print(f"Password for user {user.doc_id} is correct.")
         return user
     return None
 
@@ -432,7 +432,7 @@ def get_thesaurus_concepts_used():
         callback=convert_thesaurus))
 
 
-@bp.route('/user/token')
+@bp.route('/user/token', methods=['GET'])
 @basic_auth.login_required
 def get_auth_token():
     user = basic_auth.current_user()
@@ -440,3 +440,24 @@ def get_auth_token():
     return jsonify({
         'apiVersion': api_version,
         'token': token.decode('ascii')})
+
+
+@bp.route('/user/reset-password', methods=['POST'])
+@multi_auth.login_required
+def reset_password():
+    user = multi_auth.current_user()
+    response = {
+        'apiVersion': api_version,
+        'username': user.get('userid'),
+        'password_reset': False
+    }
+    if request.json is None:
+        abort(make_response((response, 400)))
+    new_password = request.json.get('new_password', '')
+    if len(new_password) < 8:
+        abort(make_response((response, 400)))
+    response['password_reset'] = user.hash_password(new_password)
+    if response['password_reset']:
+        return jsonify(response)
+    else:
+        abort(make_response((response, 400)))
