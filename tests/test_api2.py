@@ -617,3 +617,23 @@ def test_auth_api2(client, app, data_db, user_db):
         headers={"Authorization": credentials},
         follow_redirects=True)
     assert response.status_code == 200
+
+
+def test_main_write(client, auth_api, app, data_db):
+
+    # Test adding new scheme successfully
+    credentials = f"Bearer {auth_api.get_token()}"
+    record = data_db.get_apidata('m1')
+    response = client.post(
+        '/api2/m',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 200
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'meta': {'conformance': 'useful'},
+        'data': data_db.get_apidata('m1')
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual

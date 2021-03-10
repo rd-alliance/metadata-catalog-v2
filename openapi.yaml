@@ -1658,16 +1658,11 @@ components:
             description: "A URI drawn from the local profile of the UNESCO Thesaurus. Most UNESCO Concept URIs may be used, in addition to MSC Concept URIs. Valid values may be queried from the `keywords` endpoint."
         dataTypes:
           type: array
-          description: "Data types most commonly described by metadata records that conform to this scheme. The MSC will take a “folksonomic” approach to the human-readable values for this element: users will be able to supply any value but will be encouraged to reuse values already in the database. Trivially different values may be merged/normalized by the MSC editors, unless clarified with a URL."
+          description: "Data types most commonly described by metadata records that conform to this scheme. The data type must be specified by its internal MSC ID."
           items:
-            type: object
-            properties:
-              url:
-                type: string
-                description: "URL pointing to an entry in a data type registry."
-              label:
-                type: string
-                description: "Human-readable term."
+            type: string
+            description: "Full MSC ID of the entity."
+            pattern: '^msc:datatype\d+$'
         locations:
           type: array
           description: "Locations where further information about the scheme may be accessed."
@@ -2702,7 +2697,7 @@ If an end date is provided, it expresses the date on which the endorsement was w
                     description: "Nature of validation error."
                   location:
                     type: string
-                    description: "Object key where the error occurred."
+                    description: "Object key where the error occurred, in JSONPath dot notation."
     ResponsePassword:
       type: object
       properties:

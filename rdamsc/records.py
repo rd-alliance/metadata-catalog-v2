@@ -67,11 +67,11 @@ allowed_tags = {
     'bdo': ['dir'],
     'br': [],
     'wbr': [],
-    }
+}
 disallowed_tagblocks = [
     'script',
     'style',
-    ]
+]
 
 
 # Database wrapper classes
@@ -461,6 +461,7 @@ class Record(Document):
                 t.update(value, doc_ids=[self.doc_id])
         else:
             self.doc_id = tb.insert(value)
+            self.reload()
 
         return ''
 
@@ -568,6 +569,14 @@ class Record(Document):
             f.scheme.choices = IDScheme.get_choices(self.__class__)
 
         return form
+
+    def reload(self):
+        db = self.get_db()
+        tb = db.table(self.table)
+        doc = tb.get(doc_id=self.doc_id)
+        for key in list(self.keys()):
+            del self[key]
+        self.update(doc)
 
     def save_gui_input(self, formdata: Mapping):
         '''Processes form input and saves it. Returns error message if a problem

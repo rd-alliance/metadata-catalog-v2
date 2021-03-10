@@ -7,6 +7,7 @@ import re
 import os
 import math
 from typing import (
+    Any,
     List,
     Mapping,
     Tuple,
@@ -22,6 +23,7 @@ from flask import (
     g,
     jsonify,
     make_response,
+    redirect,
     request,
     url_for,
 )
@@ -43,6 +45,100 @@ basic_auth = HTTPBasicAuth()
 token_auth = HTTPTokenAuth('Bearer')
 multi_auth = MultiAuth(basic_auth, token_auth)
 api_version = "2.0.0"
+
+
+# Classes
+# =======
+class APIInputValidator(object):
+    '''Class used for cleaning and validating API input according to endpoint.
+    '''
+
+    _schema = {
+        'm': {
+            'title': 'do_text',
+            'description': 'do_html',
+            'keywords': 'do_thesaurus',
+            'dataTypes': 'do_data_types',
+            'locations': 'do_locations',
+            'identifiers': 'do_ids',
+            'relatedEntities': 'do_relations',
+            'versions': 'do_versions',
+        }
+    }
+
+    def __init__(self, endpoint):
+        '''Instances must be initialised with an endpoint name. This is
+        normally the same as a table name.'''
+        self.endpoint = endpoint
+
+    def do_data_types(self, value: List[str]):
+        result = {'errors': [], 'value': list()}
+        for v in value:
+            result['value'].append(v)
+        return result
+    
+    def do_html(self, value: str):
+        result = {'errors': [], 'value': ''}
+        value = re.sub(r'\s+', r' ', value).strip()
+        result['value'] = value
+        return result
+
+    def do_ids(self, value: List[str]):
+        result = {'errors': [], 'value': list()}
+        for v in value:
+            result['value'].append(v)
+        return result
+
+    def do_locations(self, value: List[Mapping[str, str]]):
+        result = {'errors': [], 'value': list()}
+        for v in value:
+            result['value'].append(v)
+        return result
+
+    def do_relations(self, value: List[Mapping[str, str]]):
+        result = {'errors': [], 'value': list()}
+        for v in value:
+            result['value'].append(v)
+        return result
+    
+    def do_text(self, value: str):
+        result = {'errors': [], 'value': ''}
+        value = re.sub(r'\s+', r' ', value).strip()
+        value = re.sub(r'<\w[^>]*>', '', value)
+        result['value'] = value
+        return result
+    
+    def do_thesaurus(self, value: List[str]):
+        result = {'errors': [], 'value': list()}
+        for v in value:
+            result['value'].append(v)
+        return result
+    
+    def do_versions(self, value: List[Mapping[str, Any]]):
+        result = {'errors': [], 'value': list()}
+        for v in value:
+            result['value'].append(v)
+        return result
+    
+    def validate(self, data: Mapping[str, Any]):
+        '''Returns a cleaned version of the input, and a list of errors.'''
+        result = {'errors': [], 'conformance': None, 'value': dict()}
+        schema = self._schema[self.endpoint]
+        
+        for key, value in data.items():
+            validator_name = schema.get(key)
+            if validator_name is None:
+                continue
+            validator = getattr(self, validator_name)
+            validated = validator(value)
+            for error in validated['errors']:
+                result['errors'].append({
+                    'message': error.get('message', ''),
+                    'location': f"$.{key}{error.get('location', '')}",
+                })
+            result['value'][key] = validated['value']
+
+        return result
 
 
 # Handy functions
@@ -461,3 +557,53 @@ def reset_password():
         return jsonify(response)
     else:
         abort(make_response((response, 400)))
+
+
+@bp.route(
+    '/<any(m, g, t, c, e, datatype, location, type, id_scheme):table>',
+    methods=['POST'])
+@bp.route(
+    '/<any(m, g, t, c, e, datatype, location, type, id_scheme):table>'
+    '<int:number>',
+    methods=['PUT'])
+def set_record(table, number=0):
+    '''Adds a record to the database and returns it.'''
+    # Look up record to edit, or get new:
+    record = Record.load(number, table)
+
+    # Abort if series was wrong:
+    if record is None:
+        abort(404)
+
+    # If number is wrong, we reinforce the point by redirecting:
+    if record.doc_id != number:
+        return redirect(url_for('api2.set_record', table=table, number=None))
+
+    # Get input:
+    data = request.get_json(force=True)
+
+    # Validate input:
+    validator = APIInputValidator(table)
+    result = validator.validate(data)
+
+    # Handle any errors:
+    errors = result.get('errors', list())
+    if errors:
+        response = {
+            'apiVersion': api_version,
+            'error': {
+                'message': errors[0]['message'],
+                'errors': errors
+            }
+        }
+        return jsonify(response)
+
+    # Save record: (need to add missing relations first)
+    record._save(result.get('value'))
+
+    response = as_response_item(record, callback=embellish_record_fully)
+    response['meta'] = {
+        'conformance': result.get('conformance'),
+    }
+
+    return jsonify(response)

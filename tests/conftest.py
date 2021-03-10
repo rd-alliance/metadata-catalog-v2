@@ -3,9 +3,12 @@ import re
 import tempfile
 import json
 from html import unescape
+import time
 import pytest
 from werkzeug.datastructures import MultiDict
 from passlib.apps import custom_app_context as pwd_context
+from requests.auth import _basic_auth_str
+
 
 from rdamsc import create_app
 
@@ -696,6 +699,28 @@ def app():
         yield app
 
 
+class AuthAPIActions(object):
+    def __init__(self, client, user_db):
+        self._client = client
+        self._username = user_db.api_users1.get('userid')
+        self._password = user_db.pwd1
+        self._token = ''
+        self._expiry = 0
+        user_db.write_db()
+
+    def get_token(self):
+        if time.time() > self._expiry:
+            credentials = _basic_auth_str(self._username, self._password)
+            self._expiry = time.time() + 595
+            response = self._client.get(
+                '/api2/user/token',
+                headers={"Authorization": credentials},
+                follow_redirects=True)
+            test_data = response.get_json()
+            self._token = test_data.get("token")
+        return self._token
+
+
 @pytest.fixture
 def client(app):
     with app.test_client() as client:
@@ -711,6 +736,10 @@ def runner(app):
 def auth(client, page):
     return AuthActions(client, page)
 
+
+@pytest.fixture
+def auth_api(client, user_db):
+    return AuthAPIActions(client, user_db)
 
 
 @pytest.fixture
