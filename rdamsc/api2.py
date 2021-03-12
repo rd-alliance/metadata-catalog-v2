@@ -47,100 +47,6 @@ multi_auth = MultiAuth(basic_auth, token_auth)
 api_version = "2.0.0"
 
 
-# Classes
-# =======
-class APIInputValidator(object):
-    '''Class used for cleaning and validating API input according to endpoint.
-    '''
-
-    _schema = {
-        'm': {
-            'title': 'do_text',
-            'description': 'do_html',
-            'keywords': 'do_thesaurus',
-            'dataTypes': 'do_data_types',
-            'locations': 'do_locations',
-            'identifiers': 'do_ids',
-            'relatedEntities': 'do_relations',
-            'versions': 'do_versions',
-        }
-    }
-
-    def __init__(self, endpoint):
-        '''Instances must be initialised with an endpoint name. This is
-        normally the same as a table name.'''
-        self.endpoint = endpoint
-
-    def do_data_types(self, value: List[str]):
-        result = {'errors': [], 'value': list()}
-        for v in value:
-            result['value'].append(v)
-        return result
-    
-    def do_html(self, value: str):
-        result = {'errors': [], 'value': ''}
-        value = re.sub(r'\s+', r' ', value).strip()
-        result['value'] = value
-        return result
-
-    def do_ids(self, value: List[str]):
-        result = {'errors': [], 'value': list()}
-        for v in value:
-            result['value'].append(v)
-        return result
-
-    def do_locations(self, value: List[Mapping[str, str]]):
-        result = {'errors': [], 'value': list()}
-        for v in value:
-            result['value'].append(v)
-        return result
-
-    def do_relations(self, value: List[Mapping[str, str]]):
-        result = {'errors': [], 'value': list()}
-        for v in value:
-            result['value'].append(v)
-        return result
-    
-    def do_text(self, value: str):
-        result = {'errors': [], 'value': ''}
-        value = re.sub(r'\s+', r' ', value).strip()
-        value = re.sub(r'<\w[^>]*>', '', value)
-        result['value'] = value
-        return result
-    
-    def do_thesaurus(self, value: List[str]):
-        result = {'errors': [], 'value': list()}
-        for v in value:
-            result['value'].append(v)
-        return result
-    
-    def do_versions(self, value: List[Mapping[str, Any]]):
-        result = {'errors': [], 'value': list()}
-        for v in value:
-            result['value'].append(v)
-        return result
-    
-    def validate(self, data: Mapping[str, Any]):
-        '''Returns a cleaned version of the input, and a list of errors.'''
-        result = {'errors': [], 'conformance': None, 'value': dict()}
-        schema = self._schema[self.endpoint]
-        
-        for key, value in data.items():
-            validator_name = schema.get(key)
-            if validator_name is None:
-                continue
-            validator = getattr(self, validator_name)
-            validated = validator(value)
-            for error in validated['errors']:
-                result['errors'].append({
-                    'message': error.get('message', ''),
-                    'location': f"$.{key}{error.get('location', '')}",
-                })
-            result['value'][key] = validated['value']
-
-        return result
-
-
 # Handy functions
 # ===============
 def embellish_record(record: Document, with_embedded=False):
@@ -160,25 +66,19 @@ def embellish_record(record: Document, with_embedded=False):
         return record
 
     # Add related entities
-    related_entities = list()
-    seen_mscids = dict()
-    rel = Relation()
-    relations = rel.related_records(mscid=mscid)
-    for role in sorted(relations.keys()):
-        for entity in relations[role]:
-            related_entity = {
-                'id': entity.mscid,
-                'role': role[:-1],  # convert to singular
-            }
+    related_entities = record.get_related_entities()
+    if related_entities:
+        seen_mscids = dict()
+        record['relatedEntities'] = list()
+        for related_entity in related_entities:
             if with_embedded:
-                related_entity['data'] = seen_mscids.get(entity.mscid)
+                related_entity['data'] = seen_mscids.get(related_entity['id'])
                 if related_entity['data'] is None:
+                    entity = Record.load_by_mscid(related_entity['id'])
                     full_entity = embellish_record(entity)
                     related_entity['data'] = full_entity
                     seen_mscids[entity.mscid] = full_entity
-            related_entities.append(related_entity)
-    if related_entities:
-        record['relatedEntities'] = related_entities
+            record['relatedEntities'].append(related_entity)
 
     return record
 
@@ -582,12 +482,8 @@ def set_record(table, number=0):
     # Get input:
     data = request.get_json(force=True)
 
-    # Validate input:
-    validator = APIInputValidator(table)
-    result = validator.validate(data)
-
     # Handle any errors:
-    errors = result.get('errors', list())
+    errors = record.save_api_input(data)
     if errors:
         response = {
             'apiVersion': api_version,
@@ -598,12 +494,11 @@ def set_record(table, number=0):
         }
         return jsonify(response)
 
-    # Save record: (need to add missing relations first)
-    record._save(result.get('value'))
-
+    # Return report
+    record.reload()
     response = as_response_item(record, callback=embellish_record_fully)
     response['meta'] = {
-        'conformance': result.get('conformance'),
+        'conformance': record.conformance,
     }
 
     return jsonify(response)

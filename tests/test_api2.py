@@ -624,6 +624,7 @@ def test_main_write(client, auth_api, app, data_db):
     # Test adding new scheme successfully
     credentials = f"Bearer {auth_api.get_token()}"
     record = data_db.get_apidata('m1')
+    del record['relatedEntities']
     response = client.post(
         '/api2/m',
         headers={"Authorization": credentials},
@@ -633,7 +634,7 @@ def test_main_write(client, auth_api, app, data_db):
     ideal = json.dumps({
         'apiVersion': '2.0.0',
         'meta': {'conformance': 'useful'},
-        'data': data_db.get_apidata('m1')
+        'data': record
     }, sort_keys=True)
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert ideal == actual
