@@ -345,6 +345,16 @@ class Record(Document):
         return choices
 
     @classmethod
+    def get_class_by_table(cls, table: str):
+        '''Returns subclass of Record with the corresponding table identifier,
+        or None if identifier is invalid. Should not be called on subclasses.
+        '''
+        for subcls in cls.__subclasses__():
+            if subcls.table == table:
+                return subcls
+        return None
+
+    @classmethod
     def get_db(cls):
         return get_data_db()
 
@@ -361,21 +371,18 @@ class Record(Document):
         '''
 
         # We need to get the table to look up and the class to return the
-        # record as. If called from subclass, this comes direct from the class.
-        # If called on Record, we get it from the table string.
+        # record as. If called on Record with a table string, we use that table
+        # and its corresponding subclass. If called from a subclass without a
+        # table string, we use that subclass and its corresponding table.
+        # Otherwise, it is an error and we return None.
         subclass = cls
         if table is None:
             if not hasattr(cls, 'table'):
                 return None
             table = cls.table
         else:
-            valid_tables = list()
-            for subcls in cls.__subclasses__():
-                valid_tables.append(subcls.table)
-                if subcls.table == table:
-                    subclass = subcls
-
-            if table not in valid_tables:
+            subclass = cls.get_class_by_table(table)
+            if subclass is None:
                 return None
 
         db = subclass.get_db()
@@ -500,6 +507,11 @@ class Record(Document):
             result['value'].append(v)
         return result
 
+    def _do_date(self, value: str):
+        result = {'errors': list(), 'value': ''}
+        result['value'] = value
+        return result
+
     def _do_html(self, value: str):
         result = {'errors': list(), 'value': ''}
         value = re.sub(r'\s+', r' ', value).strip()
@@ -520,14 +532,118 @@ class Record(Document):
 
     def _do_locations(self, value: List[Mapping[str, str]]):
         result = {'errors': list(), 'value': list()}
-        for v in value:
+        valid_types = [v[0] for v in Location.get_choices(self.__class__)
+                       if v[0]]
+        for i, v in enumerate(value):
+
+            # Validate URL
+            url = v.get('url')
+            if url is None:
+                result['errors'].append({
+                    'message': "Missing value for 'url'.",
+                    'location': f"[{i}]"})
+            else:
+                validated = self._do_url(url)
+                for error in validated.get('errors'):
+                    result['errors'].append({
+                        'message': error.get('message', ''),
+                        'location': f"[{i}].url"})
+
+            # Validate type
+            type = v.get('type')
+            if type is None:
+                result['errors'].append({
+                    'message': "Missing value for 'type'.",
+                    'location': f"[{i}]"})
+            elif type not in valid_types:
+                result['errors'].append({
+                    'message': f"Invalid type: {type}."
+                    f" Valid types: {', '.join(valid_types)}.",
+                    'location': f"[{i}].type"})
+
             result['value'].append(v)
         return result
 
+    def _do_period(self, value: Mapping[str, str]):
+        result = {'errors': list(), 'value': dict()}
+        for key in ['start', 'end']:
+            if key in value:
+                validated = self._do_date(value[key])
+                for error in validated.get('errors'):
+                    result['errors'].append({
+                        'message': error.get('message', ''),
+                        'location': f".{key}{error.get('location', '')}"})
+                result['value'][key] = validated.get('value')
+        return result
+    
     def _do_relations(self, value: List[Mapping[str, str]]):
+        '''Validates that the ID exists and the role is recognised. Removes
+        details beyond this and translates the role into temporary helper fields
+        `predicate` and `direction`.
+        '''
+        if not hasattr(self, 'rolemap'):
+            raise NotImplementedError
         result = {'errors': list(), 'value': list()}
-        for v in value:
-            result['value'].append(v)
+        cache = dict()
+        for i, v in enumerate(value):
+            clean_relation = dict()
+            has_error = False
+            accepts = list()
+
+            # Validate role
+            role = v.get('role')
+            if role is None:
+                result['errors'].append({
+                    'message': "Missing value for 'role'.",
+                    'location': f"[{i}]"})
+                has_error = True
+            elif role not in self.rolemap.keys():
+                result['errors'].append({
+                    'message': f"Invalid role: {role}."
+                    f" Valid roles: {', '.join(self.rolemap.keys())}.",
+                    'location': f"[{i}].role"})
+                has_error = True
+            else:
+                accepts = self.rolemap[role]['accepts']
+
+            # Validate MSCID
+            mscid = v.get('id')
+            if mscid is None:
+                result['errors'].append({
+                    'message': "Missing value for 'id'.",
+                    'location': f"[{i}]"})
+                has_error = True
+            else:
+                rel_record = cache.get(mscid)
+                if rel_record is None:
+                    rel_record = Record.load_by_mscid(mscid)
+                    cache[mscid] = rel_record
+                if rel_record is None:
+                    result['errors'].append({
+                        'message': f"Not a valid MSC ID: {mscid}.",
+                        'location': f"[{i}].id"})
+                    has_error = True
+                elif rel_record.doc_id == 0:
+                    result['errors'].append({
+                        'message': f"No such record: {mscid}.",
+                        'location': f"[{i}].id"})
+                    has_error = True
+                elif accepts and rel_record.table not in accepts:
+                    result['errors'].append({
+                        'message': f"The record {mscid} cannot take the role of"
+                        f" {role}.",
+                        'location': f"[{i}]"})
+                    has_error = True
+
+            if has_error:
+                continue
+            clean_relation = {
+                'id': mscid,
+                'role': role,
+                'predicate': self.rolemap[role]['predicate'],
+                'direction': self.rolemap[role]['direction'],
+            }
+            result['value'].append(clean_relation)
         return result
 
     def _do_text(self, value: str):
@@ -548,14 +664,45 @@ class Record(Document):
             result['value'].append(v)
         return result
 
+    def _do_url(self, value: str):
+        result = {'errors': list(), 'value': ''}
+        if not value:
+            return result
+
+        uv = EmailOrURL()
+        if not uv.gen_regex.match(value):
+            result['errors'].append({
+                'message': "Value must include protocol:"
+                           " http, https, mailto."})
+            result['value'] = value
+            return result
+        if value.startswith('mailto:'):
+            if not uv.email_regex.match(value):
+                result['errors'].append({
+                    'message': "Invalid email address."})
+            else:
+                length = len(value)
+                if length > 254:
+                    result['errors'].append({
+                        'message': "Value must be 254 characters or fewer"
+                                   f" (actual length: {length})."})
+                    value = value[:254]
+        else:
+            match = uv.url_regex.match(value)
+            if not (match and uv.validate_hostname(match.group('host'))):
+                result['errors'].append({
+                    'message': f"Invalid URL: {value}."})
+
+        result['value'] = value
+        return result
+
     def _do_versionid(self, value: str):
         result = self._do_text(value)
         length = len(result['value'])
         if length > 20:
             result['errors'].append({
                 'message': "Value must be 20 characters or fewer"
-                           f" (actual length: {length})."
-            })
+                           f" (actual length: {length})."})
         return result
 
     def _save(self, value: Mapping):
@@ -932,6 +1079,11 @@ class Record(Document):
         clean_data = dict()
         for k, d in schema.items():
             if k not in input_data:
+                if d.get('required'):
+                    errors.append({
+                        'message': f"Missing value for '{k}'.",
+                        'location': '',
+                    })
                 continue
 
             if 'schema' in d:
@@ -957,7 +1109,7 @@ class Record(Document):
             for error in validated['errors']:
                 errors.append({
                     'message': error.get('message', ''),
-                    'location': f"{key}{error.get('location', '')}",
+                    'location': f"{k}{error.get('location', '')}",
                 })
             clean_data[k] = validated['value']
 
@@ -1007,7 +1159,49 @@ class Scheme(Record):
                 'identifiers': {
                     'type': 'identifiers'},
                 'samples': {
-                    'type': 'samples'}}}}
+                    'schema': {
+                        'url': {
+                            'type': 'url'},
+                        'title': {
+                            'type': 'text'}}}}}}
+    rolemap = {
+        'parent scheme': {
+            'predicate': 'parent schemes',
+            'direction': Relation.FORWARD,
+            'accepts': ['m']},
+        'child scheme': {
+            'predicate': 'parent schemes',
+            'direction': Relation.INVERSE,
+            'accepts': ['m']},
+        'input to mapping': {
+            'predicate': 'input schemes',
+            'direction': Relation.INVERSE,
+            'accepts': ['c']},
+        'output to mapping': {
+            'predicate': 'output schemes',
+            'direction': Relation.INVERSE,
+            'accepts': ['c']},
+        'maintainer': {
+            'predicate': 'maintainers',
+            'direction': Relation.FORWARD,
+            'accepts': ['g']},
+        'funder': {
+            'predicate': 'funders',
+            'direction': Relation.FORWARD,
+            'accepts': ['g']},
+        'user': {
+            'predicate': 'users',
+            'direction': Relation.FORWARD,
+            'accepts': ['g']},
+        'tool': {
+            'predicate': 'supported scheme',
+            'direction': Relation.INVERSE,
+            'accepts': ['t']},
+        'endorsement': {
+            'predicate': 'endorsed scheme',
+            'direction': Relation.INVERSE,
+            'accepts': ['e']},
+    }
 
     @classmethod
     def get_vocabs(cls):
@@ -1303,6 +1497,24 @@ class Group(Record):
     '''Object representing an organization.'''
     table = 'g'
     series = 'organization'
+    schema = {
+        'name': {
+            'type': 'text',
+            'useful': True},
+        'description': {
+            'type': 'html',
+            'useful': True},
+        'types': {
+            'type': 'types',
+            'useful': True},
+        'locations': {
+            'type': 'locations',
+            'useful': True},
+        'identifiers': {
+            'type': 'identifiers',
+            'useful': True},
+        'relatedEntities': {
+            'type': 'relations'}}
 
     @classmethod
     def get_choices(cls):

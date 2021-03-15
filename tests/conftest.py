@@ -397,7 +397,7 @@ class DataDBActions(object):
             related_entities.sort(
                 key=lambda k: k['role'] + k['id'][:n] + k['id'][n:].zfill(5))
             apidata['relatedEntities'] = related_entities
-        return apidata
+        return json.loads(json.dumps(apidata))
 
     def get_api1data(self, record: str, with_embedded=True):
         '''Returns record in form that API 1 would respond with.'''
@@ -453,7 +453,7 @@ class DataDBActions(object):
             related_entities.sort(
                 key=lambda k: k['id'][:n] + k['id'][n:].zfill(5))
             apidata['relatedEntities'] = related_entities
-        return apidata
+        return json.loads(json.dumps(apidata))
 
     def get_apidataset(self, table: str):
         '''Returns table in form that API would respond with.'''

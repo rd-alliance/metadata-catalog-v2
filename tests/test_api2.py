@@ -630,6 +630,77 @@ def test_main_write(client, auth_api, app, data_db):
         headers={"Authorization": credentials},
         json=record,
         follow_redirects=True)
+    # assert response.status_code == 200
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'meta': {'conformance': 'useful'},
+        'data': record
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
+
+    # Test location validator:
+    credentials = f"Bearer {auth_api.get_token()}"
+    record = data_db.get_apidata('g1')
+    del record['relatedEntities']
+    # - no url
+    record['locations'].append({
+        "type": "website"})
+    # - bad url
+    record['locations'].append({
+        "url": "not-a-url",
+        "type": "website"})
+    # - bad url
+    record['locations'].append({
+        "url": "http://not-a-url",
+        "type": "website"})
+    # - no type
+    record['locations'].append({
+        "url": "http://website.org/g1"})
+    # - bad type
+    record['locations'].append({
+        "url": "http://website.org/g1",
+        "type": "not-a-type"})
+    response = client.post(
+        '/api2/g',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 400
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'error': {
+            'message': "Missing value for 'url'.",
+            'errors': [{
+                'message': "Missing value for 'url'.",
+                'location': '$.locations[2]'
+            }, {
+                'message': "Value must include protocol: http, https, mailto.",
+                'location': '$.locations[3].url'
+            }, {
+                'message': "Invalid URL: http://not-a-url.",
+                'location': '$.locations[4].url'
+            }, {
+                'message': "Missing value for 'type'.",
+                'location': '$.locations[5]'
+            }, {
+                'message': "Invalid type: not-a-type."
+                " Valid types: website, email.",
+                'location': '$.locations[6].type'
+            }]}
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
+
+    # Test adding new group successfully:
+    credentials = f"Bearer {auth_api.get_token()}"
+    record = data_db.get_apidata('g1')
+    del record['relatedEntities']
+    response = client.post(
+        '/api2/g',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
     assert response.status_code == 200
     ideal = json.dumps({
         'apiVersion': '2.0.0',
@@ -638,3 +709,83 @@ def test_main_write(client, auth_api, app, data_db):
     }, sort_keys=True)
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert ideal == actual
+
+    # Test relation validator:
+    credentials = f"Bearer {auth_api.get_token()}"
+    record = data_db.get_apidata('m2')
+    record['relatedEntities'] = [
+        # Missing role
+        {'id': 'msc:m1'},
+        # Invalid role
+        {'id': 'msc:m1', 'role': 'originator'},
+        # Missing MSC ID
+        {'role': 'parent scheme'},
+        # Invalid MSC ID
+        {'id': '10.1234/56', 'role': 'parent scheme'},
+        # Non-existent MSC ID
+        {'id': 'msc:m3', 'role': 'parent scheme'},
+        # Existent but wrong type of MSC ID
+        {'id': 'msc:g1', 'role': 'parent scheme'}]
+    response = client.post(
+        '/api2/m',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 400
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'error': {
+            'message': "Missing value for 'role'.",
+            'errors': [{
+                'message': "Missing value for 'role'.",
+                'location': '$.relatedEntities[0]'
+            }, {
+                'message': "Invalid role: originator."
+                " Valid roles: parent scheme, child scheme, input to mapping,"
+                " output to mapping, maintainer, funder, user, tool,"
+                " endorsement.",
+                'location': '$.relatedEntities[1].role'
+            }, {
+                'message': "Missing value for 'id'.",
+                'location': '$.relatedEntities[2]'
+            }, {
+                'message': "Not a valid MSC ID: 10.1234/56.",
+                'location': '$.relatedEntities[3].id'
+            }, {
+                'message': "No such record: msc:m3.",
+                'location': '$.relatedEntities[4].id'
+            }, {
+                'message': "The record msc:g1 cannot take the role of parent"
+                " scheme.",
+                'location': '$.relatedEntities[5]'
+            }]}
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
+
+    # Test adding relation (main)
+    pass
+
+    # Test not removing relation (main)
+    pass
+
+    # Test version ID validator:
+    pass
+
+    # Test keyword validator:
+    pass
+
+    # Test EmailOrURL (URL) validator:
+    pass
+
+    # Test RequiredIf validator:
+    pass
+
+    # Test redirection for bad numbers:
+    pass
+
+    # Test W3CDate validator:
+    pass
+
+    # Test EmailOrURL (email) validator:
+    pass
