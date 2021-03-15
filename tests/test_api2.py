@@ -622,15 +622,15 @@ def test_auth_api2(client, app, data_db, user_db):
 def test_main_write(client, auth_api, app, data_db):
 
     # Test adding new scheme successfully
-    credentials = f"Bearer {auth_api.get_token()}"
     record = data_db.get_apidata('m1')
     del record['relatedEntities']
+    credentials = f"Bearer {auth_api.get_token()}"
     response = client.post(
         '/api2/m',
         headers={"Authorization": credentials},
         json=record,
         follow_redirects=True)
-    # assert response.status_code == 200
+    assert response.status_code == 200
     ideal = json.dumps({
         'apiVersion': '2.0.0',
         'meta': {'conformance': 'useful'},
@@ -639,28 +639,22 @@ def test_main_write(client, auth_api, app, data_db):
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert ideal == actual
 
-    # Test location validator:
-    credentials = f"Bearer {auth_api.get_token()}"
+    # Test location, URL validator:
     record = data_db.get_apidata('g1')
     del record['relatedEntities']
-    # - no url
-    record['locations'].append({
-        "type": "website"})
-    # - bad url
-    record['locations'].append({
-        "url": "not-a-url",
-        "type": "website"})
-    # - bad url
-    record['locations'].append({
-        "url": "http://not-a-url",
-        "type": "website"})
-    # - no type
-    record['locations'].append({
-        "url": "http://website.org/g1"})
-    # - bad type
-    record['locations'].append({
-        "url": "http://website.org/g1",
-        "type": "not-a-type"})
+    record['locations'].extend([
+        # no url
+        {"type": "website"},
+        # bad url (no protocol)
+        {"url": "not-a-url", "type": "website"},
+        # bad url (other problem)
+        {"url": "http://not-a-url", "type": "website"},
+        # no type
+        {"url": "http://website.org/g1"},
+        # bad type
+        {"url": "http://website.org/g1", "type": "not-a-type"},
+    ])
+    credentials = f"Bearer {auth_api.get_token()}"
     response = client.post(
         '/api2/g',
         headers={"Authorization": credentials},
@@ -693,9 +687,9 @@ def test_main_write(client, auth_api, app, data_db):
     assert ideal == actual
 
     # Test adding new group successfully:
-    credentials = f"Bearer {auth_api.get_token()}"
     record = data_db.get_apidata('g1')
     del record['relatedEntities']
+    credentials = f"Bearer {auth_api.get_token()}"
     response = client.post(
         '/api2/g',
         headers={"Authorization": credentials},
@@ -711,7 +705,6 @@ def test_main_write(client, auth_api, app, data_db):
     assert ideal == actual
 
     # Test relation validator:
-    credentials = f"Bearer {auth_api.get_token()}"
     record = data_db.get_apidata('m2')
     record['relatedEntities'] = [
         # Missing role
@@ -726,6 +719,7 @@ def test_main_write(client, auth_api, app, data_db):
         {'id': 'msc:m3', 'role': 'parent scheme'},
         # Existent but wrong type of MSC ID
         {'id': 'msc:g1', 'role': 'parent scheme'}]
+    credentials = f"Bearer {auth_api.get_token()}"
     response = client.post(
         '/api2/m',
         headers={"Authorization": credentials},
@@ -764,18 +758,60 @@ def test_main_write(client, auth_api, app, data_db):
     assert ideal == actual
 
     # Test adding relation (main)
-    pass
+    record = data_db.get_apidata('m2')
+    # - Strip out all but the parent scheme relation
+    orig_rels = record.get('relatedEntities')
+    rels = list()
+    while orig_rels:
+        rel = orig_rels.pop(0)
+        if rel.get('role') == 'parent scheme':
+            # - Strip out all but the (reciprocal) child scheme relation
+            rel_orig_rels = rel.get('data', dict()).get('relatedEntities')
+            rel_rels = list()
+            while rel_orig_rels:
+                rel_rel = rel_orig_rels.pop(0)
+                if rel_rel.get('role') == 'child scheme':
+                    rel_rels.append(rel_rel)
+            rel['data']['relatedEntities'] = rel_rels
+            rels.append(rel)
+    record['relatedEntities'] = rels
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/m',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    # assert response.status_code == 200
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'meta': {'conformance': 'valid'},
+        'data': record
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
 
-    # Test not removing relation (main)
-    pass
+    # Test update, not removing relation (main)
+    record_no_rel = record.copy()
+    del record_no_rel['relatedEntities']
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.put(
+        '/api2/m2',
+        headers={"Authorization": credentials},
+        json=record_no_rel,
+        follow_redirects=True)
+    assert response.status_code == 200
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'meta': {'conformance': 'valid'},
+        'data': record
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
 
     # Test version ID validator:
     pass
 
     # Test keyword validator:
-    pass
-
-    # Test EmailOrURL (URL) validator:
     pass
 
     # Test RequiredIf validator:

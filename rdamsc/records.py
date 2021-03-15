@@ -502,35 +502,45 @@ class Record(Document):
         return self.get_slug()
 
     def _do_datatypes(self, value: List[str]):
+        '''API validator for data types.'''
+        # TODO
         result = {'errors': list(), 'value': list()}
         for v in value:
             result['value'].append(v)
         return result
 
     def _do_date(self, value: str):
+        '''API validator for dates.'''
+        # TODO
         result = {'errors': list(), 'value': ''}
         result['value'] = value
         return result
 
     def _do_html(self, value: str):
+        '''API validator for HTML text.'''
         result = {'errors': list(), 'value': ''}
         value = re.sub(r'\s+', r' ', value).strip()
         result['value'] = strip_tags(value)
         return result
 
     def _do_id_schemes(self, value: List[str]):
+        '''API validator for ID schemes.'''
+        # TODO
         result = {'errors': list(), 'value': list()}
         for v in value:
             result['value'].append(v)
         return result
 
     def _do_identifiers(self, value: List[Mapping[str, str]]):
+        '''API validator for identifiers.'''
+        # TODO
         result = {'errors': list(), 'value': list()}
         for v in value:
             result['value'].append(v)
         return result
 
     def _do_locations(self, value: List[Mapping[str, str]]):
+        '''API validator for locations.'''
         result = {'errors': list(), 'value': list()}
         valid_types = [v[0] for v in Location.get_choices(self.__class__)
                        if v[0]]
@@ -565,6 +575,7 @@ class Record(Document):
         return result
 
     def _do_period(self, value: Mapping[str, str]):
+        '''API validator for time periods (start/end dates).'''
         result = {'errors': list(), 'value': dict()}
         for key in ['start', 'end']:
             if key in value:
@@ -647,24 +658,30 @@ class Record(Document):
         return result
 
     def _do_text(self, value: str):
+        '''API validator for plain text.'''
         result = {'errors': list(), 'value': ''}
         value = re.sub(r'\s+', r' ', value).strip()
         result['value'] = value
         return result
 
     def _do_types(self, value: List[str]):
+        '''API validator for entity types.'''
+        # TODO
         result = {'errors': list(), 'value': list()}
         for v in value:
             result['value'].append(v)
-            return result
+        return result
 
     def _do_thesaurus(self, value: List[str]):
+        '''API validator for subject thesaurus terms.'''
+        # TODO
         result = {'errors': list(), 'value': list()}
         for v in value:
             result['value'].append(v)
         return result
 
     def _do_url(self, value: str):
+        '''API validator for URLs and mailto: email addresses.'''
         result = {'errors': list(), 'value': ''}
         if not value:
             return result
@@ -697,6 +714,7 @@ class Record(Document):
         return result
 
     def _do_versionid(self, value: str):
+        '''API validator for version numbers/identifiers.'''
         result = self._do_text(value)
         length = len(result['value'])
         if length > 20:
