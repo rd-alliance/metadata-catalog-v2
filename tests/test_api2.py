@@ -664,18 +664,19 @@ def test_main_write(client, auth_api, app, data_db):
     ideal = json.dumps({
         'apiVersion': '2.0.0',
         'error': {
-            'message': "Missing value for 'url'.",
+            'message': "Missing field: url.",
             'errors': [{
-                'message': "Missing value for 'url'.",
+                'message': "Missing field: url.",
                 'location': '$.locations[2]'
             }, {
+                # Depends on starter pack of terms
                 'message': "Value must include protocol: http, https, mailto.",
                 'location': '$.locations[3].url'
             }, {
                 'message': "Invalid URL: http://not-a-url.",
                 'location': '$.locations[4].url'
             }, {
-                'message': "Missing value for 'type'.",
+                'message': "Missing field: type.",
                 'location': '$.locations[5]'
             }, {
                 'message': "Invalid type: not-a-type."
@@ -700,6 +701,55 @@ def test_main_write(client, auth_api, app, data_db):
         'apiVersion': '2.0.0',
         'meta': {'conformance': 'useful'},
         'data': record
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
+
+    # Test identifier validator:
+    record = data_db.get_apidata('m2')
+    del record['relatedEntities']
+    record['identifiers'] = [
+        # no id
+        {'scheme': 'DOI'},
+        # malformed DOI
+        {'id': 'not-a-doi', 'scheme': 'DOI'},
+        # malformed Handle
+        {'id': 'not-a-handle', 'scheme': 'Handle'},
+        # TODO: validation for other scheme types
+        # no scheme
+        {'id': '10.1234/m2'},
+        # bad scheme
+        {'id': '10.1234/m2', 'scheme': 'not-a-scheme'},
+    ]
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/m',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 400
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'error': {
+            'message': "Missing field: id.",
+            'errors': [{
+                'message': "Missing field: id.",
+                'location': '$.identifiers[0]'
+            }, {
+                'message': "Malformed DOI.",
+                'location': '$.identifiers[1].id'
+            }, {
+                'message': "Malformed Handle.",
+                'location': '$.identifiers[2].id'
+            }, {
+                'message': "Missing field: scheme.",
+                'location': '$.identifiers[3]'
+            }, {
+                # Depends on starter pack of terms
+                'message': "Invalid scheme: not-a-scheme. "
+                           "Valid schemes: DOI, Handle.",
+                'location': '$.identifiers[4].scheme'
+            }]}
     }, sort_keys=True)
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert ideal == actual
@@ -729,18 +779,18 @@ def test_main_write(client, auth_api, app, data_db):
     ideal = json.dumps({
         'apiVersion': '2.0.0',
         'error': {
-            'message': "Missing value for 'role'.",
+            'message': "Missing field: role.",
             'errors': [{
-                'message': "Missing value for 'role'.",
+                'message': "Missing field: role.",
                 'location': '$.relatedEntities[0]'
             }, {
-                'message': "Invalid role: originator."
-                " Valid roles: parent scheme, child scheme, input to mapping,"
-                " output to mapping, maintainer, funder, user, tool,"
-                " endorsement.",
+                'message': "Invalid role: originator. "
+                           "Valid roles: parent scheme, child scheme, "
+                           "input to mapping, output to mapping, maintainer, "
+                           "funder, user, tool, endorsement.",
                 'location': '$.relatedEntities[1].role'
             }, {
-                'message': "Missing value for 'id'.",
+                'message': "Missing field: id.",
                 'location': '$.relatedEntities[2]'
             }, {
                 'message': "Not a valid MSC ID: 10.1234/56.",
@@ -749,8 +799,8 @@ def test_main_write(client, auth_api, app, data_db):
                 'message': "No such record: msc:m3.",
                 'location': '$.relatedEntities[4].id'
             }, {
-                'message': "The record msc:g1 cannot take the role of parent"
-                " scheme.",
+                'message': "The record msc:g1 cannot take the role of parent "
+                           "scheme.",
                 'location': '$.relatedEntities[5]'
             }]}
     }, sort_keys=True)
@@ -781,7 +831,9 @@ def test_main_write(client, auth_api, app, data_db):
         headers={"Authorization": credentials},
         json=record,
         follow_redirects=True)
-    # assert response.status_code == 200
+    assert response.status_code == 200
+    # TODO: Currently evaluates to valid: need to build in more complex testing
+    # to allow for information that can be held at version level instead.
     ideal = json.dumps({
         'apiVersion': '2.0.0',
         'meta': {'conformance': 'valid'},

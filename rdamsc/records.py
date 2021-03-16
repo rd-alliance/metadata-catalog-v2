@@ -520,23 +520,76 @@ class Record(Document):
         '''API validator for HTML text.'''
         result = {'errors': list(), 'value': ''}
         value = re.sub(r'\s+', r' ', value).strip()
-        result['value'] = strip_tags(value)
+
+        # This limit should only be hit by malicious requests:
+        result['value'] = strip_tags(value)[:131072]
         return result
 
-    def _do_id_schemes(self, value: List[str]):
-        '''API validator for ID schemes.'''
-        # TODO
-        result = {'errors': list(), 'value': list()}
-        for v in value:
-            result['value'].append(v)
+    def _do_id_doi(self, value: str):
+        '''API validator for DOI ID scheme.'''
+        result = {'errors': list(), 'value': ''}
+        m = re.match(r'^(?:https?://(?:dx\.)?doi\.org/)?'
+                     r'(?P<doi>10\.\d+/.+)$', value)
+        if m:
+            result['value'] = m.group('doi')
+        else:
+            result['errors'].append({'message': "Malformed DOI."})
+        return result
+
+    def _do_id_handle(self, value: str):
+        '''API validator for DOI ID scheme.'''
+        result = {'errors': list(), 'value': ''}
+        m = re.match(r'^(?:https?://hdl.handle.net/)?'
+                     r'(?P<hdl>\d+\.\d+/.+)$', value)
+        if m:
+            result['value'] = m.group('hdl')
+        else:
+            result['errors'].append({'message': "Malformed Handle."})
         return result
 
     def _do_identifiers(self, value: List[Mapping[str, str]]):
         '''API validator for identifiers.'''
-        # TODO
         result = {'errors': list(), 'value': list()}
-        for v in value:
-            result['value'].append(v)
+        valid_schemes = [v[0] for v in IDScheme.get_choices(self.__class__)
+                         if v[0]]
+        for i, v in enumerate(value):
+            clean_value = dict()
+
+            # Process ID string:
+            id = v.get('id')
+            if id is None:
+                result['errors'].append({
+                    'message': "Missing field: id.",
+                    'location': f"[{i}]"})
+            else:
+                # Replace this if _do_text starts returning errors:
+                clean_value['id'] = self._do_text(id).get('value', '')
+
+            # Validate scheme:
+            scheme = v.get('scheme')
+            if scheme is None:
+                result['errors'].append({
+                    'message': "Missing field: scheme.",
+                    'location': f"[{i}]"})
+            elif scheme not in valid_schemes:
+                result['errors'].append({
+                    'message': f"Invalid scheme: {scheme}."
+                    f" Valid schemes: {', '.join(valid_schemes)}.",
+                    'location': f"[{i}].scheme"})
+            else:
+                clean_value['scheme'] = scheme
+
+                # Scheme-based validation:
+                subvalidator = f"_do_id_{scheme.lower()}"
+                if clean_value.get('id') and hasattr(self, subvalidator):
+                    validated = getattr(self, subvalidator)(clean_value['id'])
+                    clean_value['id'] = validated.get('value')
+                    for error in validated['errors']:
+                        result['errors'].append({
+                            'message': error.get('message', ''),
+                            'location': f"[{i}].id"})
+
+            result['value'].append(clean_value)
         return result
 
     def _do_locations(self, value: List[Mapping[str, str]]):
@@ -550,7 +603,7 @@ class Record(Document):
             url = v.get('url')
             if url is None:
                 result['errors'].append({
-                    'message': "Missing value for 'url'.",
+                    'message': "Missing field: url.",
                     'location': f"[{i}]"})
             else:
                 validated = self._do_url(url)
@@ -563,7 +616,7 @@ class Record(Document):
             type = v.get('type')
             if type is None:
                 result['errors'].append({
-                    'message': "Missing value for 'type'.",
+                    'message': "Missing field: type.",
                     'location': f"[{i}]"})
             elif type not in valid_types:
                 result['errors'].append({
@@ -586,7 +639,7 @@ class Record(Document):
                         'location': f".{key}{error.get('location', '')}"})
                 result['value'][key] = validated.get('value')
         return result
-    
+
     def _do_relations(self, value: List[Mapping[str, str]]):
         '''Validates that the ID exists and the role is recognised. Removes
         details beyond this and translates the role into temporary helper fields
@@ -605,7 +658,7 @@ class Record(Document):
             role = v.get('role')
             if role is None:
                 result['errors'].append({
-                    'message': "Missing value for 'role'.",
+                    'message': "Missing field: role.",
                     'location': f"[{i}]"})
                 has_error = True
             elif role not in self.rolemap.keys():
@@ -621,7 +674,7 @@ class Record(Document):
             mscid = v.get('id')
             if mscid is None:
                 result['errors'].append({
-                    'message': "Missing value for 'id'.",
+                    'message': "Missing field: id.",
                     'location': f"[{i}]"})
                 has_error = True
             else:
@@ -661,7 +714,9 @@ class Record(Document):
         '''API validator for plain text.'''
         result = {'errors': list(), 'value': ''}
         value = re.sub(r'\s+', r' ', value).strip()
-        result['value'] = value
+
+        # This limit should only be hit by malicious requests:
+        result['value'] = value[:65536]
         return result
 
     def _do_types(self, value: List[str]):
@@ -1099,7 +1154,7 @@ class Record(Document):
             if k not in input_data:
                 if d.get('required'):
                     errors.append({
-                        'message': f"Missing value for '{k}'.",
+                        'message': f"Missing field: {k}.",
                         'location': '',
                     })
                 continue
