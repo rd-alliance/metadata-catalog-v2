@@ -503,17 +503,28 @@ class Record(Document):
 
     def _do_datatypes(self, value: List[str]):
         '''API validator for data types.'''
-        # TODO
         result = {'errors': list(), 'value': list()}
-        for v in value:
-            result['value'].append(v)
+        valid_types = [v[0] for v in Datatype.get_choices()
+                       if v[0]]
+        for i, v in enumerate(value):
+            if v not in valid_types:
+                result['errors'].append({
+                    'message': f"No such datatype record: {v}.",
+                    'location': f"[{i}]"})
+            elif v not in result['value']:
+                result['value'].append(v)
         return result
 
     def _do_date(self, value: str):
-        '''API validator for dates.'''
-        # TODO
+        '''API validator for a date.'''
         result = {'errors': list(), 'value': ''}
-        result['value'] = value
+        wv = W3CDate()
+        if wv.regex.match(value):
+            result['value'] = value
+        else:
+            result['errors'].append({
+                'message': "Date must be in yyyy or yyyy-mm or yyyy-mm-dd "
+                           "format."})
         return result
 
     def _do_html(self, value: str):
@@ -526,7 +537,8 @@ class Record(Document):
         return result
 
     def _do_id_doi(self, value: str):
-        '''API validator for DOI ID scheme.'''
+        '''API validator for DOI ID scheme. Does not check if DOI is registered.
+        '''
         result = {'errors': list(), 'value': ''}
         m = re.match(r'^(?:https?://(?:dx\.)?doi\.org/)?'
                      r'(?P<doi>10\.\d+/.+)$', value)
@@ -537,7 +549,9 @@ class Record(Document):
         return result
 
     def _do_id_handle(self, value: str):
-        '''API validator for DOI ID scheme.'''
+        '''API validator for Handle System ID scheme. Does not check if Handle
+        is registered.
+        '''
         result = {'errors': list(), 'value': ''}
         m = re.match(r'^(?:https?://hdl.handle.net/)?'
                      r'(?P<hdl>\d+\.\d+/.+)$', value)
@@ -545,6 +559,17 @@ class Record(Document):
             result['value'] = m.group('hdl')
         else:
             result['errors'].append({'message': "Malformed Handle."})
+        return result
+
+    def _do_id_ror(self, value: str):
+        '''API validator for ROR ID scheme. Does not verify the check digits.'''
+        result = {'errors': list(), 'value': ''}
+        m = re.match(r'^(?:https?://ror.org/)'
+                     r'(?P<ror>0[0-9a-hjkmnp-z]{6}\d\d)$', value)
+        if m:
+            result['value'] = 'https://ror.org/' + m.group('ror')
+        else:
+            result['errors'].append({'message': "Malformed ROR."})
         return result
 
     def _do_identifiers(self, value: List[Mapping[str, str]]):
@@ -598,6 +623,7 @@ class Record(Document):
         valid_types = [v[0] for v in Location.get_choices(self.__class__)
                        if v[0]]
         for i, v in enumerate(value):
+            clean_value = dict()
 
             # Validate URL
             url = v.get('url')
@@ -611,18 +637,21 @@ class Record(Document):
                     result['errors'].append({
                         'message': error.get('message', ''),
                         'location': f"[{i}].url"})
+                clean_value['url'] = validated.get('value')
 
             # Validate type
-            type = v.get('type')
-            if type is None:
+            loc_type = v.get('type')
+            if loc_type is None:
                 result['errors'].append({
                     'message': "Missing field: type.",
                     'location': f"[{i}]"})
-            elif type not in valid_types:
+            elif loc_type not in valid_types:
                 result['errors'].append({
-                    'message': f"Invalid type: {type}."
+                    'message': f"Invalid type: {loc_type}."
                     f" Valid types: {', '.join(valid_types)}.",
                     'location': f"[{i}].type"})
+            else:
+                clean_value['type'] = loc_type
 
             result['value'].append(v)
         return result
@@ -638,6 +667,10 @@ class Record(Document):
                         'message': error.get('message', ''),
                         'location': f".{key}{error.get('location', '')}"})
                 result['value'][key] = validated.get('value')
+        if not result['errors'] and (value.get('end', '9999-99-99')
+                                     < value.get('start', '0000-00-00')):
+            result['errors'].append({
+                'message': "End date is before start date."})
         return result
 
     def _do_relations(self, value: List[Mapping[str, str]]):
@@ -721,18 +754,31 @@ class Record(Document):
 
     def _do_types(self, value: List[str]):
         '''API validator for entity types.'''
-        # TODO
         result = {'errors': list(), 'value': list()}
-        for v in value:
-            result['value'].append(v)
+        valid_types = [v[0] for v in EntityType.get_choices(self.__class__)
+                       if v[0]]
+        for i, v in enumerate(value):
+            if v not in valid_types:
+                result['errors'].append({
+                    'message': f"Invalid type: {v}. "
+                               f"Valid types: {', '.join(valid_types)}.",
+                    'location': f"[{i}]"})
+            else:
+                result['value'].append(v)
         return result
 
     def _do_thesaurus(self, value: List[str]):
         '''API validator for subject thesaurus terms.'''
-        # TODO
         result = {'errors': list(), 'value': list()}
-        for v in value:
-            result['value'].append(v)
+        thes = get_thesaurus()
+        valid_terms = thes.get_uris()
+        for i, v in enumerate(value):
+            if v not in valid_terms:
+                result['errors'].append({
+                    'message': f"Invalid term URI: {v}.",
+                    'location': f"[{i}]"})
+            elif v not in result['value']:
+                result['value'].append(v)
         return result
 
     def _do_url(self, value: str):
@@ -746,9 +792,7 @@ class Record(Document):
             result['errors'].append({
                 'message': "Value must include protocol:"
                            " http, https, mailto."})
-            result['value'] = value
-            return result
-        if value.startswith('mailto:'):
+        elif value.startswith('mailto:'):
             if not uv.email_regex.match(value):
                 result['errors'].append({
                     'message': "Invalid email address."})
@@ -758,7 +802,6 @@ class Record(Document):
                     result['errors'].append({
                         'message': "Value must be 254 characters or fewer"
                                    f" (actual length: {length})."})
-                    value = value[:254]
         else:
             match = uv.url_regex.match(value)
             if not (match and uv.validate_hostname(match.group('host'))):
@@ -774,8 +817,8 @@ class Record(Document):
         length = len(result['value'])
         if length > 20:
             result['errors'].append({
-                'message': "Value must be 20 characters or fewer"
-                           f" (actual length: {length})."})
+                'message': "Value must be 20 characters or fewer "
+                           f"(actual length: {length})."})
         return result
 
     def _save(self, value: Mapping):
@@ -2020,10 +2063,14 @@ class RequiredIf(object):
 
 
 class W3CDate(validators.Regexp):
-    """Validates a W3C-formatted year, month or date.
+    """Validates a W3C-formatted year, month or date syntactically, but does
+    not eliminate semantically invalid dates such as `0000-02-31`.
     """
     def __init__(self, message=None):
-        pattern = r'^\d{4}(-\d{2}){0,2}$'
+        pattern = (
+            r'^(?P<year>\d{4})'
+            r'(?P<month>-0[1-9]|-1[0-2])?'
+            r'(?(month)-(?P<day>0[1-9]|[1-2][0-9]|3[0-1])|)$')
         super(W3CDate, self).__init__(pattern, message=message)
 
     def __call__(self, form, field):

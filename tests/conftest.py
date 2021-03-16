@@ -218,7 +218,10 @@ class DataDBActions(object):
             "identifiers": [
                 {
                     "id": "10.1234/g1",
-                    "scheme": "DOI"}]}
+                    "scheme": "DOI"},
+                {
+                    "id": "https://ror.org/002h8g185",
+                    "scheme": "ROR"}]}
         self.e1 = {
             "title": "Test endorsement 1",
             "slug": "test-endorsement-1",
@@ -229,8 +232,8 @@ class DataDBActions(object):
             "publication": "<i>IEEE MultiMedia</i>, 13(2), 84-88",
             "issued": "2017-12-31",
             "valid": {
-                    "start": "2018-01-01",
-                    "end": "2019-12-31"},
+                "start": "2018-01-01",
+                "end": "2019-12-31"},
             "locations": [
                 {
                     "url": "http://journal.org/e1",

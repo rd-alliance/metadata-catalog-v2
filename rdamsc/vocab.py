@@ -358,6 +358,9 @@ class Thesaurus(object):
             return entry.get('uri')
         return None
 
+    def get_uris(self):
+        return [kw['uri'] for kw in self.entries]
+
     def get_valid(self):
         values = list()
         for kw in self.entries:

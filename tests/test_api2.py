@@ -621,6 +621,9 @@ def test_auth_api2(client, app, data_db, user_db):
 
 def test_main_write(client, auth_api, app, data_db):
 
+    # Install terms
+    data_db.write_terms()
+
     # Test adding new scheme successfully
     record = data_db.get_apidata('m1')
     del record['relatedEntities']
@@ -639,7 +642,7 @@ def test_main_write(client, auth_api, app, data_db):
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert ideal == actual
 
-    # Test location, URL validator:
+    # Test location/URL validator:
     record = data_db.get_apidata('g1')
     del record['relatedEntities']
     record['locations'].extend([
@@ -687,6 +690,55 @@ def test_main_write(client, auth_api, app, data_db):
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert ideal == actual
 
+    # Test identifier validator:
+    record = data_db.get_apidata('g1')
+    del record['relatedEntities']
+    record['identifiers'] = [
+        # no id
+        {'scheme': 'DOI'},
+        # malformed DOI
+        {'id': 'not-a-doi', 'scheme': 'DOI'},
+        # malformed Handle
+        {'id': 'not-a-ror', 'scheme': 'ROR'},
+        # TODO: validation for other scheme types
+        # no scheme
+        {'id': '10.1234/g1'},
+        # bad scheme
+        {'id': '10.1234/g1', 'scheme': 'not-a-scheme'},
+    ]
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/g',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 400
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'error': {
+            'message': "Missing field: id.",
+            'errors': [{
+                'message': "Missing field: id.",
+                'location': '$.identifiers[0]'
+            }, {
+                'message': "Malformed DOI.",
+                'location': '$.identifiers[1].id'
+            }, {
+                'message': "Malformed ROR.",
+                'location': '$.identifiers[2].id'
+            }, {
+                'message': "Missing field: scheme.",
+                'location': '$.identifiers[3]'
+            }, {
+                # Depends on starter pack of terms
+                'message': "Invalid scheme: not-a-scheme. "
+                           "Valid schemes: DOI, ROR.",
+                'location': '$.identifiers[4].scheme'
+            }]}
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
+
     # Test adding new group successfully:
     record = data_db.get_apidata('g1')
     del record['relatedEntities']
@@ -705,21 +757,62 @@ def test_main_write(client, auth_api, app, data_db):
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert ideal == actual
 
-    # Test identifier validator:
+    # Test keywords validator:
+    record = data_db.get_apidata('m2')
+    del record['relatedEntities']
+    bad_keyword = 'http://rdamsc.bath.ac.uk/thesaurus/not-a-term'
+    record['keywords'] = [bad_keyword]
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/m',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 400
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'error': {
+            'message': f"Invalid term URI: {bad_keyword}.",
+            'errors': [{
+                'message': f"Invalid term URI: {bad_keyword}.",
+                'location': '$.keywords[0]'
+            }]}
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
+
+    # Test datatype validator:
+    record = data_db.get_apidata('m2')
+    del record['relatedEntities']
+    bad_keyword = 'msc:not-a-datatype1'
+    record['dataTypes'] = [bad_keyword]
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/m',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 400
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'error': {
+            'message': f"No such datatype record: {bad_keyword}.",
+            'errors': [{
+                'message': f"No such datatype record: {bad_keyword}.",
+                'location': '$.dataTypes[0]'
+            }]}
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
+
+    # Test other identifier scheme validators:
     record = data_db.get_apidata('m2')
     del record['relatedEntities']
     record['identifiers'] = [
-        # no id
-        {'scheme': 'DOI'},
-        # malformed DOI
-        {'id': 'not-a-doi', 'scheme': 'DOI'},
         # malformed Handle
         {'id': 'not-a-handle', 'scheme': 'Handle'},
-        # TODO: validation for other scheme types
-        # no scheme
-        {'id': '10.1234/m2'},
         # bad scheme
-        {'id': '10.1234/m2', 'scheme': 'not-a-scheme'},
+        {'id': '10.1234/m2', 'scheme': 'ROR'},
     ]
     credentials = f"Bearer {auth_api.get_token()}"
     response = client.post(
@@ -731,24 +824,72 @@ def test_main_write(client, auth_api, app, data_db):
     ideal = json.dumps({
         'apiVersion': '2.0.0',
         'error': {
-            'message': "Missing field: id.",
+            'message': "Malformed Handle.",
             'errors': [{
-                'message': "Missing field: id.",
-                'location': '$.identifiers[0]'
-            }, {
-                'message': "Malformed DOI.",
-                'location': '$.identifiers[1].id'
-            }, {
                 'message': "Malformed Handle.",
-                'location': '$.identifiers[2].id'
-            }, {
-                'message': "Missing field: scheme.",
-                'location': '$.identifiers[3]'
+                'location': '$.identifiers[0].id'
             }, {
                 # Depends on starter pack of terms
-                'message': "Invalid scheme: not-a-scheme. "
+                'message': "Invalid scheme: ROR. "
                            "Valid schemes: DOI, Handle.",
-                'location': '$.identifiers[4].scheme'
+                'location': '$.identifiers[1].scheme'
+            }]}
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
+
+    # Test version ID validator:
+    record = data_db.get_apidata('m2')
+    del record['relatedEntities']
+    record['versions'][0]['number'] = '1' * 21
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/m',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 400
+    ideal_error = "Value must be 20 characters or fewer (actual length: 21)."
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'error': {
+            'message': ideal_error,
+            'errors': [{
+                'message': ideal_error,
+                'location': '$.versions[0].number'
+            }]}
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
+
+    # Test period/date validators:
+    record = data_db.get_apidata('m2')
+    del record['relatedEntities']
+    record['versions'][0]['valid']['start'] = '1 January 2020'
+    record['versions'][0]['valid']['end'] = '1 January 2022'
+    record['versions'][1]['valid']['start'] = '2022-01-01'
+    record['versions'][1]['valid']['end'] = '2020-03-01'
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/m',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 400
+    ideal_error = "Date must be in yyyy or yyyy-mm or yyyy-mm-dd format."
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'error': {
+            'message': ideal_error,
+            'errors': [{
+                'message': ideal_error,
+                'location': '$.versions[0].valid.start'
+            }, {
+                'message': ideal_error,
+                'location': '$.versions[0].valid.end'
+            }, {
+                'message': "End date is before start date.",
+                'location': '$.versions[1].valid'
             }]}
     }, sort_keys=True)
     actual = json.dumps(response.get_json(), sort_keys=True)
@@ -807,7 +948,7 @@ def test_main_write(client, auth_api, app, data_db):
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert ideal == actual
 
-    # Test adding relation (main)
+    # Test adding relation when adding new record
     record = data_db.get_apidata('m2')
     # - Strip out all but the parent scheme relation
     orig_rels = record.get('relatedEntities')
@@ -842,7 +983,7 @@ def test_main_write(client, auth_api, app, data_db):
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert ideal == actual
 
-    # Test update, not removing relation (main)
+    # Test update, not removing missing relation, HTML validator
     record_no_rel = record.copy()
     del record_no_rel['relatedEntities']
     credentials = f"Bearer {auth_api.get_token()}"
