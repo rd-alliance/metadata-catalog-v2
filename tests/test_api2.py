@@ -642,9 +642,10 @@ def test_main_write(client, auth_api, app, data_db):
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert ideal == actual
 
-    # Test location/URL validator:
+    # Test location/URL/email validator:
     record = data_db.get_apidata('g1')
     del record['relatedEntities']
+    overlong_email = "mailto:" + ("x" * 63) + "@" + ("foobar." * 26) + "org"
     record['locations'].extend([
         # no url
         {"type": "website"},
@@ -652,6 +653,10 @@ def test_main_write(client, auth_api, app, data_db):
         {"url": "not-a-url", "type": "website"},
         # bad url (other problem)
         {"url": "http://not-a-url", "type": "website"},
+        # bad email (bad pattern)
+        {"url": "mailto:not-@n-email", "type": "email"},
+        # bad email (too long)
+        {"url": overlong_email, "type": "email"},
         # no type
         {"url": "http://website.org/g1"},
         # bad type
@@ -679,12 +684,19 @@ def test_main_write(client, auth_api, app, data_db):
                 'message': "Invalid URL: http://not-a-url.",
                 'location': '$.locations[4].url'
             }, {
+                'message': "Invalid email address.",
+                'location': '$.locations[5].url'
+            }, {
+                'message': "Value must be 254 characters or fewer (actual "
+                           f"length: {len(overlong_email)}).",
+                'location': '$.locations[6].url'
+            }, {
                 'message': "Missing field: type.",
-                'location': '$.locations[5]'
+                'location': '$.locations[7]'
             }, {
                 'message': "Invalid type: not-a-type."
                 " Valid types: website, email.",
-                'location': '$.locations[6].type'
+                'location': '$.locations[8].type'
             }]}
     }, sort_keys=True)
     actual = json.dumps(response.get_json(), sort_keys=True)
@@ -1001,20 +1013,76 @@ def test_main_write(client, auth_api, app, data_db):
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert ideal == actual
 
-    # Test version ID validator:
-    pass
+    # Test adding new tool successfully, filtering out unused keys
+    record = data_db.get_apidata('t1')
+    del record['relatedEntities']
+    record['extra'] = 'Not included.'
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/t',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 200
+    del record['extra']
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'meta': {'conformance': 'useful'},
+        'data': record
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
 
-    # Test keyword validator:
-    pass
+    record = data_db.get_apidata('t2')
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/t',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 200
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'meta': {'conformance': 'valid'},
+        'data': record
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
 
-    # Test RequiredIf validator:
-    pass
+    # Test adding new mapping successfully
+    record = data_db.get_apidata('c1')
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/c',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 200
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'meta': {'conformance': 'valid'},
+        'data': record
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
+
+    # Test adding new endorsement successfully
+    record = data_db.get_apidata('e1')
+    del record['relatedEntities']
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/e',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 200
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'meta': {'conformance': 'valid'},
+        'data': record
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
 
     # Test redirection for bad numbers:
-    pass
-
-    # Test W3CDate validator:
-    pass
-
-    # Test EmailOrURL (email) validator:
     pass

@@ -438,10 +438,16 @@ class Record(Document):
         '''Tests the conformity level of the record as it appears in the
         database. It does not test for invalid syntax or empty values, since
         these problems should have been eliminated when the record was saved.
+
+        Special schema keys: `optional` items are not needed for a record to
+        be considered complete; `or use` and `or use role` indicate that a field
+        is ignored for conformance level calculations if the indicated field
+        or a related record with the given role is present, respectively.
         '''
         if not hasattr(self, 'schema'):
             raise NotImplementedError
 
+        # Create portable version of record:
         port = dict(self)
         related_entities = self.get_related_entities()
         rel_roles = list()
@@ -452,6 +458,10 @@ class Record(Document):
         is_complete = True
         is_useful = True
         for k, d in self.schema.items():
+            co_field = d.get('or use')
+            if co_field and co_field in port:
+                continue
+
             co_role = d.get('or use role')
             if co_role and co_role in rel_roles:
                 continue
@@ -470,7 +480,7 @@ class Record(Document):
                         is_useful = False
                         break
             else:
-                if k not in port:
+                if k not in port and not d.get('optional', False):
                     is_complete = False
 
         if is_complete:
@@ -1841,9 +1851,11 @@ class Endorsement(Record):
     series = 'endorsement'
     schema = {
         'title': {
-            'type': 'text'},
+            'type': 'text',
+            'or use role': 'originator'},
         'description': {
-            'type': 'html'},
+            'type': 'html',
+            'optional': True},
         'creators': {
             'schema': {
                 'fullName': {
@@ -1851,14 +1863,17 @@ class Endorsement(Record):
                 'givenName': {
                     'type': 'text'},
                 'familyName': {
-                    'type': 'text'}}},
+                    'type': 'text'}},
+            'or use role': 'originator'},
         'publication': {
             'type': 'text',
             'or use role': 'originator'},
         'issued': {
-            'type': 'date'},
+            'type': 'date',
+            'or use': 'valid'},
         'valid': {
-            'type': 'period'},
+            'type': 'period',
+            'or use': 'issued'},
         'locations': {
             'type': 'locations',
             'useful': True},
