@@ -617,6 +617,10 @@ class Record(Document):
             result['value'].append(clean_value)
         return result
 
+    def _do_vocabid(self, value: str):
+        '''API validator for vocabulary term ID.'''
+        return self._do_short_text(value, 64)
+
     def _do_locations(self, value: List[Mapping[str, str]]):
         '''API validator for locations.'''
         result = {'errors': list(), 'value': list()}
@@ -685,7 +689,7 @@ class Record(Document):
         for i, v in enumerate(value):
             clean_relation = dict()
             has_error = False
-            accepts = list()
+            accepts = None
 
             # Validate role
             role = v.get('role')
@@ -725,7 +729,7 @@ class Record(Document):
                         'message': f"No such record: {mscid}.",
                         'location': f"[{i}].id"})
                     has_error = True
-                elif accepts and rel_record.table not in accepts:
+                elif accepts and rel_record.table != accepts:
                     result['errors'].append({
                         'message': f"The record {mscid} cannot take the role of"
                         f" {role}.",
@@ -741,6 +745,32 @@ class Record(Document):
                 'direction': self.rolemap[role]['direction'],
             }
             result['value'].append(clean_relation)
+        return result
+
+    def _do_series(self, value: List[str]):
+        '''API validator limiting values to main record series.'''
+        result = {'errors': list(), 'value': list()}
+        valid_series = [
+            Scheme.series, Tool.series, Crosswalk.series, Endorsement.series,
+            Group.series]
+        for i, v in enumerate(value):
+            if v not in valid_series:
+                result['errors'].append({
+                    'message': f"Invalid series: {v}. "
+                               f"Valid series: {', '.join(valid_series)}.",
+                    'location': f"[{i}]"})
+            else:
+                result['value'].append(v)
+        return result
+
+    def _do_short_text(self, value: str, maxlength: int):
+        '''API validator for short passages of plain text.'''
+        result = self._do_text(value)
+        length = len(result['value'])
+        if length > maxlength:
+            result['errors'].append({
+                'message': f"Value must be {maxlength} characters or fewer "
+                           f"(actual length: {length})."})
         return result
 
     def _do_text(self, value: str):
@@ -813,13 +843,7 @@ class Record(Document):
 
     def _do_versionid(self, value: str):
         '''API validator for version numbers/identifiers.'''
-        result = self._do_text(value)
-        length = len(result['value'])
-        if length > 20:
-            result['errors'].append({
-                'message': "Value must be 20 characters or fewer "
-                           f"(actual length: {length})."})
-        return result
+        return self._do_short_text(value, 32)
 
     def _save(self, value: Mapping):
         '''Saves record to database. Returns error message if a problem
@@ -1284,39 +1308,39 @@ class Scheme(Record):
         'parent scheme': {
             'predicate': 'parent schemes',
             'direction': Relation.FORWARD,
-            'accepts': ['m']},
+            'accepts': 'm'},
         'child scheme': {
             'predicate': 'parent schemes',
             'direction': Relation.INVERSE,
-            'accepts': ['m']},
+            'accepts': 'm'},
         'input to mapping': {
             'predicate': 'input schemes',
             'direction': Relation.INVERSE,
-            'accepts': ['c']},
+            'accepts': 'c'},
         'output to mapping': {
             'predicate': 'output schemes',
             'direction': Relation.INVERSE,
-            'accepts': ['c']},
+            'accepts': 'c'},
         'maintainer': {
             'predicate': 'maintainers',
             'direction': Relation.FORWARD,
-            'accepts': ['g']},
+            'accepts': 'g'},
         'funder': {
             'predicate': 'funders',
             'direction': Relation.FORWARD,
-            'accepts': ['g']},
+            'accepts': 'g'},
         'user': {
             'predicate': 'users',
             'direction': Relation.FORWARD,
-            'accepts': ['g']},
+            'accepts': 'g'},
         'tool': {
             'predicate': 'supported scheme',
             'direction': Relation.INVERSE,
-            'accepts': ['t']},
+            'accepts': 't'},
         'endorsement': {
             'predicate': 'endorsed scheme',
             'direction': Relation.INVERSE,
-            'accepts': ['e']},
+            'accepts': 'e'},
     }
 
     @classmethod
@@ -1430,6 +1454,58 @@ class Tool(Record):
     '''Object representing a tool.'''
     table = 't'
     series = 'tool'
+    schema = {
+        'title': {
+            'type': 'text',
+            'useful': True},
+        'description': {
+            'type': 'html',
+            'useful': True},
+        'types': {
+            'type': 'types'},
+        'locations': {
+            'type': 'locations',
+            'useful': True},
+        'identifiers': {
+            'type': 'identifiers',
+            'useful': True},
+        'creators': {
+            'schema': {
+                'fullName': {
+                    'type': 'text'},
+                'givenName': {
+                    'type': 'text'},
+                'familyName': {
+                    'type': 'text'}}},
+        'relatedEntities': {
+            'type': 'relations'},
+        'versions': {
+            'schema': {
+                'number': {
+                    'type': 'versionid'},
+                'title': {
+                    'type': 'text'},
+                'note': {
+                    'type': 'html'},
+                'issued': {
+                    'type': 'date'},
+                'locations': {
+                    'type': 'locations'},
+                'identifiers': {
+                    'type': 'identifiers'}}}}
+    rolemap = {
+        'supported scheme': {
+            'predicate': 'supported schemes',
+            'direction': Relation.FORWARD,
+            'accepts': 'm'},
+        'maintainer': {
+            'predicate': 'maintainers',
+            'direction': Relation.FORWARD,
+            'accepts': 'g'},
+        'funder': {
+            'predicate': 'funders',
+            'direction': Relation.FORWARD,
+            'accepts': 'g'}}
 
     def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
@@ -1501,6 +1577,57 @@ class Crosswalk(Record):
     '''Object representing a mapping.'''
     table = 'c'
     series = 'mapping'
+    schema = {
+        'name': {
+            'type': 'text'},
+        'description': {
+            'type': 'html'},
+        'locations': {
+            'type': 'locations',
+            'useful': True},
+        'identifiers': {
+            'type': 'identifiers',
+            'useful': True},
+        'creators': {
+            'schema': {
+                'fullName': {
+                    'type': 'text'},
+                'givenName': {
+                    'type': 'text'},
+                'familyName': {
+                    'type': 'text'}}},
+        'relatedEntities': {
+            'type': 'relations',
+            'useful': ['input scheme', 'output scheme']},
+        'versions': {
+            'schema': {
+                'number': {
+                    'type': 'versionid'},
+                'note': {
+                    'type': 'html'},
+                'issued': {
+                    'type': 'date'},
+                'locations': {
+                    'type': 'locations'},
+                'identifiers': {
+                    'type': 'identifiers'}}}}
+    rolemap = {
+        'input scheme': {
+            'predicate': 'input schemes',
+            'direction': Relation.FORWARD,
+            'accepts': 'm'},
+        'output scheme': {
+            'predicate': 'output schemes',
+            'direction': Relation.FORWARD,
+            'accepts': 'm'},
+        'maintainer': {
+            'predicate': 'maintainers',
+            'direction': Relation.FORWARD,
+            'accepts': 'g'},
+        'funder': {
+            'predicate': 'funders',
+            'direction': Relation.FORWARD,
+            'accepts': 'g'}}
 
     def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
@@ -1618,19 +1745,49 @@ class Group(Record):
             'type': 'text',
             'useful': True},
         'description': {
-            'type': 'html',
-            'useful': True},
+            'type': 'html'},
         'types': {
-            'type': 'types',
-            'useful': True},
+            'type': 'types'},
         'locations': {
-            'type': 'locations',
-            'useful': True},
+            'type': 'locations'},
         'identifiers': {
             'type': 'identifiers',
             'useful': True},
         'relatedEntities': {
             'type': 'relations'}}
+    rolemap = {
+        'maintained scheme': {
+            'predicate': 'maintainers',
+            'direction': Relation.INVERSE,
+            'accepts': 'm'},
+        'maintained tool': {
+            'predicate': 'maintainers',
+            'direction': Relation.INVERSE,
+            'accepts': 't'},
+        'maintained mapping': {
+            'predicate': 'maintainers',
+            'direction': Relation.INVERSE,
+            'accepts': 'c'},
+        'funded scheme': {
+            'predicate': 'funders',
+            'direction': Relation.INVERSE,
+            'accepts': 'm'},
+        'funded tool': {
+            'predicate': 'funders',
+            'direction': Relation.INVERSE,
+            'accepts': 't'},
+        'funded mapping': {
+            'predicate': 'funders',
+            'direction': Relation.INVERSE,
+            'accepts': 'c'},
+        'used scheme': {
+            'predicate': 'users',
+            'direction': Relation.INVERSE,
+            'accepts': 'm'},
+        'endorsement': {
+            'predicate': 'originators',
+            'direction': Relation.INVERSE,
+            'accepts': 'e'}}
 
     @classmethod
     def get_choices(cls):
@@ -1682,6 +1839,44 @@ class Endorsement(Record):
     '''Object representing an endorsement.'''
     table = 'e'
     series = 'endorsement'
+    schema = {
+        'title': {
+            'type': 'text'},
+        'description': {
+            'type': 'html'},
+        'creators': {
+            'schema': {
+                'fullName': {
+                    'type': 'text'},
+                'givenName': {
+                    'type': 'text'},
+                'familyName': {
+                    'type': 'text'}}},
+        'publication': {
+            'type': 'text',
+            'or use role': 'originator'},
+        'issued': {
+            'type': 'date'},
+        'valid': {
+            'type': 'period'},
+        'locations': {
+            'type': 'locations',
+            'useful': True},
+        'identifiers': {
+            'type': 'identifiers',
+            'useful': True},
+        'relatedEntities': {
+            'type': 'relations',
+            'useful': ['endorsed scheme']}}
+    rolemap = {
+        'endorsed scheme': {
+            'predicate': 'endorsed schemes',
+            'direction': Relation.FORWARD,
+            'accepts': 'm'},
+        'originator': {
+            'predicate': 'originators',
+            'direction': Relation.FORWARD,
+            'accepts': 'g'}}
 
     def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
@@ -1720,6 +1915,12 @@ class Datatype(Record):
     '''Wraps items in the dataType table.'''
     table = 'datatype'
     series = 'datatype'
+    schema = {
+        'id': {
+            'type': 'url'},
+        'label': {
+            'type': 'text',
+            'required': True}}
 
     @classmethod
     def get_db(cls):
@@ -1795,6 +1996,16 @@ class Datatype(Record):
 class VocabTerm(Document):
     '''Abstract class with common methods for the helper classes
     for different types of vocabulary terms.'''
+    schema = {
+        'id': {
+            'type': 'vocabid',
+            'required': True},
+        'label': {
+            'type': 'text',
+            'required': True},
+        'applies': {
+            'type': 'series'}}
+
     @classmethod
     def get_db(cls):
         return get_term_db()
@@ -2242,7 +2453,7 @@ class SchemeForm(FlaskForm):
 class SchemeVersionForm(FlaskForm):
     number = StringField(
         'Version number',
-        validators=[validators.Length(max=20)])
+        validators=[validators.Length(max=32)])
     title = StringField('Name of metadata scheme')
     note = TextHTMLField('Note')
     issued = NativeDateField('Date published')
@@ -2285,14 +2496,14 @@ class ToolForm(FlaskForm):
 class ToolVersionForm(FlaskForm):
     number = StringField(
         'Version number',
-        validators=[validators.Length(max=20)])
+        validators=[validators.Length(max=32)])
     title = StringField('Name of tool')
     note = TextHTMLField('Note')
     issued = NativeDateField('Date published')
     locations = FieldList(
         FormField(LocationForm), 'Relevant links', min_entries=1)
     identifiers = FieldList(
-        FormField(IdentifierForm), 'Identifiers for this scheme',
+        FormField(IdentifierForm), 'Identifiers for this tool',
         min_entries=1)
 
 
@@ -2325,13 +2536,13 @@ class CrosswalkForm(FlaskForm):
 class CrosswalkVersionForm(FlaskForm):
     number = StringField(
         'Version number',
-        validators=[validators.Length(max=20)])
+        validators=[validators.Length(max=32)])
     note = TextHTMLField('Note')
     issued = NativeDateField('Date published')
     locations = FieldList(
         FormField(LocationForm), 'Relevant links', min_entries=1)
     identifiers = FieldList(
-        FormField(IdentifierForm), 'Identifiers for this scheme',
+        FormField(IdentifierForm), 'Identifiers for this mapping',
         min_entries=1)
 
 
@@ -2408,7 +2619,8 @@ class DatatypeForm(FlaskForm):
 
 class VocabForm(FlaskForm):
     id = StringField(
-        'Database value')
+        'Database value',
+        validators=[validators.Length(max=64)])
     label = StringField(
         'Displayed value',
         validators=[validators.InputRequired()])

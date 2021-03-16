@@ -841,7 +841,7 @@ def test_main_write(client, auth_api, app, data_db):
     # Test version ID validator:
     record = data_db.get_apidata('m2')
     del record['relatedEntities']
-    record['versions'][0]['number'] = '1' * 21
+    record['versions'][0]['number'] = '1' * 33
     credentials = f"Bearer {auth_api.get_token()}"
     response = client.post(
         '/api2/m',
@@ -849,7 +849,7 @@ def test_main_write(client, auth_api, app, data_db):
         json=record,
         follow_redirects=True)
     assert response.status_code == 400
-    ideal_error = "Value must be 20 characters or fewer (actual length: 21)."
+    ideal_error = "Value must be 32 characters or fewer (actual length: 33)."
     ideal = json.dumps({
         'apiVersion': '2.0.0',
         'error': {
