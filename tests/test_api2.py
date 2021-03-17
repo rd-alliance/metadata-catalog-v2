@@ -621,6 +621,19 @@ def test_auth_api2(client, app, data_db, user_db):
 
 def test_main_write(client, auth_api, app, data_db):
 
+    available_records = set()
+
+    def assert_okay(response):
+        data = response.get_json()
+        if response.status_code != 200:
+            print(f"=====\nErrors:")
+            print(data.get('error', dict()).get('errors'))
+            print("=====")
+        assert response.status_code == 200
+        mscid = data.get('data', dict()).get('mscid')
+        if mscid:
+            available_records.add(mscid)
+
     # Install terms
     data_db.write_terms()
 
@@ -633,7 +646,7 @@ def test_main_write(client, auth_api, app, data_db):
         headers={"Authorization": credentials},
         json=record,
         follow_redirects=True)
-    assert response.status_code == 200
+    assert_okay(response)
     ideal = json.dumps({
         'apiVersion': '2.0.0',
         'meta': {'conformance': 'useful'},
@@ -760,7 +773,7 @@ def test_main_write(client, auth_api, app, data_db):
         headers={"Authorization": credentials},
         json=record,
         follow_redirects=True)
-    assert response.status_code == 200
+    assert_okay(response)
     ideal = json.dumps({
         'apiVersion': '2.0.0',
         'meta': {'conformance': 'useful'},
@@ -984,7 +997,7 @@ def test_main_write(client, auth_api, app, data_db):
         headers={"Authorization": credentials},
         json=record,
         follow_redirects=True)
-    assert response.status_code == 200
+    assert_okay(response)
     # TODO: Currently evaluates to valid: need to build in more complex testing
     # to allow for information that can be held at version level instead.
     ideal = json.dumps({
@@ -1004,7 +1017,7 @@ def test_main_write(client, auth_api, app, data_db):
         headers={"Authorization": credentials},
         json=record_no_rel,
         follow_redirects=True)
-    assert response.status_code == 200
+    assert_okay(response)
     ideal = json.dumps({
         'apiVersion': '2.0.0',
         'meta': {'conformance': 'valid'},
@@ -1023,7 +1036,7 @@ def test_main_write(client, auth_api, app, data_db):
         headers={"Authorization": credentials},
         json=record,
         follow_redirects=True)
-    assert response.status_code == 200
+    assert_okay(response)
     del record['extra']
     ideal = json.dumps({
         'apiVersion': '2.0.0',
@@ -1033,56 +1046,49 @@ def test_main_write(client, auth_api, app, data_db):
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert ideal == actual
 
-    record = data_db.get_apidata('t2')
-    credentials = f"Bearer {auth_api.get_token()}"
-    response = client.post(
-        '/api2/t',
-        headers={"Authorization": credentials},
-        json=record,
-        follow_redirects=True)
-    assert response.status_code == 200
-    ideal = json.dumps({
-        'apiVersion': '2.0.0',
-        'meta': {'conformance': 'valid'},
-        'data': record
-    }, sort_keys=True)
-    actual = json.dumps(response.get_json(), sort_keys=True)
-    assert ideal == actual
+    # Add remaining records:
+    for table in ['m', 'g', 't', 'e', 'c']:
+        i = 1
+        while hasattr(data_db, f"{table}{i}"):
+            if f"msc:{table}{i}" in available_records:
+                i += 1
+                continue
 
-    # Test adding new mapping successfully
-    record = data_db.get_apidata('c1')
-    credentials = f"Bearer {auth_api.get_token()}"
-    response = client.post(
-        '/api2/c',
-        headers={"Authorization": credentials},
-        json=record,
-        follow_redirects=True)
-    assert response.status_code == 200
-    ideal = json.dumps({
-        'apiVersion': '2.0.0',
-        'meta': {'conformance': 'valid'},
-        'data': record
-    }, sort_keys=True)
-    actual = json.dumps(response.get_json(), sort_keys=True)
-    assert ideal == actual
+            record = data_db.get_apidata(f"{table}{i}")
+            orig_rels = record.get('relatedEntities')
+            rels = list()
+            while orig_rels:
+                rel = orig_rels.pop(0)
+                del rel['data']
+                if rel.get('id') in available_records:
+                    rels.append(rel)
+            record['relatedEntities'] = rels
+            credentials = f"Bearer {auth_api.get_token()}"
+            response = client.post(
+                f'/api2/{table}',
+                headers={"Authorization": credentials},
+                json=record,
+                follow_redirects=True)
+            assert_okay(response)
 
-    # Test adding new endorsement successfully
-    record = data_db.get_apidata('e1')
-    del record['relatedEntities']
-    credentials = f"Bearer {auth_api.get_token()}"
-    response = client.post(
-        '/api2/e',
-        headers={"Authorization": credentials},
-        json=record,
-        follow_redirects=True)
-    assert response.status_code == 200
-    ideal = json.dumps({
-        'apiVersion': '2.0.0',
-        'meta': {'conformance': 'valid'},
-        'data': record
-    }, sort_keys=True)
-    actual = json.dumps(response.get_json(), sort_keys=True)
-    assert ideal == actual
+            i += 1
+
+    # Add relations between m1, m2, g1:
+
+    # Have we successfully recreated the database?
+    for table in ['m', 'g', 't', 'e', 'c']:
+        i = 1
+        while hasattr(data_db, f"{table}{i}"):
+            response = client.get(f'/api2/{table}{i}', follow_redirects=True)
+            assert_okay(response)
+            ideal = json.dumps({
+                'apiVersion': '2.0.0',
+                'data': data_db.get_apidata(f"{table}{i}")
+            }, sort_keys=True)
+            actual = json.dumps(response.get_json(), sort_keys=True)
+            assert ideal == actual
+
+            i += 1
 
     # Test redirection for bad numbers:
     pass

@@ -943,7 +943,7 @@ class Record(Document):
                 related_entities.append(related_entity)
         return related_entities
 
-    def get_slug(self, formdata: Mapping = None):
+    def get_slug(self, *, apidata: Mapping = None, formdata: Mapping = None):
         return self.get('slug')
 
     def get_vform(self):
@@ -1017,7 +1017,7 @@ class Record(Document):
             return errors
 
         # Insert slug:
-        input_data['slug'] = self.get_slug(input_data)
+        input_data['slug'] = self.get_slug(apidata=input_data)
 
         # Move relatedEntities information into new lists: we can add new ones
         # but not remove old ones.
@@ -1063,7 +1063,7 @@ class Record(Document):
         arises.'''
 
         # Insert slug:
-        formdata['slug'] = self.get_slug(formdata)
+        formdata['slug'] = self.get_slug(formdata=formdata)
 
         # Restore version information:
         formdata['versions'] = self.get('versions', list())
@@ -1432,13 +1432,15 @@ class Scheme(Record):
 
         return form
 
-    def get_slug(self, formdata: Mapping = None):
+    def get_slug(self, *, apidata: Mapping = None, formdata: Mapping = None):
         slug = self.get('slug')
         if slug:
             return slug
-        name = formdata.get('title') if formdata else self.get('title')
-        if name:
-            return to_file_slug(name, self.search)
+        for mapping in [formdata, apidata, self]:
+            if mapping is not None:
+                name = mapping.get('title')
+                if name:
+                    return to_file_slug(name, self.search)
         return None
 
     def get_vform(self, index: int = None):
@@ -1555,13 +1557,15 @@ class Tool(Record):
 
         return form
 
-    def get_slug(self, formdata: Mapping = None):
+    def get_slug(self, *, apidata: Mapping = None, formdata: Mapping = None):
         slug = self.get('slug')
         if slug:
             return slug
-        name = formdata.get('title') if formdata else self.get('title')
-        if name:
-            return to_file_slug(name, self.search)
+        for mapping in [formdata, apidata, self]:
+            if mapping is not None:
+                name = mapping.get('title')
+                if name:
+                    return to_file_slug(name, self.search)
         return None
 
     def get_vform(self, index: int = None):
@@ -1687,14 +1691,15 @@ class Crosswalk(Record):
 
         return form
 
-    def get_slug(self, formdata: Mapping = None):
+    def get_slug(self, *, apidata: Mapping = None, formdata: Mapping = None):
         slug = self.get('slug')
         if slug:
             return slug
-
-        name = formdata.get('name') if formdata else self.get('name')
-        if name:
-            return to_file_slug(name, self.search)
+        for mapping in [formdata, apidata, self]:
+            if mapping is not None:
+                name = mapping.get('name')
+                if name:
+                    return to_file_slug(name, self.search)
 
         inputs = list()
         outputs = list()
@@ -1705,6 +1710,20 @@ class Crosswalk(Record):
             for mscid in formdata.get('output_schemes', list()):
                 outputs.append(Record.load_by_mscid(mscid))
                 break
+        elif apidata:
+            for entity in apidata.get('relatedEntities'):
+                if entity.get('role') == 'input scheme':
+                    record = Record.load_by_mscid(entity.get('id'))
+                    if record:
+                        inputs.append(record)
+                        if outputs:
+                            break
+                elif entity.get('role') == 'output scheme':
+                    record = Record.load_by_mscid(entity.get('id'))
+                    if record:
+                        outputs.append(record)
+                        if inputs:
+                            break
         else:
             rel = Relation()
             inputs.extend(rel.object_records(
@@ -1835,13 +1854,15 @@ class Group(Record):
 
         return form
 
-    def get_slug(self, formdata: Mapping = None):
+    def get_slug(self, *, apidata: Mapping = None, formdata: Mapping = None):
         slug = self.get('slug')
         if slug:
             return slug
-        name = formdata.get('name') if formdata else self.get('name')
-        if name:
-            return to_file_slug(name, self.search)
+        for mapping in [formdata, apidata, self]:
+            if mapping is not None:
+                name = mapping.get('name')
+                if name:
+                    return to_file_slug(name, self.search)
         return None
 
 
@@ -1916,13 +1937,15 @@ class Endorsement(Record):
 
         return form
 
-    def get_slug(self, formdata: Mapping = None):
+    def get_slug(self, *, apidata: Mapping = None, formdata: Mapping = None):
         slug = self.get('slug')
         if slug:
             return slug
-        name = formdata.get('title') if formdata else self.get('title')
-        if name:
-            return to_file_slug(name, self.search)
+        for mapping in [formdata, apidata, self]:
+            if mapping is not None:
+                name = mapping.get('title')
+                if name:
+                    return to_file_slug(name, self.search)
         return None
 
 
