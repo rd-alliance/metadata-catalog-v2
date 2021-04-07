@@ -1074,6 +1074,7 @@ def test_main_write(client, auth_api, app, data_db):
             i += 1
 
     # Add relations between m1, m2, g1:
+    # TODO: depends on /api2/rel POST endpoint
 
     # Have we successfully recreated the database?
     for table in ['m', 'g', 't', 'e', 'c']:
