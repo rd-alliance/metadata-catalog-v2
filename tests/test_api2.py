@@ -998,11 +998,9 @@ def test_main_write(client, auth_api, app, data_db):
         json=record,
         follow_redirects=True)
     assert_okay(response)
-    # TODO: Currently evaluates to valid: need to build in more complex testing
-    # to allow for information that can be held at version level instead.
     ideal = json.dumps({
         'apiVersion': '2.0.0',
-        'meta': {'conformance': 'valid'},
+        'meta': {'conformance': 'complete'},
         'data': record
     }, sort_keys=True)
     actual = json.dumps(response.get_json(), sort_keys=True)
@@ -1020,7 +1018,7 @@ def test_main_write(client, auth_api, app, data_db):
     assert_okay(response)
     ideal = json.dumps({
         'apiVersion': '2.0.0',
-        'meta': {'conformance': 'valid'},
+        'meta': {'conformance': 'complete'},
         'data': record
     }, sort_keys=True)
     actual = json.dumps(response.get_json(), sort_keys=True)
@@ -1074,7 +1072,25 @@ def test_main_write(client, auth_api, app, data_db):
             i += 1
 
     # Add relations between m1, m2, g1:
-    # TODO: depends on /api2/rel POST endpoint
+    record = data_db.rel3
+    del record['@id']
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/rel/m1',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert_okay(response)
+
+    record = data_db.rel4
+    del record['@id']
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.put(
+        '/api2/rel/m2',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert_okay(response)
 
     # Have we successfully recreated the database?
     for table in ['m', 'g', 't', 'e', 'c']:

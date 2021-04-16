@@ -16,7 +16,10 @@ from typing import (
 
 # Non-standard
 # ------------
+from tinydb import Query
 from tinydb.database import Document
+from tinydb.operations import delete
+from tinyrecord import transaction
 from flask import (
     abort,
     Blueprint,
@@ -36,6 +39,7 @@ from .records import (
     Record,
     Scheme,
     mscid_prefix,
+    sortval,
 )
 from .vocab import Thesaurus
 from .users import ApiUser, get_user_db
@@ -272,6 +276,7 @@ def get_relations():
     # traversed robustly using the token.
     rel = Relation()
     rel_records = rel.tb.all()
+    rel_records.sort(key=lambda k: sortval(k.get('@id')))
 
     # Get paging parameters:
     start_raw = request.values.get('start')
@@ -469,7 +474,7 @@ def set_record(table, number=0):
     # Look up record to edit, or get new:
     record = Record.load(number, table)
 
-    # Abort if series was wrong:
+    # Abort if table was wrong:
     if record is None:
         abort(404)
 
@@ -498,5 +503,46 @@ def set_record(table, number=0):
     response['meta'] = {
         'conformance': record.conformance,
     }
+
+    return jsonify(response)
+
+
+@bp.route(
+    '/rel/<any(m, g, t, c, e):table><int:number>', methods=['POST', 'PUT'])
+def set_relation(table, number):
+    '''Add or replace entire forward relation table for a main entity.'''
+    record = Record.load(number, table)
+
+    # Abort if table or number was wrong:
+    if record is None or record.doc_id != number:
+        abort(404)
+
+    # Get input:
+    data = request.get_json(force=True)
+
+    # Handle any errors:
+    errors, value = record.validate_rels(data)
+    if errors:
+        response = {
+            'apiVersion': api_version,
+            'error': {
+                'message': errors[0]['message'],
+                'errors': errors
+            }
+        }
+        return jsonify(response), 400
+
+    rel = Relation()
+    rel_record = rel.tb.get(Query()['@id'] == f"msc:{table}{number}")
+
+    if rel_record is not None:
+        with transaction(rel.tb) as t:
+            for key in (k for k in rel_record if k not in value):
+                t.update(delete(key), doc_ids=[rel_record.doc_id])
+            t.update(value, doc_ids=[rel_record.doc_id])
+    else:
+        rel_id = rel.tb.insert(value)
+
+    response = as_response_item(value, callback=do_not_embellish)
 
     return jsonify(response)

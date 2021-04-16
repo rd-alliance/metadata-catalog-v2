@@ -45,6 +45,7 @@ from .vocab import get_thesaurus
 
 bp = Blueprint('main', __name__)
 mscid_prefix = 'msc:'
+mp_len = len(mscid_prefix)
 allowed_tags = {
     'p': [],
     'blockquote': [],
@@ -107,7 +108,6 @@ class Relation(object):
 
     def add(self, relations: Mapping[str, Mapping[str, List[str]]]):
         '''Adds relations to the table.'''
-        n = len(mscid_prefix) + 1
         with transaction(self.tb) as t:
             for s, properties in relations.items():
                 rel_record = self.tb.get(Query()['@id'] == s)
@@ -122,8 +122,7 @@ class Relation(object):
                     for o in objects:
                         if o not in rel_record[p]:
                             rel_record[p].append(o)
-                            rel_record[p].sort(
-                                key=lambda k: k[:n] + k[n:].zfill(5))
+                            rel_record[p].sort(key=sortval)
                 t.update(rel_record, doc_ids=[rel_record.doc_id])
 
     def remove(self, relations: Mapping[str, Mapping[str, List[str]]]):
@@ -188,8 +187,7 @@ class Relation(object):
                     mscids = [m for m in all_mscids if m.startswith(prefix)]
                 else:
                     mscids = all_mscids
-        n = len(mscid_prefix) + 1
-        return sorted(mscids, key=lambda k: k[:n] + k[n:].zfill(5))
+        return sorted(mscids, key=sortval)
 
     def subject_records(self, predicate=None, object=None,
                         filter: Type[Document] = None):
@@ -222,8 +220,7 @@ class Relation(object):
             for relation in relations:
                 for object in relation.get(predicate, list()):
                     mscids.add(object)
-        n = len(mscid_prefix) + 1
-        return sorted(mscids, key=lambda k: k[:n] + k[n:].zfill(5))
+        return sorted(mscids, key=sortval)
 
     def object_records(self, subject=None, predicate=None):
         '''Returns list of Records that are objects in the relations database,
@@ -241,8 +238,6 @@ class Relation(object):
         '''
         Q = Query()
         results = dict()
-
-        n = len(mscid_prefix) + 1
 
         if direction is None or direction == Relation.FORWARD:
             relations = self.tb.search(Q['@id'] == mscid)
@@ -262,7 +257,8 @@ class Relation(object):
                         if inv_predicate is None:
                             continue
                         if predicate in ['maintainers', 'funders']:
-                            series = self.series_map.get(rel_mscid[n - 1:n])
+                            series = self.series_map.get(
+                                rel_mscid[mp_len:mp_len + 1])
                             inv_predicate = inv_predicate.format(series)
                         if inv_predicate not in results.keys():
                             results[inv_predicate] = list()
@@ -270,8 +266,7 @@ class Relation(object):
 
         if results:
             for predicate in results.keys():
-                results[predicate].sort(
-                    key=lambda k: k[:n] + k[n:].zfill(5))
+                results[predicate].sort(key=sortval)
 
         return results
 
@@ -442,7 +437,9 @@ class Record(Document):
         Special schema keys: `optional` items are not needed for a record to
         be considered complete; `or use` and `or use role` indicate that a field
         is ignored for conformance level calculations if the indicated field
-        or a related record with the given role is present, respectively.
+        or a related record with the given role is present, respectively. A
+        field is automatically ignored if each version has the information in
+        question.
         '''
         if not hasattr(self, 'schema'):
             raise NotImplementedError
@@ -455,6 +452,8 @@ class Record(Document):
             port['relatedEntities'] = related_entities
             rel_roles = [r['role'] for r in related_entities]
 
+        versions = port.get('versions') if 'versions' in self.schema else None
+
         is_complete = True
         is_useful = True
         for k, d in self.schema.items():
@@ -465,6 +464,14 @@ class Record(Document):
             co_role = d.get('or use role')
             if co_role and co_role in rel_roles:
                 continue
+
+            if versions:
+                is_in_all_versions = True
+                for v in versions:
+                    if k not in v:
+                        is_in_all_versions = False
+                if is_in_all_versions:
+                    continue
 
             utility = d.get('useful')
             if utility is True:
@@ -950,6 +957,8 @@ class Record(Document):
         raise NotImplementedError
 
     def insert_relations(self, data: Mapping):
+        '''Adds the relations of the current record to the input form data and
+        return the result.'''
         rel = Relation()
         rel_summary = dict()
         for field in self.form():
@@ -1264,6 +1273,86 @@ class Record(Document):
             clean_data[k] = validated['value']
 
         return {'errors': errors, 'value': clean_data}
+
+    def validate_rels(self, input_data: Mapping) -> \
+            Tuple[List[Mapping[str, str]], Mapping]:
+        '''Checks validity of a set of relations. Invalid keys are removed.
+        Invalid values raise an error. Valid values are cleaned. Returns a
+        tuple consisting of a list of errors and the clean record.'''
+        if not hasattr(self, 'rolemap'):
+            raise NotImplementedError
+
+        acceptable = dict()
+        for role, info in self.rolemap.items():
+            if info['direction'] == Relation.INVERSE:
+                continue
+            acceptable[info['predicate']] = info['accepts']
+
+        result = {'errors': list(), 'value': {'@id': self.mscid}}
+        cache = dict()
+        for predicate, mscids in input_data.items():
+            has_error = False
+
+            # Validate role
+            if predicate not in acceptable:
+                result['errors'].append({
+                    'message': f"Invalid predicate: {predicate}."
+                    f" Valid predicates: {', '.join(acceptable.keys())}.",
+                    'location': predicate})
+                has_error = True
+            else:
+                accepts = acceptable[predicate]
+
+            # Validate MSCIDs
+            if not isinstance(mscids, list):
+                result['errors'].append({
+                    'message': f"Value of {predicate} must be a list of MSC"
+                               " IDs.",
+                    'location': predicate})
+                continue
+
+            clean_list = list()
+            for i, mscid in enumerate(mscids):
+                if mscid in clean_list:
+                    continue
+                rel_record = cache.get(mscid)
+                if rel_record is None:
+                    rel_record = Record.load_by_mscid(mscid)
+                    cache[mscid] = rel_record
+                if rel_record is None:
+                    result['errors'].append({
+                        'message': f"Not a valid MSC ID: {mscid}.",
+                        'location': f"{predicate}[{i}]"})
+                    has_error = True
+                    continue
+                elif rel_record.doc_id == 0:
+                    result['errors'].append({
+                        'message': f"No such record: {mscid}.",
+                        'location': f"{predicate}[{i}]"})
+                    has_error = True
+                    continue
+                elif accepts and rel_record.table != accepts:
+                    result['errors'].append({
+                        'message': f"The record {mscid} cannot be used with the"
+                        f" predicate {predicate}.",
+                        'location': f"{predicate}[{i}]"})
+                    has_error = True
+                    continue
+                clean_list.append(mscid)
+
+            if has_error:
+                continue
+
+            result['value'][predicate] = clean_list
+
+        errors = list()
+        for error in result['errors']:
+            errors.append({
+                'message': error.get('message', ''),
+                'location': f"$.{error.get('location', '')}",
+            })
+
+        return (errors, result['value'])
 
 
 class Scheme(Record):
@@ -2695,6 +2784,41 @@ def get_term_db():
             ensure_ascii=False)
 
     return g.term_db
+
+
+def get_table_order():
+    '''Provides a mapping between table names and the order in which they are
+    defined in this file, for the purposes of consistent sorting.'''
+    if 'table_order' not in g:
+        g.table_order = dict()
+        for i, subcls in enumerate(Record.__subclasses__()):
+            g.table_order[subcls.table] = i
+
+    return g.table_order
+
+
+def get_safe_pad():
+    if 'safe_pad' not in g:
+        safe_pad = 100
+        data_db = get_data_db()
+        for t in data_db.tables():
+            tbl = data_db.table(t)
+            while len(tbl) > safe_pad:
+                safe_pad *= 10
+        g.safe_pad = 10 * safe_pad
+
+    return g.safe_pad
+
+
+def sortval(mscid: str) -> int:
+    '''Converts an MSCID into a numeric value to aid sorting.'''
+    table = mscid[mp_len:mp_len + 1]
+    number = mscid[mp_len + 1:]
+    table_order = get_table_order()
+    safe_pad = get_safe_pad()
+
+    sort_value = (safe_pad * table_order.get(table, 99)) + int(number)
+    return sort_value
 
 
 def strip_tags(string: str) -> str:
