@@ -185,7 +185,7 @@ class DataDBActions(object):
                     "familyName": "Surname",
                     "fullName": "Given Family"}]}
         self.c2 = {
-            "slug": "test-scheme-1-TO-test-scheme-2",
+            "slug": "test-scheme-1_TO_test-scheme-2",
             "description": "<p>Paragraph 1.</p><p>Paragraph 2.</p>",
             "versions": [
                 {
