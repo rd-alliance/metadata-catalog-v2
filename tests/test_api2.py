@@ -1044,6 +1044,40 @@ def test_main_write(client, auth_api, app, data_db):
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert ideal == actual
 
+    # Test adding inverse relation when adding new record
+    record = data_db.get_apidata('m3')
+    # - Strip out all but the tools relation
+    orig_rels = record.get('relatedEntities')
+    rels = list()
+    while orig_rels:
+        rel = orig_rels.pop(0)
+        if rel.get('role') == 'tool':
+            # - Strip out all but the (reciprocal) child scheme relation
+            rel_orig_rels = rel.get('data', dict()).get('relatedEntities')
+            rel_rels = list()
+            while rel_orig_rels:
+                rel_rel = rel_orig_rels.pop(0)
+                if rel_rel.get('role') == 'supported scheme':
+                    rel_rels.append(rel_rel)
+            rel['data']['relatedEntities'] = rel_rels
+            rels.append(rel)
+    record['relatedEntities'] = rels
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/m',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert_okay(response)
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'meta': {'conformance': 'valid'},
+        'data': record
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
+    assert 'msc:m3' in available_records
+
     # Add remaining records:
     for table in ['m', 'g', 't', 'e', 'c']:
         i = 1
@@ -1072,7 +1106,7 @@ def test_main_write(client, auth_api, app, data_db):
             i += 1
 
     # Add relations between m1, m2, g1:
-    record = data_db.rel3
+    record = data_db.rel3.copy()
     del record['@id']
     credentials = f"Bearer {auth_api.get_token()}"
     response = client.post(
@@ -1082,11 +1116,22 @@ def test_main_write(client, auth_api, app, data_db):
         follow_redirects=True)
     assert_okay(response)
 
-    record = data_db.rel4
+    record = data_db.rel4.copy()
     del record['@id']
     credentials = f"Bearer {auth_api.get_token()}"
     response = client.put(
         '/api2/rel/m2',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert_okay(response)
+
+    # TODO: convert this to test patching inverse relation g1 -> m3
+    record = data_db.rel6.copy()
+    del record['@id']
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.put(
+        '/api2/rel/m3',
         headers={"Authorization": credentials},
         json=record,
         follow_redirects=True)
