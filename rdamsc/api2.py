@@ -508,7 +508,7 @@ def set_record(table, number=0):
 
 
 @bp.route(
-    '/rel/<any(m, g, t, c, e):table><int:number>', methods=['POST', 'PUT'])
+    '/rel/<any(m, t, c, e):table><int:number>', methods=['POST', 'PUT'])
 def set_relation(table, number):
     '''Add or replace entire forward relation table for a main entity.'''
     record = Record.load(number, table)

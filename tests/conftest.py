@@ -503,12 +503,14 @@ class DataDBActions(object):
                 apidataset.append(record)
                 i += 1
 
+        table_order = {'m': 0, 't': 10, 'c': 20, 'g': 30, 'e': 40}
         for results in apidataset:
             for predicate in results.keys():
                 if isinstance(results[predicate], list):
                     results[predicate].sort(
-                        key=lambda k: k[:n] + k[n:].zfill(5))
-
+                        key=lambda k: table_order[k[n - 1:n]] + int(k[n:]))
+        apidataset.sort(
+            key=lambda k: table_order[k['@id'][n - 1:n]] + int(k['@id'][n:]))
         return apidataset
 
     def get_apiterm(self, table: str, number: int):
