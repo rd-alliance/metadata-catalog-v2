@@ -2408,7 +2408,7 @@ class W3CDate(validators.Regexp):
         pattern = (
             r'^(?P<year>\d{4})'
             r'(?P<month>-0[1-9]|-1[0-2])?'
-            r'(?(month)-(?P<day>0[1-9]|[1-2][0-9]|3[0-1])|)$')
+            r'(?(month)(?P<day>-0[1-9]|-[1-2][0-9]|-3[0-1])?)$')
         super(W3CDate, self).__init__(pattern, message=message)
 
     def __call__(self, form, field):
