@@ -1105,7 +1105,7 @@ def test_main_write(client, auth_api, app, data_db):
 
             i += 1
 
-    # Add relations between m1, m2, g1:
+    # Apply forward relations for m1:
     record = data_db.rel3.copy()
     del record['@id']
     credentials = f"Bearer {auth_api.get_token()}"
@@ -1116,6 +1116,7 @@ def test_main_write(client, auth_api, app, data_db):
         follow_redirects=True)
     assert_okay(response)
 
+    # TODO: convert this to test patching forward relations m2 -> m1, g1
     record = data_db.rel4.copy()
     del record['@id']
     credentials = f"Bearer {auth_api.get_token()}"

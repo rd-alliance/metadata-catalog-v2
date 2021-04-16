@@ -1274,6 +1274,7 @@ class Record(Document):
 
         return {'errors': errors, 'value': clean_data}
 
+    # TODO: split so most of this can also be used when validating patches
     def validate_rels(self, input_data: Mapping) -> \
             Tuple[List[Mapping[str, str]], Mapping]:
         '''Checks validity of a set of relations. Invalid keys are removed.

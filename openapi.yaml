@@ -662,34 +662,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResponsePageRelation'
-    post:
-      tags:
-      - rel
-      summary: "Submit a new entity relation record"
-      requestBody:
-        description: "Complete record in JSON."
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Relation'
-      responses:
-        200:
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ResponseSuccessRelation'
-        400:
-          description: Failure
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubmissionResponseFailure'
-        401:
-          $ref: '#/components/responses/UnauthorizedError'
-      security:
-      - api_user: []
   /api2/rel/{table}{int}:
     get:
       tags:

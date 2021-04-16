@@ -532,6 +532,7 @@ def set_relation(table, number):
         }
         return jsonify(response), 400
 
+    # Save the changes:
     rel = Relation()
     rel_record = rel.tb.get(Query()['@id'] == f"msc:{table}{number}")
 
@@ -544,5 +545,36 @@ def set_relation(table, number):
         rel_id = rel.tb.insert(value)
 
     response = as_response_item(value, callback=do_not_embellish)
-
     return jsonify(response)
+
+
+@bp.route(
+    '/rel/<any(m, t, c, e):table><int:number>', methods=['PATCH'])
+def patch_relation(table, number):
+    record = Record.load(number, table)
+
+    # Abort if table or number was wrong:
+    if record is None or record.doc_id != number:
+        abort(404)
+
+    # Get input:
+    data = request.get_json(force=True)
+
+    # Handle any errors:
+    pass
+
+
+@bp.route(
+    '/invrel/<any(m, g):table><int:number>', methods=['PATCH'])
+def patch_inv_relation(table, number):
+    record = Record.load(number, table)
+
+    # Abort if table or number was wrong:
+    if record is None or record.doc_id != number:
+        abort(404)
+
+    # Get input:
+    data = request.get_json(force=True)
+
+    # Handle any errors:
+    pass
