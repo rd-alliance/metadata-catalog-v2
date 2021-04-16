@@ -1433,11 +1433,11 @@ class Scheme(Record):
             'direction': Relation.FORWARD,
             'accepts': 'g'},
         'tool': {
-            'predicate': 'supported scheme',
+            'predicate': 'supported schemes',
             'direction': Relation.INVERSE,
             'accepts': 't'},
         'endorsement': {
-            'predicate': 'endorsed scheme',
+            'predicate': 'endorsed schemes',
             'direction': Relation.INVERSE,
             'accepts': 'e'},
     }
