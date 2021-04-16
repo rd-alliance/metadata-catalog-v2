@@ -94,8 +94,8 @@ def embellish_relation(record: Mapping, route='.get_relation'):
     '''Embellishes a relationship or inverse relationship record.'''
     mscid = record['@id']
     n = len(mscid_prefix)
-    table = mscid[n:n+1]
-    number = mscid[n+1:]
+    table = mscid[n:n + 1]
+    number = mscid[n + 1:]
     record['uri'] = url_for(
         route, table=table, number=number, _external=True)
     return record
@@ -133,7 +133,7 @@ def as_response_item(record: Mapping, callback=embellish_record):
 
 
 def as_response_page(records: List[Mapping], link: str,
-                     page_size=10, start: int=None, page: int=None,
+                     page_size=10, start: int = None, page: int = None,
                      callback=embellish_record):
     '''Wraps list of records in a response object representing a page of
     `page_size` items, starting with item number `start` or page number `page`
@@ -158,7 +158,7 @@ def as_response_page(records: List[Mapping], link: str,
         page_index = 1
 
     items = list()
-    for record in records[start_index-1:start_index+page_size-1]:
+    for record in records[start_index - 1:start_index + page_size - 1]:
         items.append(callback(record))
 
     response = {
@@ -352,7 +352,8 @@ def get_inv_relation(table, number):
     rel_record.update(rel.related(mscid, direction=rel.INVERSE))
 
     # Return result
-    return jsonify(as_response_item(rel_record, callback=embellish_inv_relation))
+    return jsonify(
+        as_response_item(rel_record, callback=embellish_inv_relation))
 
 
 @bp.route('/thesaurus')
