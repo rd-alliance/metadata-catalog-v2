@@ -862,7 +862,7 @@ class Record(Document):
         '''API validator for version numbers/identifiers.'''
         return self._do_short_text(value, 32)
 
-    def _save(self, value: Mapping):
+    def _save(self, value: Mapping) -> str:
         '''Saves record to database. Returns error message if a problem
         arises.'''
 
@@ -883,7 +883,7 @@ class Record(Document):
         return ''
 
     def _save_relations(self, forward: List[Tuple[bool, str, List[str]]],
-                        inverted: List[Tuple[str, str, bool]]):
+                        inverted: List[Tuple[str, str, bool]]) -> str:
         '''Saves relation edits to the Relations table.'''
         rel = Relation()
         additions = dict()
@@ -1016,7 +1016,7 @@ class Record(Document):
             del self[key]
         self.update(doc)
 
-    def save_api_input(self, input_data: Mapping):
+    def save_api_input(self, input_data: Mapping) -> List[Mapping[str, str]]:
         '''Processes form input and saves it. Returns a list of error messages
         if any problems arise.'''
 
@@ -1057,13 +1057,13 @@ class Record(Document):
         # Save the main record:
         error = self._save(input_data)
         if error:
-            return [error]
+            return [{'message': error}]
 
         # Update relations
         if related_entities:
             error = self._save_relations(forward, inverted)
             if error:
-                return [error]
+                return [{'message': error}]
 
         return list()
 
@@ -1215,6 +1215,84 @@ class Record(Document):
         if error:
             return error
 
+    def save_rel_patch(self, input_data: Mapping) -> \
+            Tuple[List[Mapping[str, str]], Mapping]:
+        '''Validates a set of patches and applies them to the database if they
+        pass validation. Returns error list and resulting record.
+        '''
+        if not hasattr(self, 'rolemap'):
+            raise NotImplementedError
+
+        acceptable = dict()
+        for role, info in self.rolemap.items():
+            if info['direction'] == Relation.INVERSE:
+                continue
+            acceptable[info['predicate']] = info['accepts']
+
+        rel = Relation()
+        rel_record = rel.tb.get(Query()['@id'] == self.mscid)
+        if rel_record is None:
+            result = {'@id': self.mscid}
+            rel_id = None
+        else:
+            result = dict(rel_record)
+            rel_id = rel_record.doc_id
+
+        errors = list()
+        if not isinstance(input_data, list):
+            errors.append({
+                'message': "Input must be in JSON Patch format (an array of "
+                           "objects).",
+                'location': '$'})
+            return (errors, rel_record)
+
+        for i, patch in enumerate(input_data):
+            if not isinstance(patch, dict):
+                errors.append({
+                    'message': "Not a JSON object.",
+                    'location': f'$[{i}]'})
+                continue
+            err, result = self.validate_rel_patch(result, patch, acceptable)
+            for e in err:
+                errors.append({
+                    'message': e.get('message'),
+                    'location': f"$[{i}]{e.get('location')}"})
+
+        if errors:
+            return (errors, result)
+
+        if rel_id is None:
+            rel_id = rel.tb.insert(rel_record)
+        else:
+            with transaction(rel.tb) as t:
+                for key in (k for k in rel_record if k not in result):
+                    t.update(delete(key), doc_ids=[rel_id])
+                t.update(result, doc_ids=[rel_id])
+
+        return (errors, rel.tb.get(doc_id=rel_id))
+
+    def save_rel_record(self, input_data: Mapping) -> \
+            Tuple[List[Mapping[str, str]], Mapping]:
+        '''Validates a complete relations table record and saves it to the
+        database if it passes validation. Returns error list and clean record.
+        '''
+        errors, result = self.validate_rel_record(input_data)
+        if errors:
+            return (errors, result)
+
+        rel = Relation()
+        rel_record = rel.tb.get(Query()['@id'] == self.mscid)
+
+        if rel_record is not None:
+            with transaction(rel.tb) as t:
+                for key in (k for k in rel_record if k not in result):
+                    t.update(delete(key), doc_ids=[rel_record.doc_id])
+                t.update(result, doc_ids=[rel_record.doc_id])
+        else:
+            rel_id = rel.tb.insert(result)
+
+        return (errors, result)
+
     def validate(self, input_data: Mapping) -> Tuple[
             List[Mapping[str, str]], Mapping]:
         '''Checks input for valid keys and values. Invalid keys are removed.
@@ -1256,7 +1334,8 @@ class Record(Document):
                     for error in result['errors']:
                         errors.append({
                             'message': error.get('message', ''),
-                            'location': f"{k}[{i}].{error.get('location', '')}",
+                            'location':
+                                f"{k}[{i}].{error.get('location', '')}",
                         })
                     clean_data[k].append(result['value'])
 
@@ -1277,8 +1356,99 @@ class Record(Document):
 
         return {'errors': errors, 'value': clean_data}
 
-    # TODO: split so most of this can also be used when validating patches
-    def validate_rels(self, input_data: Mapping) -> \
+    def validate_rel_patch(
+            self, input_data: Mapping, patch: Mapping[str, str],
+            acceptable: List[str]) -> Tuple[List[Mapping[str, str]], Mapping]:
+        '''Parses a patch, and (if possible) applies it to the input data.
+        Returns a tuple consisting of a list of errors and the resulting
+        record.
+        '''
+        errors = list()
+        output = input_data
+
+        op = patch.get('op')
+        if op is None:
+            errors.append({
+                'message': "JSON object must have an ‘op’ member.",
+                'location': ''})
+
+        known_ops = ['add', 'remove', 'replace', 'test']
+        if op not in known_ops:
+            errors.append({
+                'message': f"Supported operations are {', '.join(known_ops)}.",
+                'location': '.op'})
+
+        # Supported paths are `/predicate` (when operating on the whole list
+        # of related records) or `/predicate/-` or `/predicate/<int>` (when
+        # operating on a single record in the list).
+        path = patch.get('path')
+        if path is None:
+            errors.append({
+                'message': "JSON object must have a ‘path’ member.",
+                'location': ''})
+        else:
+            m = re.match(r'/(P<predicate>)(?:/(P<index>-|\d+))?', path)
+            if m in None:
+                errors.append({
+                    'message': "The supplied path could not be parsed.",
+                    'location': '.path'})
+            elif m.group('predicate') not in acceptable:
+                errors.append({
+                    'message': f"Invalid predicate: {predicate}."
+                    f" Valid predicates: {', '.join(acceptable.keys())}.",
+                    'location': '.path'})
+            elif op and op != 'add' and m.group('index') is not None:
+                curr_list = output.get(m.group('predicate'))
+                if not curr_list:
+                    errors.append({
+                        'message':
+                            "No values exist at that position.",
+                        'location': '.path'})
+                elif m.group('index') != '-':
+                    i = int(m.group('index'))
+                    if i >= len(curr_list):
+                        errors.append({
+                            'message':
+                                "No value exists at that position.",
+                            'location': '.path'})
+
+        if op and op != 'remove' and 'value' not in patch:
+            errors.append({
+                'message': "JSON object must have a ‘value’ member when ‘op’ is"
+                           f" {op}.",
+                'location': ''})
+
+        # We can only proceed if there have been no errors:
+        if errors:
+            return (errors, output)
+
+        # Attempt to apply the patch.
+        if op == 'test':
+            value = patch['value']
+            index = m.group('index')
+            if index is None:
+                curr_value = output.get(m.group('predicate'))
+            else:
+                curr_list = output.get(m.group('predicate'))
+                if index == '-':
+                    curr_value = curr_list[-1]
+                else:
+                    curr_value = curr_list[int(index)]
+            if value != curr_value:
+                errors.append({
+                    'message':
+                        "Test failed. Current value would be {curr_value}.",
+                    'location': '.value'})
+        elif op == 'remove':
+            pass
+        elif op == 'add':
+            pass
+        elif op == 'replace':
+            pass
+
+        return (errors, output)
+
+    def validate_rel_record(self, input_data: Mapping) -> \
             Tuple[List[Mapping[str, str]], Mapping]:
         '''Checks validity of a set of relations. Invalid keys are removed.
         Invalid values raise an error. Valid values are cleaned. Returns a

@@ -16,10 +16,7 @@ from typing import (
 
 # Non-standard
 # ------------
-from tinydb import Query
 from tinydb.database import Document
-from tinydb.operations import delete
-from tinyrecord import transaction
 from flask import (
     abort,
     Blueprint,
@@ -497,7 +494,7 @@ def set_record(table, number=0):
         }
         return jsonify(response), 400
 
-    # Return report
+    # Return report:
     record.reload()
     response = as_response_item(record, callback=embellish_record_fully)
     response['meta'] = {
@@ -521,7 +518,7 @@ def set_relation(table, number):
     data = request.get_json(force=True)
 
     # Handle any errors:
-    errors, value = record.validate_rels(data)
+    errors, result = record.save_rel_record(data)
     if errors:
         response = {
             'apiVersion': api_version,
@@ -532,19 +529,8 @@ def set_relation(table, number):
         }
         return jsonify(response), 400
 
-    # Save the changes:
-    rel = Relation()
-    rel_record = rel.tb.get(Query()['@id'] == f"msc:{table}{number}")
-
-    if rel_record is not None:
-        with transaction(rel.tb) as t:
-            for key in (k for k in rel_record if k not in value):
-                t.update(delete(key), doc_ids=[rel_record.doc_id])
-            t.update(value, doc_ids=[rel_record.doc_id])
-    else:
-        rel_id = rel.tb.insert(value)
-
-    response = as_response_item(value, callback=do_not_embellish)
+    # Return report:
+    response = as_response_item(result, callback=do_not_embellish)
     return jsonify(response)
 
 
@@ -561,7 +547,20 @@ def patch_relation(table, number):
     data = request.get_json(force=True)
 
     # Handle any errors:
-    pass
+    errors, result = record.save_rel_patch(data)
+    if errors:
+        response = {
+            'apiVersion': api_version,
+            'error': {
+                'message': errors[0]['message'],
+                'errors': errors
+            }
+        }
+        return jsonify(response), 400
+
+    # Return report:
+    response = as_response_item(result, callback=do_not_embellish)
+    return jsonify(response)
 
 
 @bp.route(
