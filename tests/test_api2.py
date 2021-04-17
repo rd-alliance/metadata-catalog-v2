@@ -1143,7 +1143,6 @@ def test_main_write(client, auth_api, app, data_db):
         json=patch,
         follow_redirects=True)
     assert_okay(response)
-    print(json.dumps(response.json, indent=1))
 
     # Have we successfully recreated the database?
     for table in ['m', 'g', 't', 'e', 'c']:
