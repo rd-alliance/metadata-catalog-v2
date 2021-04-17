@@ -1163,3 +1163,5 @@ def test_main_write(client, auth_api, app, data_db):
     pass
 
 # TODO: Test suite for patch handling.
+
+# TODO: Test suite for editing DataTypes and VocabTerms.
