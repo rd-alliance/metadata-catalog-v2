@@ -1215,6 +1215,91 @@ class Record(Document):
         if error:
             return error
 
+    def save_invrel_patch(self, input_data: Mapping) -> \
+            Tuple[List[Mapping[str, str]], Mapping]:
+        '''Validates a set of patches and applies them to the database if they
+        pass validation. Returns error list and resulting record.
+        '''
+        if not hasattr(self, 'rolemap'):
+            raise NotImplementedError
+
+        rel = Relation()
+
+        invrelmap = dict()
+        for fw, iv in rel.inversions.items():
+            if fw in ['maintainers', 'funders']:
+                for series in ['scheme', 'tool', 'mapping']:
+                    invrelmap[iv.format(series)] = fw
+            else:
+                invrelmap[iv] = fw
+
+        acceptable = dict()
+        for role, info in self.rolemap.items():
+            if info['direction'] == Relation.FORWARD:
+                continue
+            if info['predicate'] in ['maintainers', 'funders']:
+                series = rel.series_map.get(info['accepts'])
+                acceptable[rel.inversions.get(
+                    info['predicate']).format(series)] = info['accepts']
+            else:
+                acceptable[rel.inversions.get(
+                    info['predicate'])] = info['accepts']
+
+        result = {'@id': self.mscid}
+        result.update(rel.related(self.mscid, direction=rel.INVERSE))
+
+        self.cache = dict()
+        errors = list()
+        if not isinstance(input_data, list):
+            errors.append({
+                'message': "Input must be in JSON Patch format (an array of "
+                           "objects).",
+                'location': '$'})
+            return (errors, result)
+
+        for i, patch in enumerate(input_data):
+            if not isinstance(patch, dict):
+                errors.append({
+                    'message': "Not a JSON object.",
+                    'location': f'$[{i}]'})
+                continue
+            err, result = self.validate_rel_patch(result, patch, acceptable)
+            for e in err:
+                errors.append({
+                    'message': e.get('message'),
+                    'location': f"$[{i}]{e.get('location')}"})
+
+        if errors:
+            return (errors, result)
+
+        # Save changes:
+        current = rel.related(self.mscid, direction=rel.INVERSE)
+        changes = list()
+        for inverted, mscids in result.items():
+            predicate = invrelmap.get(inverted)
+            if inverted in current:
+                for mscid in mscids:
+                    if mscid not in current[inverted]:
+                        changes.append((mscid, predicate, True))
+            else:
+                for mscid in mscids:
+                    changes.append((mscid, predicate, True))
+        for inverted, mscids in current.items():
+            predicate = invrelmap.get(inverted)
+            if inverted in result:
+                for mscid in mscids:
+                    if mscid not in result[inverted]:
+                        changes.append((mscid, predicate, False))
+            else:
+                for mscid in mscids:
+                    changes.append((mscid, predicate, False))
+
+        self._save_relations(list(), changes)
+
+        final = {'@id': self.mscid}
+        final.update(rel.related(self.mscid, direction=rel.INVERSE))
+        return (errors, final)
+
     def save_rel_patch(self, input_data: Mapping) -> \
             Tuple[List[Mapping[str, str]], Mapping]:
         '''Validates a set of patches and applies them to the database if they
@@ -1238,6 +1323,7 @@ class Record(Document):
             result = dict(rel_record)
             rel_id = rel_record.doc_id
 
+        self.cache = dict()
         errors = list()
         if not isinstance(input_data, list):
             errors.append({
@@ -1356,9 +1442,48 @@ class Record(Document):
 
         return {'errors': errors, 'value': clean_data}
 
+    def validate_rel_list(self, mscids: List[str], predicate: str, table: str)\
+            -> Tuple[List[Mapping[str, str]], Mapping]:
+        '''Reports errors if any mscids in the list are invalid or
+        do not belong to the given table.
+        '''
+        errors = list()
+        clean_list = list()
+        for i, mscid in enumerate(mscids):
+            if mscid in clean_list:
+                continue
+            rel_record = self.cache.get(mscid)
+            if rel_record is None:
+                rel_record = Record.load_by_mscid(mscid)
+                self.cache[mscid] = rel_record
+            if rel_record is None:
+                errors.append({
+                    'message': f"Not a valid MSC ID: {mscid}.",
+                    'location': f"[{i}]"})
+                has_error = True
+                continue
+            elif rel_record.doc_id == 0:
+                errors.append({
+                    'message': f"No such record: {mscid}.",
+                    'location': f"[{i}]"})
+                has_error = True
+                continue
+            elif table and rel_record.table != table:
+                errors.append({
+                    'message': f"The record {mscid} cannot be used with the"
+                    f" predicate {predicate}.",
+                    'location': f"[{i}]"})
+                has_error = True
+                continue
+            clean_list.append(mscid)
+
+        return (errors, clean_list)
+
     def validate_rel_patch(
-            self, input_data: Mapping, patch: Mapping[str, str],
-            acceptable: List[str]) -> Tuple[List[Mapping[str, str]], Mapping]:
+        self, input_data: Mapping,
+        patch: Mapping[str, str],
+        acceptable: Mapping[str, str]
+            ) -> Tuple[List[Mapping[str, str]], Mapping]:
         '''Parses a patch, and (if possible) applies it to the input data.
         Returns a tuple consisting of a list of errors and the resulting
         record.
@@ -1387,30 +1512,37 @@ class Record(Document):
                 'message': "JSON object must have a ‘path’ member.",
                 'location': ''})
         else:
-            m = re.match(r'/(P<predicate>)(?:/(P<index>-|\d+))?', path)
-            if m in None:
+            m = re.match(r'/(?P<predicate>[^/]+)(?:/(?P<index>-|\d+))?', path)
+            if m is None:
                 errors.append({
                     'message': "The supplied path could not be parsed.",
                     'location': '.path'})
             elif m.group('predicate') not in acceptable:
                 errors.append({
-                    'message': f"Invalid predicate: {predicate}."
+                    'message': f"Invalid predicate: {m.group('predicate')}."
                     f" Valid predicates: {', '.join(acceptable.keys())}.",
                     'location': '.path'})
-            elif op and op != 'add' and m.group('index') is not None:
+            elif op and m.group('index') is not None:
                 curr_list = output.get(m.group('predicate'))
-                if not curr_list:
-                    errors.append({
-                        'message':
-                            "No values exist at that position.",
-                        'location': '.path'})
-                elif m.group('index') != '-':
-                    i = int(m.group('index'))
-                    if i >= len(curr_list):
+                if op == 'add':
+                    if m.group('index') != '-':
+                        if int(m.group('index')) > len(curr_list):
+                            errors.append({
+                                'message':
+                                    "Cannot add a value at that position.",
+                                'location': '.path'})
+                else:
+                    if not curr_list:
                         errors.append({
                             'message':
-                                "No value exists at that position.",
+                                "No values exist at that position.",
                             'location': '.path'})
+                    elif m.group('index') != '-':
+                        if int(m.group('index')) >= len(curr_list):
+                            errors.append({
+                                'message':
+                                    "No value exists at that position.",
+                                'location': '.path'})
 
         if op and op != 'remove' and 'value' not in patch:
             errors.append({
@@ -1423,9 +1555,9 @@ class Record(Document):
             return (errors, output)
 
         # Attempt to apply the patch.
+        index = m.group('index')
         if op == 'test':
             value = patch['value']
-            index = m.group('index')
             if index is None:
                 curr_value = output.get(m.group('predicate'))
             else:
@@ -1440,11 +1572,96 @@ class Record(Document):
                         "Test failed. Current value would be {curr_value}.",
                     'location': '.value'})
         elif op == 'remove':
-            pass
+            if index is None:
+                if m.group('predicate') not in output:
+                    errors.append({
+                        'message':
+                            "Predicate already missing.",
+                        'location': '.path'})
+                else:
+                    del output[m.group('predicate')]
+            else:
+                i = -1 if index == '-' else int(index)
+                output[m.group('predicate')].pop(i)
         elif op == 'add':
-            pass
+            value = patch['value']
+            predicate = m.group('predicate')
+            if index is None:
+                if not isinstance(value, list):
+                    errors.append({
+                        'message':
+                            "Value must be a list of MSC IDs.",
+                        'location': '.value'})
+                else:
+                    list_errors, clean_list = self.validate_rel_list(
+                        value, predicate, acceptable[predicate])
+                    for error in list_errors:
+                        errors.append({
+                            'message': error['message'],
+                            'location': f".value{error['location']}"})
+                    if not list_errors:
+                        output[predicate] = clean_list
+            else:
+                if not isinstance(value, str):
+                    errors.append({
+                        'message': "Value must be a single MSC ID.",
+                        'location': '.value'})
+                else:
+                    list_errors, clean_list = self.validate_rel_list(
+                        [value], predicate, acceptable[predicate])
+                    for error in list_errors:
+                        errors.append({
+                            'message': error['message'],
+                            'location': '.value'})
+                    if not list_errors:
+                        clean_value = clean_list[0]
+                        if predicate not in output:
+                            output[predicate] = list()
+                        i = -1 if index == '-' else int(index)
+                        if i < len(output[predicate]) and i > -1:
+                            output[predicate].insert(i, clean_value)
+                        else:
+                            output[predicate].append(clean_value)
         elif op == 'replace':
-            pass
+            value = patch['value']
+            predicate = m.group('predicate')
+            if index is None:
+                if predicate not in output:
+                    errors.append({
+                        'message': "Predicate needs to be added.",
+                        'location': '.path'})
+                elif not isinstance(value, list):
+                    errors.append({
+                        'message':
+                            "Value must be a list of MSC IDs.",
+                        'location': '.value'})
+                else:
+                    list_errors, clean_list = self.validate_rel_list(
+                        value, predicate, acceptable[predicate])
+                    for error in list_errors:
+                        errors.append({
+                            'message': error['message'],
+                            'location': f".value{error['location']}"})
+                    if not list_errors:
+                        output[predicate] = clean_list
+            else:
+                if not isinstance(value, str):
+                    errors.append({
+                        'message': "Value must be a single MSC ID.",
+                        'location': '.value'})
+                else:
+                    list_errors, clean_list = self.validate_rel_list(
+                        [value], predicate, acceptable[predicate])
+                    for error in list_errors:
+                        errors.append({
+                            'message': error['message'],
+                            'location': '.value'})
+                    if not list_errors:
+                        clean_value = clean_list[0]
+                        if predicate not in output:
+                            output[predicate] = list()
+                        i = -1 if index == '-' else int(index)
+                        output[predicate][i] = (clean_value)
 
         return (errors, output)
 
@@ -1463,7 +1680,7 @@ class Record(Document):
             acceptable[info['predicate']] = info['accepts']
 
         result = {'errors': list(), 'value': {'@id': self.mscid}}
-        cache = dict()
+        self.cache = dict()
         for predicate, mscids in input_data.items():
             has_error = False
 
@@ -1472,7 +1689,7 @@ class Record(Document):
                 result['errors'].append({
                     'message': f"Invalid predicate: {predicate}."
                     f" Valid predicates: {', '.join(acceptable.keys())}.",
-                    'location': predicate})
+                    'location': f".{predicate}"})
                 has_error = True
             else:
                 accepts = acceptable[predicate]
@@ -1482,37 +1699,17 @@ class Record(Document):
                 result['errors'].append({
                     'message': f"Value of {predicate} must be a list of MSC"
                                " IDs.",
-                    'location': predicate})
+                    'location': f".{predicate}"})
                 continue
 
-            clean_list = list()
-            for i, mscid in enumerate(mscids):
-                if mscid in clean_list:
-                    continue
-                rel_record = cache.get(mscid)
-                if rel_record is None:
-                    rel_record = Record.load_by_mscid(mscid)
-                    cache[mscid] = rel_record
-                if rel_record is None:
-                    result['errors'].append({
-                        'message': f"Not a valid MSC ID: {mscid}.",
-                        'location': f"{predicate}[{i}]"})
-                    has_error = True
-                    continue
-                elif rel_record.doc_id == 0:
-                    result['errors'].append({
-                        'message': f"No such record: {mscid}.",
-                        'location': f"{predicate}[{i}]"})
-                    has_error = True
-                    continue
-                elif accepts and rel_record.table != accepts:
-                    result['errors'].append({
-                        'message': f"The record {mscid} cannot be used with the"
-                        f" predicate {predicate}.",
-                        'location': f"{predicate}[{i}]"})
-                    has_error = True
-                    continue
-                clean_list.append(mscid)
+            list_errors, clean_list = self.validate_rel_list(
+                mscids, predicate, accepts)
+            for error in list_errors:
+                result['errors'].append({
+                    'message': error.get('message', ''),
+                    'location': f".{predicate}{error.get('location', '')}",
+                })
+                has_error = True
 
             if has_error:
                 continue
@@ -1523,7 +1720,7 @@ class Record(Document):
         for error in result['errors']:
             errors.append({
                 'message': error.get('message', ''),
-                'location': f"$.{error.get('location', '')}",
+                'location': f"${error.get('location', '')}",
             })
 
         return (errors, result['value'])

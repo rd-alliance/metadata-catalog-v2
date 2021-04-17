@@ -576,4 +576,17 @@ def patch_inv_relation(table, number):
     data = request.get_json(force=True)
 
     # Handle any errors:
-    pass
+    errors, result = record.save_invrel_patch(data)
+    if errors:
+        response = {
+            'apiVersion': api_version,
+            'error': {
+                'message': errors[0]['message'],
+                'errors': errors
+            }
+        }
+        return jsonify(response), 400
+
+    # Return report:
+    response = as_response_item(result, callback=do_not_embellish)
+    return jsonify(response)

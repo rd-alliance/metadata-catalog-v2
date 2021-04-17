@@ -1116,27 +1116,34 @@ def test_main_write(client, auth_api, app, data_db):
         follow_redirects=True)
     assert_okay(response)
 
-    # TODO: convert this to test patching forward relations m2 -> m1, g1
-    record = data_db.rel4.copy()
-    del record['@id']
+    patch = list()
+    for key, value in data_db.rel4.items():
+        if key == '@id':
+            continue
+        patch.append({
+            'op': 'add',
+            'path': f"/{key}",
+            'value': value})
     credentials = f"Bearer {auth_api.get_token()}"
-    response = client.put(
+    response = client.patch(
         '/api2/rel/m2',
         headers={"Authorization": credentials},
-        json=record,
+        json=patch,
         follow_redirects=True)
     assert_okay(response)
 
-    # TODO: convert this to test patching inverse relation g1 -> m3
-    record = data_db.rel6.copy()
-    del record['@id']
+    patch = [{
+        'op': 'add',
+        'path': '/funded schemes/-',
+        'value': 'msc:m3'}]
     credentials = f"Bearer {auth_api.get_token()}"
-    response = client.put(
-        '/api2/rel/m3',
+    response = client.patch(
+        '/api2/invrel/g1',
         headers={"Authorization": credentials},
-        json=record,
+        json=patch,
         follow_redirects=True)
     assert_okay(response)
+    print(json.dumps(response.json, indent=1))
 
     # Have we successfully recreated the database?
     for table in ['m', 'g', 't', 'e', 'c']:
@@ -1155,3 +1162,5 @@ def test_main_write(client, auth_api, app, data_db):
 
     # Test redirection for bad numbers:
     pass
+
+# TODO: Test suite for patch handling.
