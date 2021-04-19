@@ -26,14 +26,14 @@
     <h2>Links and documentation</h2>
     <ul class="locations list-inline">
     {% for location in record['locations'] %}
-      {% if location['type'] == 'website' %}
-      <li class="list-inline-item"><a class="btn btn-location" href="{{ location['url'] }}">Visit website</a></li>
-      {% elif location['type'] == 'document' %}
+      {% if location['type'] == 'document' %}
       <li class="list-inline-item"><a class="btn btn-location" href="{{ location['url'] }}">View documentation</a></li>
       {% elif location['type'] == 'application' %}
-      <li class="list-inline-item"><a class="btn btn-location" href="{{ location['url'] }}">Use tool online</a></li>
+      <li class="list-inline-item"><a class="btn btn-location" href="{{ location['url'] }}">Use converter online</a></li>
       {% elif location['type'] == 'service' %}
       <li class="list-inline-item"><a class="btn btn-location" href="{{ location['url'] }}">Service endpoint</a></li>
+      {% else %}
+      <li class="list-inline-item"><a class="btn btn-location" href="{{ location['url'] }}">Download {{ location['type'] }}</a></li>
       {% endif %}
     {% endfor %}
     </ul>

@@ -75,16 +75,18 @@
   },
   {
    "id": "application",
-   "label": "application",
+   "label": "web application",
    "applies": [
-    "tool"
+    "tool",
+    "mapping"
    ]
   },
   {
    "id": "service",
    "label": "service endpoint",
    "applies": [
-    "tool"
+    "tool",
+    "mapping"
    ]
   },
   {
