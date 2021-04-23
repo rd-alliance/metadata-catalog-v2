@@ -1160,8 +1160,351 @@ def test_main_write(client, auth_api, app, data_db):
             i += 1
 
     # Test redirection for bad numbers:
-    pass
+    record = data_db.get_apidata('m1')
+    del record['relatedEntities']
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.put(
+        '/api2/m42',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers.get('Location').endswith('/api2/m')
 
-# TODO: Test suite for patch handling.
+    record = {'parent schemes': ['msc:m1']}
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.put(
+        '/api2/rel/m42',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=False)
+    assert response.status_code == 404
+
+
+# Test suite for patch handling.
+def test_rel_patch(client, auth_api, app, data_db):
+
+    # Install terms
+    data_db.write_terms()
+
+    # Prepare database:
+    data_db.write_db()
+
+    # Test non-existent subject-record
+    patch = [{
+        'op': 'add',
+        'path': '/parent schemes/-',
+        'value': 'msc:m1'}]
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.patch(
+        '/api2/rel/m42',
+        headers={"Authorization": credentials},
+        json=patch,
+        follow_redirects=True)
+    assert response.status_code == 404
+
+    patch = [{
+        'op': 'add',
+        'path': '/child schemes/-',
+        'value': 'msc:m1'}]
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.patch(
+        '/api2/invrel/m42',
+        headers={"Authorization": credentials},
+        json=patch,
+        follow_redirects=True)
+    assert response.status_code == 404
+
+    # Test syntactic validity of request
+    patch = {
+        'op': 'add',
+        'path': '/maintainers/-',
+        'value': 'msc:g1'}
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.patch(
+        '/api2/rel/m1',
+        headers={"Authorization": credentials},
+        json=patch,
+        follow_redirects=True)
+    assert response.status_code == 400
+    result = response.get_json()
+    assert result.get('error', dict()).get('message') == (
+        "Input must be in JSON Patch format (an array of objects).")
+    assert result['error']['errors'][0]['location'] == r'$'
+
+    patch = ['op', 'add', 'path', '/maintainers/-', 'value', 'msc:g1']
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.patch(
+        '/api2/rel/m1',
+        headers={"Authorization": credentials},
+        json=patch,
+        follow_redirects=True)
+    assert response.status_code == 400
+    result = response.get_json()
+    assert len(result.get('error', dict()).get('errors', list())) > 0
+    assert result['error']['errors'][0]['message'] == "Not a JSON object."
+    assert result['error']['errors'][0]['location'] == r'$[0]'
+    assert result['error']['errors'][5]['message'] == "Not a JSON object."
+    assert result['error']['errors'][5]['location'] == r'$[5]'
+
+    patch = {
+        'op': 'add',
+        'path': '/child schemes/-',
+        'value': 'msc:m2'}
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.patch(
+        '/api2/invrel/m1',
+        headers={"Authorization": credentials},
+        json=patch,
+        follow_redirects=True)
+    assert response.status_code == 400
+    result = response.get_json()
+    assert result.get('error', dict()).get('message') == (
+        "Input must be in JSON Patch format (an array of objects).")
+    assert result['error']['errors'][0]['location'] == r'$'
+
+    patch = ['op', 'add', 'path', '/child schemes/-', 'value', 'msc:m2']
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.patch(
+        '/api2/invrel/m1',
+        headers={"Authorization": credentials},
+        json=patch,
+        follow_redirects=True)
+    assert response.status_code == 400
+    result = response.get_json()
+    assert len(result.get('error', dict()).get('errors', list())) > 0
+    assert result['error']['errors'][0]['message'] == "Not a JSON object."
+    assert result['error']['errors'][0]['location'] == r'$[0]'
+    assert result['error']['errors'][5]['message'] == "Not a JSON object."
+    assert result['error']['errors'][5]['location'] == r'$[5]'
+
+    # Test that the patch can be parsed correctly
+    patch = [{
+        'path': '/funders/-',
+        'value': 'msc:g1',
+    }, {
+        'op': 'bad op',
+        'path': '/funders/-',
+        'value': 'msc:g1',
+    }, {
+        'op': 'add',
+        'value': 'msc:g1',
+    }, {
+        'op': 'add',
+        'path': 'foobar',
+        'value': 'msc:g1',
+    }, {
+        'op': 'add',
+        'path': '/foobar',
+        'value': 'msc:g1',
+    }, {
+        'op': 'add',
+        'path': '/funders/10',
+        'value': 'msc:g1',
+    }, {
+        'op': 'remove',
+        'path': '/maintainers/-',
+    }, {
+        'op': 'remove',
+        'path': '/funders/1',
+    }, {
+        'op': 'add',
+        'path': '/funders/-',
+    }]
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.patch(
+        '/api2/rel/m1',
+        headers={"Authorization": credentials},
+        json=patch,
+        follow_redirects=True)
+    assert response.status_code == 400
+    result = response.get_json()
+    assert len(result.get('error', dict()).get('errors', list())) == len(patch)
+
+    assert result['error']['errors'][0]['message'] == (
+        "JSON object must have an ‘op’ member.")
+    assert result['error']['errors'][0]['location'] == r'$[0]'
+
+    assert result['error']['errors'][1]['message'] == (
+        "Supported operations are add, remove, replace, test.")
+    assert result['error']['errors'][1]['location'] == r'$[1].op'
+
+    assert result['error']['errors'][2]['message'] == (
+        "JSON object must have a ‘path’ member.")
+    assert result['error']['errors'][2]['location'] == r'$[2]'
+
+    assert result['error']['errors'][3]['message'] == (
+        "The supplied path could not be parsed.")
+    assert result['error']['errors'][3]['location'] == r'$[3].path'
+
+    assert result['error']['errors'][4]['message'] == (
+        "Invalid predicate: foobar. Valid predicates: "
+        "parent schemes, maintainers, funders, users.")
+    assert result['error']['errors'][4]['location'] == r'$[4].path'
+
+    assert result['error']['errors'][5]['message'] == (
+        "Cannot add a value at that position.")
+    assert result['error']['errors'][5]['location'] == r'$[5].path'
+
+    assert result['error']['errors'][6]['message'] == (
+        "No values exist at that position.")
+    assert result['error']['errors'][6]['location'] == r'$[6].path'
+
+    assert result['error']['errors'][7]['message'] == (
+        "No value exists at that position.")
+    assert result['error']['errors'][7]['location'] == r'$[7].path'
+
+    assert result['error']['errors'][8]['message'] == (
+        "JSON object must have a ‘value’ member when ‘op’ is add.")
+    assert result['error']['errors'][8]['location'] == r'$[8]'
+
+    # Test for errors applying test patch
+    patch = [{
+        'op': 'test',
+        'path': '/funders',
+        'value': ['msc:c1'],
+    }, {
+        'op': 'test',
+        'path': '/funders/-',
+        'value': 'msc:c1',
+    }]
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.patch(
+        '/api2/rel/m1',
+        headers={"Authorization": credentials},
+        json=patch,
+        follow_redirects=True)
+    assert response.status_code == 400
+    result = response.get_json()
+    assert len(result.get('error', dict()).get('errors', list())) == len(patch)
+
+    assert result['error']['errors'][0]['message'] == (
+        "Test failed. Current value would be ['msc:g1'].")
+    assert result['error']['errors'][0]['location'] == r'$[0].value'
+    assert result['error']['errors'][1]['message'] == (
+        "Test failed. Current value would be msc:g1.")
+    assert result['error']['errors'][1]['location'] == r'$[1].value'
+
+    # Test for errors applying remove patch
+    patch = [{
+        'op': 'remove',
+        'path': '/maintainers',
+    }]
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.patch(
+        '/api2/rel/m1',
+        headers={"Authorization": credentials},
+        json=patch,
+        follow_redirects=True)
+    assert response.status_code == 400
+    result = response.get_json()
+    assert len(result.get('error', dict()).get('errors', list())) == len(patch)
+
+    assert result['error']['errors'][0]['message'] == (
+        "Predicate already missing.")
+    assert result['error']['errors'][0]['location'] == r'$[0].path'
+
+    # Test for errors applying add/replace patch
+    patch = [{
+        'op': 'add',
+        'path': '/funders',
+        'value': 'msc:g1',
+    }, {
+        'op': 'add',
+        'path': '/funders/-',
+        'value': ['msc:g1'],
+    }, {
+        'op': 'replace',
+        'path': '/funders',
+        'value': 'msc:g1',
+    }, {
+        'op': 'replace',
+        'path': '/funders/-',
+        'value': ['msc:g1'],
+    }, {
+        'op': 'replace',
+        'path': '/maintainers',
+        'value': ['msc:g1'],
+    }]
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.patch(
+        '/api2/rel/m1',
+        headers={"Authorization": credentials},
+        json=patch,
+        follow_redirects=True)
+    assert response.status_code == 400
+    result = response.get_json()
+    assert len(result.get('error', dict()).get('errors', list())) == len(patch)
+
+    assert result['error']['errors'][0]['message'] == (
+        "Value must be a list of MSC IDs.")
+    assert result['error']['errors'][0]['location'] == r'$[0].value'
+
+    assert result['error']['errors'][1]['message'] == (
+        "Value must be a single MSC ID.")
+    assert result['error']['errors'][1]['location'] == r'$[1].value'
+
+    assert result['error']['errors'][2]['message'] == (
+        "Value must be a list of MSC IDs.")
+    assert result['error']['errors'][2]['location'] == r'$[2].value'
+
+    assert result['error']['errors'][3]['message'] == (
+        "Value must be a single MSC ID.")
+    assert result['error']['errors'][3]['location'] == r'$[3].value'
+
+    assert result['error']['errors'][4]['message'] == (
+        "Predicate needs to be added.")
+    assert result['error']['errors'][4]['location'] == r'$[4].path'
+
+    # Test for errors in relation values
+    patch = [{
+        'op': 'add',
+        'path': '/funders',
+        'value': ['msc:m1'],
+    }, {
+        'op': 'add',
+        'path': '/funders/-',
+        'value': 'foobar',
+    }, {
+        'op': 'replace',
+        'path': '/funders',
+        'value': ['msc:g42'],
+    }, {
+        'op': 'replace',
+        'path': '/funders/-',
+        'value': 'msc:m2',
+    }]
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.patch(
+        '/api2/rel/m1',
+        headers={"Authorization": credentials},
+        json=patch,
+        follow_redirects=True)
+    assert response.status_code == 400
+
+    result = response.get_json()
+    assert len(result.get('error', dict()).get('errors', list())) == len(patch)
+
+    assert result['error']['errors'][0]['message'] == (
+        "Cannot associate a record with itself.")
+    assert result['error']['errors'][0]['location'] == r'$[0].value[0]'
+
+    assert result['error']['errors'][1]['message'] == (
+        "Not a valid MSC ID: foobar.")
+    assert result['error']['errors'][1]['location'] == r'$[1].value'
+
+    assert result['error']['errors'][2]['message'] == (
+        "No such record: msc:g42.")
+    assert result['error']['errors'][2]['location'] == r'$[2].value[0]'
+
+    assert result['error']['errors'][3]['message'] == (
+        "The record msc:m2 cannot be used with the predicate funders.")
+    assert result['error']['errors'][3]['location'] == r'$[3].value'
+
+    # Test adding first relation with a patch
+    patch = [{
+        'op': 'add',
+        'path': '/maintainers/-',
+        'value': 'msc:g1'}]
 
 # TODO: Test suite for editing DataTypes and VocabTerms.

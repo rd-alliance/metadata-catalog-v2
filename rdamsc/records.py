@@ -1452,28 +1452,30 @@ class Record(Document):
         for i, mscid in enumerate(mscids):
             if mscid in clean_list:
                 continue
-            rel_record = self.cache.get(mscid)
-            if rel_record is None:
+            if mscid == self.mscid:
+                errors.append({
+                    'message': "Cannot associate a record with itself.",
+                    'location': f"[{i}]"})
+                continue
+            rel_record = self.cache.get(mscid, False)
+            if rel_record is False:
                 rel_record = Record.load_by_mscid(mscid)
                 self.cache[mscid] = rel_record
             if rel_record is None:
                 errors.append({
                     'message': f"Not a valid MSC ID: {mscid}.",
                     'location': f"[{i}]"})
-                has_error = True
                 continue
             elif rel_record.doc_id == 0:
                 errors.append({
                     'message': f"No such record: {mscid}.",
                     'location': f"[{i}]"})
-                has_error = True
                 continue
             elif table and rel_record.table != table:
                 errors.append({
                     'message': f"The record {mscid} cannot be used with the"
                     f" predicate {predicate}.",
                     'location': f"[{i}]"})
-                has_error = True
                 continue
             clean_list.append(mscid)
 
@@ -1492,13 +1494,12 @@ class Record(Document):
         output = input_data
 
         op = patch.get('op')
+        known_ops = ['add', 'remove', 'replace', 'test']
         if op is None:
             errors.append({
                 'message': "JSON object must have an ‘op’ member.",
                 'location': ''})
-
-        known_ops = ['add', 'remove', 'replace', 'test']
-        if op not in known_ops:
+        elif op not in known_ops:
             errors.append({
                 'message': f"Supported operations are {', '.join(known_ops)}.",
                 'location': '.op'})
@@ -1569,7 +1570,7 @@ class Record(Document):
             if value != curr_value:
                 errors.append({
                     'message':
-                        "Test failed. Current value would be {curr_value}.",
+                        f"Test failed. Current value would be {curr_value}.",
                     'location': '.value'})
         elif op == 'remove':
             if index is None:

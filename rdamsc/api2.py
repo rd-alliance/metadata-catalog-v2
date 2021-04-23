@@ -471,10 +471,6 @@ def set_record(table, number=0):
     # Look up record to edit, or get new:
     record = Record.load(number, table)
 
-    # Abort if table was wrong:
-    if record is None:
-        abort(404)
-
     # If number is wrong, we reinforce the point by redirecting:
     if record.doc_id != number:
         return redirect(url_for('api2.set_record', table=table, number=None))
