@@ -1330,7 +1330,7 @@ class Record(Document):
                 'message': "Input must be in JSON Patch format (an array of "
                            "objects).",
                 'location': '$'})
-            return (errors, rel_record)
+            return (errors, result)
 
         for i, patch in enumerate(input_data):
             if not isinstance(patch, dict):
@@ -1348,7 +1348,7 @@ class Record(Document):
             return (errors, result)
 
         if rel_id is None:
-            rel_id = rel.tb.insert(rel_record)
+            rel_id = rel.tb.insert(result)
         else:
             with transaction(rel.tb) as t:
                 for key in (k for k in rel_record if k not in result):
@@ -1662,7 +1662,7 @@ class Record(Document):
                         if predicate not in output:
                             output[predicate] = list()
                         i = -1 if index == '-' else int(index)
-                        output[predicate][i] = (clean_value)
+                        output[predicate][i] = clean_value
 
         return (errors, output)
 

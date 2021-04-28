@@ -240,8 +240,8 @@ class DataDBActions(object):
                     "type": "document"}],
             "identifiers": [
                 {
-                    "id": "10.1234/e1",
-                    "scheme": "DOI"}]}
+                    "id": "10001.1234/e1",
+                    "scheme": "Handle"}]}
         self.rel1 = {
             "@id": "msc:e1",
             "endorsed schemes": ["msc:m1", "msc:m2"],

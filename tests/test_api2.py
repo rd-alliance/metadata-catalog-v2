@@ -723,7 +723,7 @@ def test_main_write(client, auth_api, app, data_db):
         {'scheme': 'DOI'},
         # malformed DOI
         {'id': 'not-a-doi', 'scheme': 'DOI'},
-        # malformed Handle
+        # malformed ROR
         {'id': 'not-a-ror', 'scheme': 'ROR'},
         # TODO: validation for other scheme types
         # no scheme
@@ -759,6 +759,30 @@ def test_main_write(client, auth_api, app, data_db):
                 'message': "Invalid scheme: not-a-scheme. "
                            "Valid schemes: DOI, ROR.",
                 'location': '$.identifiers[4].scheme'
+            }]}
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
+
+    record = data_db.get_apidata('c1')
+    record['identifiers'] = [
+        # malformed Handle
+        {'id': 'not-a-handle', 'scheme': 'Handle'},
+    ]
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/c',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 400
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'error': {
+            'message': "Malformed Handle.",
+            'errors': [{
+                'message': "Malformed Handle.",
+                'location': '$.identifiers[0].id'
             }]}
     }, sort_keys=True)
     actual = json.dumps(response.get_json(), sort_keys=True)
@@ -1105,6 +1129,8 @@ def test_main_write(client, auth_api, app, data_db):
 
             i += 1
 
+    # TODO: trigger all validation errors for POSTed rels
+
     # Apply forward relations for m1:
     record = data_db.rel3.copy()
     del record['@id']
@@ -1134,7 +1160,7 @@ def test_main_write(client, auth_api, app, data_db):
 
     patch = [{
         'op': 'add',
-        'path': '/funded schemes/-',
+        'path': '/funded schemes/0',
         'value': 'msc:m3'}]
     credentials = f"Bearer {auth_api.get_token()}"
     response = client.patch(
@@ -1179,6 +1205,8 @@ def test_main_write(client, auth_api, app, data_db):
         json=record,
         follow_redirects=False)
     assert response.status_code == 404
+
+    # TODO: Test deletion
 
 
 # Test suite for patch handling.
@@ -1236,6 +1264,21 @@ def test_rel_patch(client, auth_api, app, data_db):
     credentials = f"Bearer {auth_api.get_token()}"
     response = client.patch(
         '/api2/rel/m1',
+        headers={"Authorization": credentials},
+        json=patch,
+        follow_redirects=True)
+    assert response.status_code == 400
+    result = response.get_json()
+    assert len(result.get('error', dict()).get('errors', list())) > 0
+    assert result['error']['errors'][0]['message'] == "Not a JSON object."
+    assert result['error']['errors'][0]['location'] == r'$[0]'
+    assert result['error']['errors'][5]['message'] == "Not a JSON object."
+    assert result['error']['errors'][5]['location'] == r'$[5]'
+
+    patch = ['op', 'add', 'path', '/maintained scheme/-', 'value', 'msc:m1']
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.patch(
+        '/api2/invrel/g1',
         headers={"Authorization": credentials},
         json=patch,
         follow_redirects=True)
@@ -1388,11 +1431,11 @@ def test_rel_patch(client, auth_api, app, data_db):
     # Test for errors applying remove patch
     patch = [{
         'op': 'remove',
-        'path': '/maintainers',
+        'path': '/endorsements',
     }]
     credentials = f"Bearer {auth_api.get_token()}"
     response = client.patch(
-        '/api2/rel/m1',
+        '/api2/invrel/m4',
         headers={"Authorization": credentials},
         json=patch,
         follow_redirects=True)
@@ -1425,6 +1468,10 @@ def test_rel_patch(client, auth_api, app, data_db):
         'op': 'replace',
         'path': '/maintainers',
         'value': ['msc:g1'],
+    }, {
+        'op': 'replace',
+        'path': '/maintainers/-',
+        'value': 'msc:g1',
     }]
     credentials = f"Bearer {auth_api.get_token()}"
     response = client.patch(
@@ -1455,6 +1502,10 @@ def test_rel_patch(client, auth_api, app, data_db):
     assert result['error']['errors'][4]['message'] == (
         "Predicate needs to be added.")
     assert result['error']['errors'][4]['location'] == r'$[4].path'
+
+    assert result['error']['errors'][5]['message'] == (
+        "No values exist at that position.")
+    assert result['error']['errors'][5]['location'] == r'$[5].path'
 
     # Test for errors in relation values
     patch = [{
@@ -1504,7 +1555,104 @@ def test_rel_patch(client, auth_api, app, data_db):
     # Test adding first relation with a patch
     patch = [{
         'op': 'add',
+        'path': '/supported schemes',
+        'value': ['msc:m1']}]
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.patch(
+        '/api2/rel/t2',
+        headers={"Authorization": credentials},
+        json=patch,
+        follow_redirects=True)
+    assert response.status_code == 200
+    result = response.get_json()
+    assert result['data']['supported schemes'] == ['msc:m1']
+
+    patch = [{
+        'op': 'add',
         'path': '/maintainers/-',
         'value': 'msc:g1'}]
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.patch(
+        '/api2/rel/t2',
+        headers={"Authorization": credentials},
+        json=patch,
+        follow_redirects=True)
+    assert response.status_code == 200
+    result = response.get_json()
+    assert result['data']['maintainers'] == ['msc:g1']
 
-# TODO: Test suite for editing DataTypes and VocabTerms.
+    # Test successful test and replace
+    patch = [{
+        'op': 'replace',
+        'path': '/supported schemes',
+        'value': ['msc:m2']
+    }, {
+        'op': 'test',
+        'path': '/supported schemes',
+        'value': ['msc:m2']
+    }, {
+        'op': 'replace',
+        'path': '/supported schemes/0',
+        'value': 'msc:m3'
+    }, {
+        'op': 'test',
+        'path': '/supported schemes/0',
+        'value': 'msc:m3'
+    }]
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.patch(
+        '/api2/rel/t2',
+        headers={"Authorization": credentials},
+        json=patch,
+        follow_redirects=True)
+    assert response.status_code == 200
+    result = response.get_json()
+    assert result['data']['supported schemes'] == ['msc:m3']
+
+    # Test successful remove
+    patch = [{
+        'op': 'remove',
+        'path': '/supported schemes/-'}]
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.patch(
+        '/api2/rel/t2',
+        headers={"Authorization": credentials},
+        json=patch,
+        follow_redirects=True)
+    assert response.status_code == 200
+    result = response.get_json()
+    assert len(result['data']['supported schemes']) == 0
+
+    patch = [{
+        'op': 'remove',
+        'path': '/tools'}]
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.patch(
+        '/api2/invrel/m3',
+        headers={"Authorization": credentials},
+        json=patch,
+        follow_redirects=True)
+    assert response.status_code == 200
+    result = response.get_json()
+    assert 'tools' not in result['data']
+
+
+# Test suite for editing DataTypes and VocabTerms.
+def test_term_write(client, auth_api, app, data_db):
+
+    # Test adding new datatype successfully
+    record = data_db.get_apidata('datatype1')
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/datatype',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 200
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'meta': {'conformance': 'complete'},
+        'data': record
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
