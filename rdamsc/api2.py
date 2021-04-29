@@ -466,6 +466,7 @@ def reset_password():
     '/<any(m, g, t, c, e, datatype, location, type, id_scheme):table>'
     '<int:number>',
     methods=['PUT'])
+@multi_auth.login_required
 def set_record(table, number=0):
     '''Adds a record to the database and returns it.'''
     # Look up record to edit, or get new:
@@ -501,7 +502,43 @@ def set_record(table, number=0):
 
 
 @bp.route(
+    '/<any(m, g, t, c, e, datatype, location, type, id_scheme):table>'
+    '<int:number>',
+    methods=['DELETE'])
+@multi_auth.login_required
+def annul_record(table, number=0):
+    '''Adds a record to the database and returns it.'''
+    # Look up record to edit, or get new:
+    record = Record.load(number, table)
+
+    # Abort if table or number was wrong:
+    if record is None or record.doc_id != number:
+        abort(404)
+
+    # Handle any errors:
+    errors = record.save_api_input(None)
+    if errors:
+        response = {
+            'apiVersion': api_version,
+            'error': {
+                'message': errors[0]['message'],
+                'errors': errors
+            }
+        }
+        return jsonify(response), 400
+
+    # Return report:
+    record.reload()
+    response = as_response_item(record, callback=embellish_record_fully)
+    response['meta'] = {
+        'conformance': record.conformance,
+    }
+
+    return jsonify(response)
+
+@bp.route(
     '/rel/<any(m, t, c, e):table><int:number>', methods=['POST', 'PUT'])
+@multi_auth.login_required
 def set_relation(table, number):
     '''Add or replace entire forward relation table for a main entity.'''
     record = Record.load(number, table)
@@ -532,6 +569,7 @@ def set_relation(table, number):
 
 @bp.route(
     '/rel/<any(m, t, c, e):table><int:number>', methods=['PATCH'])
+@multi_auth.login_required
 def patch_relation(table, number):
     record = Record.load(number, table)
 
@@ -561,6 +599,7 @@ def patch_relation(table, number):
 
 @bp.route(
     '/invrel/<any(m, g):table><int:number>', methods=['PATCH'])
+@multi_auth.login_required
 def patch_inv_relation(table, number):
     record = Record.load(number, table)
 
