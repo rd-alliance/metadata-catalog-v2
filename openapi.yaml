@@ -2285,66 +2285,106 @@ If an end date is provided, it expresses the date on which the endorsement was w
       type: array
       items:
         type: object
-        properties:
-          op:
-            type: string
-            description: "Operation to perform."
-            enum:
-            - add
-            - remove
-            - replace
-            - test
-          path:
-            type: string
-            description: "Type of relationship on which to perform the operation."
-            enum:
-            - "/parent schemes"
-            - "/supported schemes"
-            - "/input schemes"
-            - "/output schemes"
-            - "/endorsed schemes"
-            - "/maintainers"
-            - "/funders"
-            - "/users"
-            - "/originators"
-          value:
-            type: array
-            description: "When adding, the MSCIDs to add; when removing, the MSCIDs to remove; when replacing, the MSCIDs with which to replace the current array; when testing, the MSCIDs with which to compare the current array."
-            items:
+        oneOf:
+        - properties:
+            op:
               type: string
-              description: "Non-semantic internal identifier for the related record."
+              description: "Operation to perform."
+              enum:
+              - add
+              - remove
+              - replace
+              - test
+            path:
+              type: string
+              description: "Type of relationship to add."
+              enum:
+              - "/parent schemes"
+              - "/supported schemes"
+              - "/input schemes"
+              - "/output schemes"
+              - "/endorsed schemes"
+              - "/maintainers"
+              - "/funders"
+              - "/users"
+              - "/originators"
+            value:
+              type: array
+              description: "When adding, the MSCIDs to add to the new relationship (acts like replacing if relationship already exists); when replacing, the MSCIDs with which to replace the current array; when testing, the MSCIDs with which to compare the current array; ignored when removing."
+              items:
+                type: string
+                description: "Non-semantic internal identifier for the related record."
+                pattern: '^msc:(m|g)\d+$'
+        - properties:
+            op:
+              type: string
+              description: "Operation to perform."
+              enum:
+              - add
+              - remove
+              - replace
+              - test
+            path:
+              type: string
+              description: "Item on which to perform the operation."
+              pattern: '^/((parent|supported|input|output|endorsed) schemes|maintainers|funders|users|originators)(/(-|\d+))?$'
+            value:
+              type: string
+              description: "Non-semantic internal identifier for the related record. When adding, the MSCID to insert at that position; when replacing, the MSCID with which to replace the current MSCID at that position; when testing, the MSCID with which to compare the current MSCID at that position; ignored when removing."
               pattern: '^msc:(m|g)\d+$'
     PatchInvRelation:
       type: array
       items:
         type: object
-        properties:
-          op:
-            type: string
-            description: "Operation to perform."
-            enum:
-            - add
-            - remove
-            - replace
-            - test
-          path:
-            type: string
-            description: "Type of relationship on which to perform the operation."
-            enum:
-            - "/child schemes"
-            - "/tools"
-            - "/input to mappings"
-            - "/output to mappings"
-            - "/endorsements"
-            - "/maintained resources"
-            - "/funded resources"
-            - "/used schemes"
-          value:
-            type: array
-            description: "When adding, the MSCIDs to add; when removing, the MSCIDs to remove; when replacing, the MSCIDs with which to replace the current array; when testing, the MSCIDs with which to compare the current array."
-            items:
+        oneOf:
+        - properties:
+            op:
               type: string
-              description: "Non-semantic internal identifier for the related record."
+              description: "Operation to perform."
+              enum:
+              - add
+              - remove
+              - replace
+              - test
+            path:
+              type: string
+              description: "Type of relationship to add."
+              enum:
+              - "/child schemes"
+              - "/maintained schemes"
+              - "/funded schemes"
+              - "/used schemes"
+              - "/tools"
+              - "/maintained tools"
+              - "/funded tools"
+              - "/input to mappings"
+              - "/output from mappings"
+              - "/maintained mappings"
+              - "/funded mappings"
+              - "/endorsements"
+            value:
+              type: array
+              description: "When adding, the MSCIDs to add to the new relationship (acts like replacing if relationship already exists); when replacing, the MSCIDs with which to replace the current array; when testing, the MSCIDs with which to compare the current array; ignored when removing."
+              items:
+                type: string
+                description: "Non-semantic internal identifier for the related record."
+                pattern: '^msc:(m|t|c|e)\d+$'
+        - properties:
+            op:
+              type: string
+              description: "Operation to perform."
+              enum:
+              - add
+              - remove
+              - replace
+              - test
+            path:
+              type: string
+              description: "Item on which to perform the operation."
+              pattern: '^/((child|used) schemes|(maintained|funded) (schemes|tools|mappings)|tools|(input to|output from) mappings|endorsements)(/(-|\d+))?$'
+            value:
+              type: string
+              description: "Non-semantic internal identifier for the related record. When adding, the MSCID to insert at that position; when replacing, the MSCID with which to replace the current MSCID at that position; when testing, the MSCID with which to compare the current MSCID at that position; ignored when removing."
               pattern: '^msc:(m|t|c|e)\d+$'
     Response:
       type: object

@@ -1791,7 +1791,7 @@ class Scheme(Record):
             'predicate': 'input schemes',
             'direction': Relation.INVERSE,
             'accepts': 'c'},
-        'output to mapping': {
+        'output from mapping': {
             'predicate': 'output schemes',
             'direction': Relation.INVERSE,
             'accepts': 'c'},
