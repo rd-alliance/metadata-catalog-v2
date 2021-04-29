@@ -764,6 +764,32 @@ def test_main_write(client, auth_api, app, data_db):
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert ideal == actual
 
+    # Test type validator:
+    record = data_db.get_apidata('g1')
+    del record['relatedEntities']
+    record['types'] = ['not-a-type']
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/g',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 400
+    errmess = (
+        "Invalid type: not-a-type. Valid types: standards body, archive, "
+        "professional group, coordination group.")
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'error': {
+            'message': errmess,
+            'errors': [{
+                'message': errmess,
+                'location': '$.types[0]'
+            }]}
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
+
     record = data_db.get_apidata('c1')
     record['identifiers'] = [
         # malformed Handle
@@ -1129,11 +1155,43 @@ def test_main_write(client, auth_api, app, data_db):
 
             i += 1
 
-    # TODO: trigger all validation errors for POSTed rels
-
-    # Apply forward relations for m1:
+    # Test validation errors for rel endpoint
     record = data_db.rel3.copy()
     del record['@id']
+    record['funded schemes'] = 'msc:m2'
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/rel/m1',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 400
+    result = response.get_json()
+    assert result['error']['errors'][0]['message'] == (
+        "Invalid predicate: funded schemes. Valid predicates: "
+        "parent schemes, maintainers, funders, users.")
+    assert result['error']['errors'][0]['location'] == r'$.funded schemes'
+
+    assert result['error']['errors'][1]['message'] == (
+        "Value must be a list of MSC IDs.")
+    assert result['error']['errors'][1]['location'] == r'$.funded schemes'
+
+    del record['funded schemes']
+    record['users'] = ['msc:g1', 'msc:g2']
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/rel/m1',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 400
+    result = response.get_json()
+    assert result['error']['errors'][0]['message'] == (
+        "No such record: msc:g2.")
+    assert result['error']['errors'][0]['location'] == r'$.users[1]'
+
+    # Apply forward relations for m1:
+    del record['users']
     credentials = f"Bearer {auth_api.get_token()}"
     response = client.post(
         '/api2/rel/m1',
@@ -1205,6 +1263,16 @@ def test_main_write(client, auth_api, app, data_db):
         json=record,
         follow_redirects=False)
     assert response.status_code == 404
+
+    # Test adding new relation record:
+    record = {'parent schemes': ['msc:m1']}
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/rel/m4',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert_okay(response)
 
     # TODO: Test deletion
 
@@ -1640,6 +1708,22 @@ def test_rel_patch(client, auth_api, app, data_db):
 # Test suite for editing DataTypes and VocabTerms.
 def test_term_write(client, auth_api, app, data_db):
 
+    # Test error on missing required field:
+    record = data_db.get_apidata('datatype1')
+    del record['label']
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/datatype',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 400
+    result = response.get_json()
+
+    assert result['error']['errors'][0]['message'] == (
+        "Missing field: label.")
+    assert result['error']['errors'][0]['location'] == '$'
+
     # Test adding new datatype successfully
     record = data_db.get_apidata('datatype1')
     credentials = f"Bearer {auth_api.get_token()}"
@@ -1649,6 +1733,81 @@ def test_term_write(client, auth_api, app, data_db):
         json=record,
         follow_redirects=True)
     assert response.status_code == 200
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'meta': {'conformance': 'complete'},
+        'data': record
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
+
+    # Test overly long vocab term ID:
+    record = {
+        'id': "x"*65,
+        'label': "Test"}
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/location',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 400
+    result = response.get_json()
+
+    assert result['error']['errors'][0]['message'] == (
+        "Value must be 64 characters or fewer (actual length: 65).")
+    assert result['error']['errors'][0]['location'] == '$.id'
+
+    # Test bad applies:
+    record = {
+        'id': "contact",
+        'label': "contact form",
+        'applies': ['datatype']}
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/location',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 400
+    result = response.get_json()
+
+    assert result['error']['errors'][0]['message'] == (
+        "Invalid series: datatype. Valid series: "
+        "scheme, tool, mapping, organization, endorsement.")
+    assert result['error']['errors'][0]['location'] == '$.applies[0]'
+
+    record = {
+        'id': "contact",
+        'label': "contact form",
+        'applies': 'datatype'}
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/location',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 400
+    result = response.get_json()
+
+    assert result['error']['errors'][0]['message'] == (
+        "Value must be a list (one or more of "
+        "scheme, tool, mapping, organization, endorsement).")
+    assert result['error']['errors'][0]['location'] == '$.applies'
+
+    record = {
+        'mscid': 'msc:id_scheme4',
+        'id': "ISNI",
+        'label': "ISNI",
+        'applies': ['organization']}
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/id_scheme',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 200
+    record['uri'] = "http://localhost/api2/id_scheme4"
     ideal = json.dumps({
         'apiVersion': '2.0.0',
         'meta': {'conformance': 'complete'},

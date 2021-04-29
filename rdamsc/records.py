@@ -372,12 +372,12 @@ class Record(Document):
         # Otherwise, it is an error and we return None.
         subclass = cls
         if table is None:
-            if not hasattr(cls, 'table'):
+            if not hasattr(cls, 'table'):  # pragma: no cover
                 return None
             table = cls.table
         else:
             subclass = cls.get_class_by_table(table)
-            if subclass is None:
+            if subclass is None:  # pragma: no cover
                 return None
 
         db = subclass.get_db()
@@ -441,7 +441,7 @@ class Record(Document):
         field is automatically ignored if each version has the information in
         question.
         '''
-        if not hasattr(self, 'schema'):
+        if not hasattr(self, 'schema'):  # pragma: no cover
             raise NotImplementedError
 
         # Create portable version of record:
@@ -499,7 +499,7 @@ class Record(Document):
         return 'empty'
 
     @property
-    def form(self):
+    def form(self):  # pragma: no cover
         raise NotImplementedError
 
     @property
@@ -511,7 +511,7 @@ class Record(Document):
         return f"{mscid_prefix}{self.table}{self.doc_id}"
 
     @property
-    def name(self):
+    def name(self):  # pragma: no cover
         return "Generic record"
 
     @property
@@ -699,7 +699,7 @@ class Record(Document):
         details beyond this and translates the role into temporary helper fields
         `predicate` and `direction`.
         '''
-        if not hasattr(self, 'rolemap'):
+        if not hasattr(self, 'rolemap'):  # pragma: no cover
             raise NotImplementedError
         result = {'errors': list(), 'value': list()}
         cache = dict()
@@ -768,8 +768,14 @@ class Record(Document):
         '''API validator limiting values to main record series.'''
         result = {'errors': list(), 'value': list()}
         valid_series = [
-            Scheme.series, Tool.series, Crosswalk.series, Endorsement.series,
-            Group.series]
+            Scheme.series, Tool.series, Crosswalk.series, Group.series,
+            Endorsement.series]
+        if not isinstance(value, list):
+            result['errors'].append({
+                'message': "Value must be a list (one or more of "
+                           f"{', '.join(valid_series)}).",
+                'location': ''})
+            return result
         for i, v in enumerate(value):
             if v not in valid_series:
                 result['errors'].append({
@@ -928,7 +934,7 @@ class Record(Document):
 
         return ''
 
-    def get_form(self):
+    def get_form(self):  # pragma: no cover
         raise NotImplementedError
 
     def get_related_entities(self) -> List[Mapping[str, str]]:
@@ -953,7 +959,7 @@ class Record(Document):
     def get_slug(self, *, apidata: Mapping = None, formdata: Mapping = None):
         return self.get('slug')
 
-    def get_vform(self):
+    def get_vform(self):  # pragma: no cover
         raise NotImplementedError
 
     def insert_relations(self, data: Mapping):
@@ -1220,7 +1226,7 @@ class Record(Document):
         '''Validates a set of patches and applies them to the database if they
         pass validation. Returns error list and resulting record.
         '''
-        if not hasattr(self, 'rolemap'):
+        if not hasattr(self, 'rolemap'):  # pragma: no cover
             raise NotImplementedError
 
         rel = Relation()
@@ -1305,7 +1311,7 @@ class Record(Document):
         '''Validates a set of patches and applies them to the database if they
         pass validation. Returns error list and resulting record.
         '''
-        if not hasattr(self, 'rolemap'):
+        if not hasattr(self, 'rolemap'):  # pragma: no cover
             raise NotImplementedError
 
         acceptable = dict()
@@ -1384,7 +1390,7 @@ class Record(Document):
         '''Checks input for valid keys and values. Invalid keys are removed.
         Invalid values raise an error. Valid values are cleaned. Returns a
         tuple consisting of a list of errors and the clean record.'''
-        if not hasattr(self, 'schema'):
+        if not hasattr(self, 'schema'):  # pragma: no cover
             raise NotImplementedError
 
         result = self.validate_against(input_data, self.schema)
@@ -1392,7 +1398,7 @@ class Record(Document):
         for error in result['errors']:
             errors.append({
                 'message': error.get('message', ''),
-                'location': f"$.{error.get('location', '')}",
+                'location': f"${error.get('location', '')}",
             })
 
         return (errors, result['value'])
@@ -1421,7 +1427,7 @@ class Record(Document):
                         errors.append({
                             'message': error.get('message', ''),
                             'location':
-                                f"{k}[{i}].{error.get('location', '')}",
+                                f".{k}[{i}]{error.get('location', '')}",
                         })
                     clean_data[k].append(result['value'])
 
@@ -1436,7 +1442,7 @@ class Record(Document):
             for error in validated['errors']:
                 errors.append({
                     'message': error.get('message', ''),
-                    'location': f"{k}{error.get('location', '')}",
+                    'location': f".{k}{error.get('location', '')}",
                 })
             clean_data[k] = validated['value']
 
@@ -1659,8 +1665,6 @@ class Record(Document):
                             'location': '.value'})
                     if not list_errors:
                         clean_value = clean_list[0]
-                        if predicate not in output:
-                            output[predicate] = list()
                         i = -1 if index == '-' else int(index)
                         output[predicate][i] = clean_value
 
@@ -1671,7 +1675,7 @@ class Record(Document):
         '''Checks validity of a set of relations. Invalid keys are removed.
         Invalid values raise an error. Valid values are cleaned. Returns a
         tuple consisting of a list of errors and the clean record.'''
-        if not hasattr(self, 'rolemap'):
+        if not hasattr(self, 'rolemap'):  # pragma: no cover
             raise NotImplementedError
 
         acceptable = dict()
@@ -1683,36 +1687,35 @@ class Record(Document):
         result = {'errors': list(), 'value': {'@id': self.mscid}}
         self.cache = dict()
         for predicate, mscids in input_data.items():
-            has_error = False
 
             # Validate role
+            accepts = list()
             if predicate not in acceptable:
                 result['errors'].append({
                     'message': f"Invalid predicate: {predicate}."
                     f" Valid predicates: {', '.join(acceptable.keys())}.",
                     'location': f".{predicate}"})
-                has_error = True
             else:
                 accepts = acceptable[predicate]
 
             # Validate MSCIDs
             if not isinstance(mscids, list):
                 result['errors'].append({
-                    'message': f"Value of {predicate} must be a list of MSC"
-                               " IDs.",
+                    'message': f"Value must be a list of MSC IDs.",
                     'location': f".{predicate}"})
+                continue
+
+            if not accepts:
                 continue
 
             list_errors, clean_list = self.validate_rel_list(
                 mscids, predicate, accepts)
-            for error in list_errors:
-                result['errors'].append({
-                    'message': error.get('message', ''),
-                    'location': f".{predicate}{error.get('location', '')}",
-                })
-                has_error = True
-
-            if has_error:
+            if list_errors:
+                for error in list_errors:
+                    result['errors'].append({
+                        'message': error.get('message', ''),
+                        'location': f".{predicate}{error.get('location', '')}",
+                    })
                 continue
 
             result['value'][predicate] = clean_list
