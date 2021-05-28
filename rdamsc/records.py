@@ -96,6 +96,18 @@ class Relation(object):
     INVERSE = 'inverse'
 
     @property
+    def inversion_map(self):
+        invrelmap = dict()
+        for fw, iv in self.inversions.items():
+            if fw in ['maintainers', 'funders']:
+                for series in ['scheme', 'tool', 'mapping']:
+                    invrelmap[iv.format(series)] = fw
+            else:
+                invrelmap[iv] = fw
+
+        return invrelmap
+
+    @property
     def inversions(self):
         return type(self)._inversions
 
@@ -384,7 +396,7 @@ class Record(Document):
         tb = db.table(table)
         doc = tb.get(doc_id=doc_id)
 
-        if doc:
+        if doc is not None:
             return subclass(value=doc, doc_id=doc.doc_id)
         return subclass(value=dict(), doc_id=0)
 
@@ -934,6 +946,40 @@ class Record(Document):
 
         return ''
 
+    def annul(self) -> List[Mapping[str, str]]:
+        '''Removes content of record. Returns a list of error messages if any
+        problems arise.
+        '''
+
+        # Get current list of relations for this record so we can delete them:
+        rel = Relation()
+        # Forward relationships: List[Tuple[False, predicate, List[object]]]
+        fwd_rel = rel.related(self.mscid, direction=rel.FORWARD)
+        forward = [(False, k, v) for k, v in fwd_rel.items()]
+        # Inverse relationships: List[Tuple[subject, predicate, False]]
+        invrelmap = rel.inversion_map
+        inv_rel = rel.related(self.mscid, direction=rel.INVERSE)
+        inverted = list()
+        for relation, mscids in inv_rel.items():
+            predicate = invrelmap.get(relation)
+            if predicate is None:  # pragma: no cover
+                return [{'message': 'Database error: unrecognised predicate'}]
+            for mscid in mscids:
+                inverted.append((mscid, predicate, False))
+
+        # Save the main record:
+        error = self._save(dict())
+        if error:
+            return [{'message': error}]
+
+        # Update relations
+        if forward or inverted:
+            error = self._save_relations(forward, inverted)
+            if error:
+                return [{'message': error}]
+
+        return list()
+
     def get_form(self):  # pragma: no cover
         raise NotImplementedError
 
@@ -1231,14 +1277,6 @@ class Record(Document):
 
         rel = Relation()
 
-        invrelmap = dict()
-        for fw, iv in rel.inversions.items():
-            if fw in ['maintainers', 'funders']:
-                for series in ['scheme', 'tool', 'mapping']:
-                    invrelmap[iv.format(series)] = fw
-            else:
-                invrelmap[iv] = fw
-
         acceptable = dict()
         for role, info in self.rolemap.items():
             if info['direction'] == Relation.FORWARD:
@@ -1279,6 +1317,7 @@ class Record(Document):
             return (errors, result)
 
         # Save changes:
+        invrelmap = rel.inversion_map
         current = rel.related(self.mscid, direction=rel.INVERSE)
         changes = list()
         for inverted, mscids in result.items():
@@ -2468,6 +2507,18 @@ class Datatype(Record):
     def name(self):
         return self.get('label', f'Type {self.doc_id}')
 
+    def annul(self) -> List[Mapping[str, str]]:
+        '''Removes content of record. Returns a list of error messages if any
+        problems arise.
+        '''
+
+        # Save the main record:
+        error = self._save(dict())
+        if error:
+            return [{'message': error}]
+
+        return list()
+
     def get_form(self):
         # Get data from database:
         data = json.loads(json.dumps(self))
@@ -2576,6 +2627,18 @@ class VocabTerm(Document):
             form.id.render_kw = {'required': True}
 
         return form
+
+    def annul(self) -> List[Mapping[str, str]]:
+        '''Removes content of record. Returns a list of error messages if any
+        problems arise.
+        '''
+
+        # Save the main record:
+        error = self._save(dict())
+        if error:
+            return [{'message': error}]
+
+        return list()
 
     def get_overlaps(self, id: str = None):
         '''Returns a list of record types for which a term with the same ID has
@@ -3494,7 +3557,7 @@ def display(table, number, field=None, api=False):
     record = Record.load(number, table)
 
     # Abort if series or number was wrong:
-    if record is None or record.doc_id == 0:
+    if (not record) or record.doc_id == 0:
         abort(404)
 
     # Form MSC ID

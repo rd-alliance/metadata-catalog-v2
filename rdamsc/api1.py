@@ -196,7 +196,7 @@ def get_record(table, number):
     record = Record.load(number, table)
 
     # Abort if series or number was wrong:
-    if record is None or record.doc_id == 0:
+    if (not record) or record.doc_id == 0:
         abort(404)
 
     # Return result

@@ -257,7 +257,7 @@ def get_record(table, number):
     record = Record.load(number, table)
 
     # Abort if series or number was wrong:
-    if record is None or record.doc_id == 0:
+    if (not record) or record.doc_id == 0:
         abort(404)
 
     # Return result
@@ -295,7 +295,7 @@ def get_relation(table, number):
     '''Return forward relations for the given record.'''
     # Abort if series or number was wrong:
     base_record = Record.load(number, table)
-    if base_record is None or base_record.doc_id == 0:
+    if (not base_record) or base_record.doc_id == 0:
         abort(404)
 
     rel = Relation()
@@ -345,7 +345,7 @@ def get_inv_relation(table, number):
     '''Return inverse relations for the given record.'''
     # Abort if series or number was wrong:
     base_record = Record.load(number, table)
-    if base_record is None or base_record.doc_id == 0:
+    if (not base_record) or base_record.doc_id == 0:
         abort(404)
 
     rel = Relation()
@@ -471,9 +471,11 @@ def set_record(table, number=0):
     '''Adds a record to the database and returns it.'''
     # Look up record to edit, or get new:
     record = Record.load(number, table)
+    print(f"Looking up record {table}{number}...")
 
     # If number is wrong, we reinforce the point by redirecting:
     if record.doc_id != number:
+        print(f"Expecting {number}, got {record.doc_id}.")
         return redirect(url_for('api2.set_record', table=table, number=None))
 
     # Get input:
@@ -516,7 +518,7 @@ def annul_record(table, number=0):
         abort(404)
 
     # Handle any errors:
-    errors = record.save_api_input(None)
+    errors = record.annul()
     if errors:
         response = {
             'apiVersion': api_version,
@@ -527,14 +529,9 @@ def annul_record(table, number=0):
         }
         return jsonify(response), 400
 
-    # Return report:
-    record.reload()
-    response = as_response_item(record, callback=embellish_record_fully)
-    response['meta'] = {
-        'conformance': record.conformance,
-    }
+    # Otherwise return an empty success message:
+    return '', (204)
 
-    return jsonify(response)
 
 @bp.route(
     '/rel/<any(m, t, c, e):table><int:number>', methods=['POST', 'PUT'])

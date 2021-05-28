@@ -1002,7 +1002,7 @@ def test_main_write(client, auth_api, app, data_db):
             }, {
                 'message': "Invalid role: originator. "
                            "Valid roles: parent scheme, child scheme, "
-                           "input to mapping, output to mapping, maintainer, "
+                           "input to mapping, output from mapping, maintainer, "
                            "funder, user, tool, endorsement.",
                 'location': '$.relatedEntities[1].role'
             }, {
@@ -1274,7 +1274,54 @@ def test_main_write(client, auth_api, app, data_db):
         follow_redirects=True)
     assert_okay(response)
 
-    # TODO: Test deletion
+    # Test deletion (making sure we have an inverted relationship)
+    record = {'parent schemes': ['msc:m4']}
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/rel/m3',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert_okay(response)
+
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.delete(
+        '/api2/m4',
+        headers={"Authorization": credentials},
+        follow_redirects=True)
+    assert response.status_code == 204
+
+    response = client.get(
+        '/api2/m4',
+        follow_redirects=True)
+    assert response.status_code == 404
+
+    response = client.get(
+        '/api2/rel/m4',
+        follow_redirects=True)
+    assert response.status_code == 404
+
+    response = client.get(
+        '/api2/invrel/m4',
+        follow_redirects=True)
+    assert response.status_code == 404
+
+    # But it should be possible to restore a deleted record via the API:
+    record = data_db.get_apidata('m4')
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.put(
+        '/api2/m4',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    print("Response for updating a deleted record:")
+    print(json.dumps(response.get_json(), sort_keys=True))
+    assert_okay(response)
+
+    response = client.get(
+        '/api2/m4',
+        follow_redirects=True)
+    assert response.status_code == 200
 
 
 # Test suite for patch handling.
@@ -1815,3 +1862,27 @@ def test_term_write(client, auth_api, app, data_db):
     }, sort_keys=True)
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert ideal == actual
+
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.delete(
+        '/api2/datatype1',
+        headers={"Authorization": credentials},
+        follow_redirects=True)
+    assert response.status_code == 204
+
+    response = client.get(
+        '/api2/datatype1',
+        follow_redirects=True)
+    assert response.status_code == 404
+
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.delete(
+        '/api2/id_scheme4',
+        headers={"Authorization": credentials},
+        follow_redirects=True)
+    assert response.status_code == 204
+
+    response = client.get(
+        '/api2/id_scheme4',
+        follow_redirects=True)
+    assert response.status_code == 404
