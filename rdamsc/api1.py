@@ -170,7 +170,7 @@ def get_records(table):
     record_cls = Record.get_class_by_table(table)
     if record_cls is None:  # pragma: no cover
         abort(404)
-    records = record_cls.all()
+    records = [k for k in record_cls.all() if k]
 
     # Get paging parameters
     start_raw = request.values.get('start')

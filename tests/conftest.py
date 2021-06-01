@@ -566,6 +566,11 @@ class DataDBActions(object):
                 db[table][i] = getattr(self, f'{table}{i}')
                 i += 1
 
+            # Write a deleted entry to ensure it doesn't mess things up.
+            # Relation records retain `@id` so are never left entirely blank.
+            if table != 'rel':
+                db[table][i] = dict()
+
         with open(db_file, 'w') as f:
             json.dump(db, f, indent=1, ensure_ascii=False)
 

@@ -202,6 +202,8 @@ def scheme_search():
     funder_set = set()
     id_set = set()
     for scheme in all_schemes:
+        if not scheme:
+            continue
         title_set.add(scheme.name)
         for type_id in scheme.get('dataTypes', list()):
             type = Datatype.load_by_mscid(type_id)

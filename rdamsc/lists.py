@@ -99,7 +99,7 @@ def record_index(series, role=None):
                 rel = Relation()
                 records = rel.object_records(predicate=role)
             else:
-                records = record_cls.all()
+                records = [k for k in record_cls.all() if k]
             records.sort(key=lambda k: k.name)
             tree = [{
                 'name': record.name,
