@@ -525,9 +525,50 @@ def test_auth_api2(client, app, data_db, user_db):
     # Install API user account
     user_db.write_db()
 
-    # Reject call with no credentials
+    # Reject calls with no credentials
     response = client.get(
         '/api2/user/token',
+        follow_redirects=True)
+    assert response.status_code == 401
+
+    response = client.post(
+        '/api2/user/reset-password',
+        data={"new_password": "compromised"},
+        follow_redirects=True)
+    assert response.status_code == 401
+
+    response = client.post(
+        '/api2/m',
+        json={"name": "Compromised"},
+        follow_redirects=True)
+    assert response.status_code == 401
+
+    response = client.put(
+        '/api2/g1',
+        json={"name": "Compromised"},
+        follow_redirects=True)
+    assert response.status_code == 401
+
+    response = client.delete(
+        '/api2/t1',
+        follow_redirects=True)
+    assert response.status_code == 401
+
+    response = client.put(
+        '/api2/rel/c1',
+        json={'input schemes': ['msc:m1']},
+        follow_redirects=True)
+    assert response.status_code == 401
+
+    response = client.patch(
+        '/api2/rel/e1',
+        json=[{'op': 'add', 'path': '/endorsed schemes/-', 'value': 'msc:m3'}],
+        follow_redirects=True)
+    assert response.status_code == 401
+
+    response = client.patch(
+        '/api2/invrel/g1',
+        json=[{'op': 'add', 'path': '/funded schemes/-', 'value': 'msc:m3'}],
         follow_redirects=True)
     assert response.status_code == 401
 
