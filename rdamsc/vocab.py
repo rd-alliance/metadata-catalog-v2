@@ -82,7 +82,8 @@ class Thesaurus(object):
     def tree(self):
         return self.trees.all()
 
-    def _to_list(self, parent_uris: List[URIRef]=None, parent_label: str=None)\
+    def _to_list(self, parent_uris: List[URIRef] = None,
+                 parent_label: str = None)\
             -> List[Mapping[str, Union[URIRef, str]]]:
         full_list = list()
         sub_list = list()
@@ -120,7 +121,7 @@ class Thesaurus(object):
                         f" < {entry['long_label']}"))
         return full_list
 
-    def _to_tree(self, parent_uri: URIRef=None)\
+    def _to_tree(self, parent_uri: URIRef = None)\
             -> List[Mapping[str, Union[URIRef, str, List]]]:
         tree = list()
         if parent_uri:
@@ -149,7 +150,8 @@ class Thesaurus(object):
             uris.extend(self._child_uris(child))
         return uris
 
-    def get_branch(self, term: str, broader: bool=True, narrower: bool=True):
+    def get_branch(self, term: str,
+                   broader: bool = True, narrower: bool = True):
         '''Given a term's label or URI, returns the term's URI along with the
         URI of each ancestor and descendent term. Returns an empty list if term
         not recognised.
@@ -223,7 +225,9 @@ class Thesaurus(object):
 
         return rdf_object
 
-    def get_concept_brief(self, uri: str, broader: bool=False, narrower: bool=False, children: list=None) -> Mapping:
+    def get_concept_brief(self, uri: str,
+                          broader: bool = False, narrower: bool = False,
+                          children: list = None) -> Mapping:
         '''Returns a minimal dictionary object (i.e. without @context or @id)
         representing the concept, suitable for conversion to JSON-LD.
         '''
@@ -313,12 +317,12 @@ class Thesaurus(object):
     def get_long_labels(self):
         return [kw['long_label'] for kw in self.entries]
 
-    def get_tree(self, filter: List[str], master: List=None)\
+    def get_tree(self, filter: List[str], master: List = None)\
             -> List[Mapping[str, Union[str, List]]]:
-        '''Takes a list of term URIs, and returns the corresponding terms in tree
-        form, specifically as a list of dictionaries suitable for use with the
-        contents template: 'url' holds the URL of the term's search result in
-        the Catalog (not its ID URI), 'name' holds its preferred label in
+        '''Takes a list of term URIs, and returns the corresponding terms in
+        tree form, specifically as a list of dictionaries suitable for use with
+        the contents template: 'url' holds the URL of the term's search result
+        in the Catalog (not its ID URI), 'name' holds its preferred label in
         English, and (if applicable) 'children' holds a list of dictionaries
         corresponding to immediately narrower terms in the thesaurus
         ('children').
@@ -357,6 +361,9 @@ class Thesaurus(object):
         if entry:
             return entry.get('uri')
         return None
+
+    def get_uris(self):
+        return [kw['uri'] for kw in self.entries]
 
     def get_valid(self):
         values = list()

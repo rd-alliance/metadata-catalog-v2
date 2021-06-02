@@ -3,9 +3,12 @@ import re
 import tempfile
 import json
 from html import unescape
+import time
 import pytest
 from werkzeug.datastructures import MultiDict
 from passlib.apps import custom_app_context as pwd_context
+from requests.auth import _basic_auth_str
+
 
 from rdamsc import create_app
 
@@ -182,7 +185,7 @@ class DataDBActions(object):
                     "familyName": "Surname",
                     "fullName": "Given Family"}]}
         self.c2 = {
-            "slug": "test-scheme-1-TO-test-scheme-2",
+            "slug": "test-scheme-1_TO_test-scheme-2",
             "description": "<p>Paragraph 1.</p><p>Paragraph 2.</p>",
             "versions": [
                 {
@@ -215,7 +218,10 @@ class DataDBActions(object):
             "identifiers": [
                 {
                     "id": "10.1234/g1",
-                    "scheme": "DOI"}]}
+                    "scheme": "DOI"},
+                {
+                    "id": "https://ror.org/002h8g185",
+                    "scheme": "ROR"}]}
         self.e1 = {
             "title": "Test endorsement 1",
             "slug": "test-endorsement-1",
@@ -226,16 +232,16 @@ class DataDBActions(object):
             "publication": "<i>IEEE MultiMedia</i>, 13(2), 84-88",
             "issued": "2017-12-31",
             "valid": {
-                    "start": "2018-01-01",
-                    "end": "2019-12-31"},
+                "start": "2018-01-01",
+                "end": "2019-12-31"},
             "locations": [
                 {
                     "url": "http://journal.org/e1",
                     "type": "document"}],
             "identifiers": [
                 {
-                    "id": "10.1234/e1",
-                    "scheme": "DOI"}]}
+                    "id": "10001.1234/e1",
+                    "scheme": "Handle"}]}
         self.rel1 = {
             "@id": "msc:e1",
             "endorsed schemes": ["msc:m1", "msc:m2"],
@@ -394,7 +400,7 @@ class DataDBActions(object):
             related_entities.sort(
                 key=lambda k: k['role'] + k['id'][:n] + k['id'][n:].zfill(5))
             apidata['relatedEntities'] = related_entities
-        return apidata
+        return json.loads(json.dumps(apidata))
 
     def get_api1data(self, record: str, with_embedded=True):
         '''Returns record in form that API 1 would respond with.'''
@@ -450,7 +456,7 @@ class DataDBActions(object):
             related_entities.sort(
                 key=lambda k: k['id'][:n] + k['id'][n:].zfill(5))
             apidata['relatedEntities'] = related_entities
-        return apidata
+        return json.loads(json.dumps(apidata))
 
     def get_apidataset(self, table: str):
         '''Returns table in form that API would respond with.'''
@@ -487,22 +493,27 @@ class DataDBActions(object):
                 i += 1
             for id in sorted(reldict.keys(),
                              key=lambda k: k[:n] + k[n:].zfill(5)):
-                item = {"@id": id, "uri": f'http://localhost/api2/invrel/{id[4:]}'}
+                item = {
+                    "@id": id,
+                    "uri": f'http://localhost/api2/invrel/{id[4:]}'}
                 item.update(reldict[id])
                 apidataset.append(item)
         else:
             while hasattr(self, f'rel{i}'):
                 record = getattr(self, f'rel{i}')
-                record['uri'] = f'http://localhost/api2/rel/{record["@id"][4:]}'
+                record['uri'] = (
+                    f'http://localhost/api2/rel/'f'{record["@id"][4:]}')
                 apidataset.append(record)
                 i += 1
 
+        table_order = {'m': 0, 't': 10, 'c': 20, 'g': 30, 'e': 40}
         for results in apidataset:
             for predicate in results.keys():
                 if isinstance(results[predicate], list):
                     results[predicate].sort(
-                        key=lambda k: k[:n] + k[n:].zfill(5))
-
+                        key=lambda k: table_order[k[n - 1:n]] + int(k[n:]))
+        apidataset.sort(
+            key=lambda k: table_order[k['@id'][n - 1:n]] + int(k['@id'][n:]))
         return apidataset
 
     def get_apiterm(self, table: str, number: int):
@@ -554,6 +565,11 @@ class DataDBActions(object):
             while hasattr(self, f'{table}{i}'):
                 db[table][i] = getattr(self, f'{table}{i}')
                 i += 1
+
+            # Write a deleted entry to ensure it doesn't mess things up.
+            # Relation records retain `@id` so are never left entirely blank.
+            if table != 'rel':
+                db[table][i] = dict()
 
         with open(db_file, 'w') as f:
             json.dump(db, f, indent=1, ensure_ascii=False)
@@ -681,12 +697,18 @@ def app():
     with tempfile.TemporaryDirectory() as inst_path:
         app = create_app({
             'TESTING': True,
-            'MAIN_DATABASE_PATH': os.path.join(inst_path, 'data', 'db.json'),
-            'VOCAB_DATABASE_PATH': os.path.join(inst_path, 'data', 'vocab.json'),
-            'TERM_DATABASE_PATH': os.path.join(inst_path, 'data', 'terms.json'),
-            'USER_DATABASE_PATH': os.path.join(inst_path, 'users', 'db.json'),
-            'OAUTH_DATABASE_PATH': os.path.join(inst_path, 'oauth', 'db.json'),
-            'OPENID_FS_STORE_PATH': os.path.join(inst_path, 'open-id'),
+            'MAIN_DATABASE_PATH': os.path.join(
+                inst_path, 'data', 'db.json'),
+            'VOCAB_DATABASE_PATH': os.path.join(
+                inst_path, 'data', 'vocab.json'),
+            'TERM_DATABASE_PATH': os.path.join(
+                inst_path, 'data', 'terms.json'),
+            'USER_DATABASE_PATH': os.path.join(
+                inst_path, 'users', 'db.json'),
+            'OAUTH_DATABASE_PATH': os.path.join(
+                inst_path, 'oauth', 'db.json'),
+            'OPENID_FS_STORE_PATH': os.path.join(
+                inst_path, 'open-id'),
             'OAUTH_CREDENTIALS': {
                 'test': {
                     'id': 'test-oauth-app-id',
@@ -694,6 +716,28 @@ def app():
         })
 
         yield app
+
+
+class AuthAPIActions(object):
+    def __init__(self, client, user_db):
+        self._client = client
+        self._username = user_db.api_users1.get('userid')
+        self._password = user_db.pwd1
+        self._token = ''
+        self._expiry = 0
+        user_db.write_db()
+
+    def get_token(self):
+        if time.time() > self._expiry:
+            credentials = _basic_auth_str(self._username, self._password)
+            self._expiry = time.time() + 595
+            response = self._client.get(
+                '/api2/user/token',
+                headers={"Authorization": credentials},
+                follow_redirects=True)
+            test_data = response.get_json()
+            self._token = test_data.get("token")
+        return self._token
 
 
 @pytest.fixture
@@ -711,6 +755,10 @@ def runner(app):
 def auth(client, page):
     return AuthActions(client, page)
 
+
+@pytest.fixture
+def auth_api(client, user_db):
+    return AuthAPIActions(client, user_db)
 
 
 @pytest.fixture

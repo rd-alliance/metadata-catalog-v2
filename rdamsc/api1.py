@@ -167,13 +167,10 @@ def get_records(table):
     # outside the page's item range. It would be better to implement a cache
     # token so the search results could be saved for, say, an hour and
     # traversed robustly using the token.
-    for record_cls in Record.__subclasses__():
-        if table != record_cls.table:
-            continue
-        records = record_cls.all()
-        break
-    else:  # pragma: no cover
+    record_cls = Record.get_class_by_table(table)
+    if record_cls is None:  # pragma: no cover
         abort(404)
+    records = [k for k in record_cls.all() if k]
 
     # Get paging parameters
     start_raw = request.values.get('start')
@@ -199,7 +196,7 @@ def get_record(table, number):
     record = Record.load(number, table)
 
     # Abort if series or number was wrong:
-    if record is None or record.doc_id == 0:
+    if (not record) or record.doc_id == 0:
         abort(404)
 
     # Return result

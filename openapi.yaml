@@ -662,34 +662,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResponsePageRelation'
-    post:
-      tags:
-      - rel
-      summary: "Submit a new entity relation record"
-      requestBody:
-        description: "Complete record in JSON."
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Relation'
-      responses:
-        200:
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ResponseSuccessRelation'
-        400:
-          description: Failure
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubmissionResponseFailure'
-        401:
-          $ref: '#/components/responses/UnauthorizedError'
-      security:
-      - api_user: []
   /api2/rel/{table}{int}:
     get:
       tags:
@@ -1658,16 +1630,11 @@ components:
             description: "A URI drawn from the local profile of the UNESCO Thesaurus. Most UNESCO Concept URIs may be used, in addition to MSC Concept URIs. Valid values may be queried from the `keywords` endpoint."
         dataTypes:
           type: array
-          description: "Data types most commonly described by metadata records that conform to this scheme. The MSC will take a “folksonomic” approach to the human-readable values for this element: users will be able to supply any value but will be encouraged to reuse values already in the database. Trivially different values may be merged/normalized by the MSC editors, unless clarified with a URL."
+          description: "Data types most commonly described by metadata records that conform to this scheme. The data type must be specified by its internal MSC ID."
           items:
-            type: object
-            properties:
-              url:
-                type: string
-                description: "URL pointing to an entry in a data type registry."
-              label:
-                type: string
-                description: "Human-readable term."
+            type: string
+            description: "Full MSC ID of the entity."
+            pattern: '^msc:datatype\d+$'
         locations:
           type: array
           description: "Locations where further information about the scheme may be accessed."
@@ -2318,66 +2285,106 @@ If an end date is provided, it expresses the date on which the endorsement was w
       type: array
       items:
         type: object
-        properties:
-          op:
-            type: string
-            description: "Operation to perform."
-            enum:
-            - add
-            - remove
-            - replace
-            - test
-          path:
-            type: string
-            description: "Type of relationship on which to perform the operation."
-            enum:
-            - "/parent schemes"
-            - "/supported schemes"
-            - "/input schemes"
-            - "/output schemes"
-            - "/endorsed schemes"
-            - "/maintainers"
-            - "/funders"
-            - "/users"
-            - "/originators"
-          value:
-            type: array
-            description: "When adding, the MSCIDs to add; when removing, the MSCIDs to remove; when replacing, the MSCIDs with which to replace the current array; when testing, the MSCIDs with which to compare the current array."
-            items:
+        oneOf:
+        - properties:
+            op:
               type: string
-              description: "Non-semantic internal identifier for the related record."
+              description: "Operation to perform."
+              enum:
+              - add
+              - remove
+              - replace
+              - test
+            path:
+              type: string
+              description: "Type of relationship to add."
+              enum:
+              - "/parent schemes"
+              - "/supported schemes"
+              - "/input schemes"
+              - "/output schemes"
+              - "/endorsed schemes"
+              - "/maintainers"
+              - "/funders"
+              - "/users"
+              - "/originators"
+            value:
+              type: array
+              description: "When adding, the MSCIDs to add to the new relationship (acts like replacing if relationship already exists); when replacing, the MSCIDs with which to replace the current array; when testing, the MSCIDs with which to compare the current array; ignored when removing."
+              items:
+                type: string
+                description: "Non-semantic internal identifier for the related record."
+                pattern: '^msc:(m|g)\d+$'
+        - properties:
+            op:
+              type: string
+              description: "Operation to perform."
+              enum:
+              - add
+              - remove
+              - replace
+              - test
+            path:
+              type: string
+              description: "Item on which to perform the operation."
+              pattern: '^/((parent|supported|input|output|endorsed) schemes|maintainers|funders|users|originators)(/(-|\d+))?$'
+            value:
+              type: string
+              description: "Non-semantic internal identifier for the related record. When adding, the MSCID to insert at that position; when replacing, the MSCID with which to replace the current MSCID at that position; when testing, the MSCID with which to compare the current MSCID at that position; ignored when removing."
               pattern: '^msc:(m|g)\d+$'
     PatchInvRelation:
       type: array
       items:
         type: object
-        properties:
-          op:
-            type: string
-            description: "Operation to perform."
-            enum:
-            - add
-            - remove
-            - replace
-            - test
-          path:
-            type: string
-            description: "Type of relationship on which to perform the operation."
-            enum:
-            - "/child schemes"
-            - "/tools"
-            - "/input to mappings"
-            - "/output to mappings"
-            - "/endorsements"
-            - "/maintained resources"
-            - "/funded resources"
-            - "/used schemes"
-          value:
-            type: array
-            description: "When adding, the MSCIDs to add; when removing, the MSCIDs to remove; when replacing, the MSCIDs with which to replace the current array; when testing, the MSCIDs with which to compare the current array."
-            items:
+        oneOf:
+        - properties:
+            op:
               type: string
-              description: "Non-semantic internal identifier for the related record."
+              description: "Operation to perform."
+              enum:
+              - add
+              - remove
+              - replace
+              - test
+            path:
+              type: string
+              description: "Type of relationship to add."
+              enum:
+              - "/child schemes"
+              - "/maintained schemes"
+              - "/funded schemes"
+              - "/used schemes"
+              - "/tools"
+              - "/maintained tools"
+              - "/funded tools"
+              - "/input to mappings"
+              - "/output from mappings"
+              - "/maintained mappings"
+              - "/funded mappings"
+              - "/endorsements"
+            value:
+              type: array
+              description: "When adding, the MSCIDs to add to the new relationship (acts like replacing if relationship already exists); when replacing, the MSCIDs with which to replace the current array; when testing, the MSCIDs with which to compare the current array; ignored when removing."
+              items:
+                type: string
+                description: "Non-semantic internal identifier for the related record."
+                pattern: '^msc:(m|t|c|e)\d+$'
+        - properties:
+            op:
+              type: string
+              description: "Operation to perform."
+              enum:
+              - add
+              - remove
+              - replace
+              - test
+            path:
+              type: string
+              description: "Item on which to perform the operation."
+              pattern: '^/((child|used) schemes|(maintained|funded) (schemes|tools|mappings)|tools|(input to|output from) mappings|endorsements)(/(-|\d+))?$'
+            value:
+              type: string
+              description: "Non-semantic internal identifier for the related record. When adding, the MSCID to insert at that position; when replacing, the MSCID with which to replace the current MSCID at that position; when testing, the MSCID with which to compare the current MSCID at that position; ignored when removing."
               pattern: '^msc:(m|t|c|e)\d+$'
     Response:
       type: object
@@ -2702,7 +2709,7 @@ If an end date is provided, it expresses the date on which the endorsement was w
                     description: "Nature of validation error."
                   location:
                     type: string
-                    description: "Object key where the error occurred."
+                    description: "Object key where the error occurred, in JSONPath dot notation."
     ResponsePassword:
       type: object
       properties:

@@ -7,6 +7,7 @@ import re
 import os
 import math
 from typing import (
+    Any,
     List,
     Mapping,
     Tuple,
@@ -22,6 +23,7 @@ from flask import (
     g,
     jsonify,
     make_response,
+    redirect,
     request,
     url_for,
 )
@@ -34,6 +36,7 @@ from .records import (
     Record,
     Scheme,
     mscid_prefix,
+    sortval,
 )
 from .vocab import Thesaurus
 from .users import ApiUser, get_user_db
@@ -64,25 +67,19 @@ def embellish_record(record: Document, with_embedded=False):
         return record
 
     # Add related entities
-    related_entities = list()
-    seen_mscids = dict()
-    rel = Relation()
-    relations = rel.related_records(mscid=mscid)
-    for role in sorted(relations.keys()):
-        for entity in relations[role]:
-            related_entity = {
-                'id': entity.mscid,
-                'role': role[:-1],  # convert to singular
-            }
+    related_entities = record.get_related_entities()
+    if related_entities:
+        seen_mscids = dict()
+        record['relatedEntities'] = list()
+        for related_entity in related_entities:
             if with_embedded:
-                related_entity['data'] = seen_mscids.get(entity.mscid)
+                related_entity['data'] = seen_mscids.get(related_entity['id'])
                 if related_entity['data'] is None:
+                    entity = Record.load_by_mscid(related_entity['id'])
                     full_entity = embellish_record(entity)
                     related_entity['data'] = full_entity
                     seen_mscids[entity.mscid] = full_entity
-            related_entities.append(related_entity)
-    if related_entities:
-        record['relatedEntities'] = related_entities
+            record['relatedEntities'].append(related_entity)
 
     return record
 
@@ -98,8 +95,8 @@ def embellish_relation(record: Mapping, route='.get_relation'):
     '''Embellishes a relationship or inverse relationship record.'''
     mscid = record['@id']
     n = len(mscid_prefix)
-    table = mscid[n:n+1]
-    number = mscid[n+1:]
+    table = mscid[n:n + 1]
+    number = mscid[n + 1:]
     record['uri'] = url_for(
         route, table=table, number=number, _external=True)
     return record
@@ -137,7 +134,7 @@ def as_response_item(record: Mapping, callback=embellish_record):
 
 
 def as_response_page(records: List[Mapping], link: str,
-                     page_size=10, start: int=None, page: int=None,
+                     page_size=10, start: int = None, page: int = None,
                      callback=embellish_record):
     '''Wraps list of records in a response object representing a page of
     `page_size` items, starting with item number `start` or page number `page`
@@ -162,7 +159,7 @@ def as_response_page(records: List[Mapping], link: str,
         page_index = 1
 
     items = list()
-    for record in records[start_index-1:start_index+page_size-1]:
+    for record in records[start_index - 1:start_index + page_size - 1]:
         items.append(callback(record))
 
     response = {
@@ -231,13 +228,10 @@ def get_records(table):
     # outside the page's item range. It would be better to implement a cache
     # token so the search results could be saved for, say, an hour and
     # traversed robustly using the token.
-    for record_cls in Record.__subclasses__():
-        if table != record_cls.table:
-            continue
-        records = record_cls.all()
-        break
-    else:  # pragma: no cover
+    record_cls = Record.get_class_by_table(table)
+    if record_cls is None:  # pragma: no cover
         abort(404)
+    records = [k for k in record_cls.all() if k]
 
     # Get paging parameters
     start_raw = request.values.get('start')
@@ -263,7 +257,7 @@ def get_record(table, number):
     record = Record.load(number, table)
 
     # Abort if series or number was wrong:
-    if record is None or record.doc_id == 0:
+    if (not record) or record.doc_id == 0:
         abort(404)
 
     # Return result
@@ -279,6 +273,7 @@ def get_relations():
     # traversed robustly using the token.
     rel = Relation()
     rel_records = rel.tb.all()
+    rel_records.sort(key=lambda k: sortval(k.get('@id')))
 
     # Get paging parameters:
     start_raw = request.values.get('start')
@@ -300,7 +295,7 @@ def get_relation(table, number):
     '''Return forward relations for the given record.'''
     # Abort if series or number was wrong:
     base_record = Record.load(number, table)
-    if base_record is None or base_record.doc_id == 0:
+    if (not base_record) or base_record.doc_id == 0:
         abort(404)
 
     rel = Relation()
@@ -350,7 +345,7 @@ def get_inv_relation(table, number):
     '''Return inverse relations for the given record.'''
     # Abort if series or number was wrong:
     base_record = Record.load(number, table)
-    if base_record is None or base_record.doc_id == 0:
+    if (not base_record) or base_record.doc_id == 0:
         abort(404)
 
     rel = Relation()
@@ -359,7 +354,8 @@ def get_inv_relation(table, number):
     rel_record.update(rel.related(mscid, direction=rel.INVERSE))
 
     # Return result
-    return jsonify(as_response_item(rel_record, callback=embellish_inv_relation))
+    return jsonify(as_response_item(
+        rel_record, callback=embellish_inv_relation))
 
 
 @bp.route('/thesaurus')
@@ -461,3 +457,168 @@ def reset_password():
         return jsonify(response)
     else:
         abort(make_response((response, 400)))
+
+
+@bp.route(
+    '/<any(m, g, t, c, e, datatype, location, type, id_scheme):table>',
+    methods=['POST'])
+@bp.route(
+    '/<any(m, g, t, c, e, datatype, location, type, id_scheme):table>'
+    '<int:number>',
+    methods=['PUT'])
+@multi_auth.login_required
+def set_record(table, number=0):
+    '''Adds a record to the database and returns it.'''
+    # Look up record to edit, or get new:
+    record = Record.load(number, table)
+    print(f"Looking up record {table}{number}...")
+
+    # If number is wrong, we reinforce the point by redirecting:
+    if record.doc_id != number:
+        print(f"Expecting {number}, got {record.doc_id}.")
+        return redirect(url_for('api2.set_record', table=table, number=None))
+
+    # Get input:
+    data = request.get_json(force=True)
+
+    # Handle any errors:
+    errors = record.save_api_input(data)
+    if errors:
+        response = {
+            'apiVersion': api_version,
+            'error': {
+                'message': errors[0]['message'],
+                'errors': errors
+            }
+        }
+        return jsonify(response), 400
+
+    # Return report:
+    record.reload()
+    response = as_response_item(record, callback=embellish_record_fully)
+    response['meta'] = {
+        'conformance': record.conformance,
+    }
+
+    return jsonify(response)
+
+
+@bp.route(
+    '/<any(m, g, t, c, e, datatype, location, type, id_scheme):table>'
+    '<int:number>',
+    methods=['DELETE'])
+@multi_auth.login_required
+def annul_record(table, number=0):
+    '''Adds a record to the database and returns it.'''
+    # Look up record to edit, or get new:
+    record = Record.load(number, table)
+
+    # Abort if table or number was wrong:
+    if record is None or record.doc_id != number:
+        abort(404)
+
+    # Handle any errors:
+    errors = record.annul()
+    if errors:
+        response = {
+            'apiVersion': api_version,
+            'error': {
+                'message': errors[0]['message'],
+                'errors': errors
+            }
+        }
+        return jsonify(response), 400
+
+    # Otherwise return an empty success message:
+    return '', (204)
+
+
+@bp.route(
+    '/rel/<any(m, t, c, e):table><int:number>', methods=['POST', 'PUT'])
+@multi_auth.login_required
+def set_relation(table, number):
+    '''Add or replace entire forward relation table for a main entity.'''
+    record = Record.load(number, table)
+
+    # Abort if table or number was wrong:
+    if record is None or record.doc_id != number:
+        abort(404)
+
+    # Get input:
+    data = request.get_json(force=True)
+
+    # Handle any errors:
+    errors, result = record.save_rel_record(data)
+    if errors:
+        response = {
+            'apiVersion': api_version,
+            'error': {
+                'message': errors[0]['message'],
+                'errors': errors
+            }
+        }
+        return jsonify(response), 400
+
+    # Return report:
+    response = as_response_item(result, callback=do_not_embellish)
+    return jsonify(response)
+
+
+@bp.route(
+    '/rel/<any(m, t, c, e):table><int:number>', methods=['PATCH'])
+@multi_auth.login_required
+def patch_relation(table, number):
+    record = Record.load(number, table)
+
+    # Abort if table or number was wrong:
+    if record is None or record.doc_id != number:
+        abort(404)
+
+    # Get input:
+    data = request.get_json(force=True)
+
+    # Handle any errors:
+    errors, result = record.save_rel_patch(data)
+    if errors:
+        response = {
+            'apiVersion': api_version,
+            'error': {
+                'message': errors[0]['message'],
+                'errors': errors
+            }
+        }
+        return jsonify(response), 400
+
+    # Return report:
+    response = as_response_item(result, callback=do_not_embellish)
+    return jsonify(response)
+
+
+@bp.route(
+    '/invrel/<any(m, g):table><int:number>', methods=['PATCH'])
+@multi_auth.login_required
+def patch_inv_relation(table, number):
+    record = Record.load(number, table)
+
+    # Abort if table or number was wrong:
+    if record is None or record.doc_id != number:
+        abort(404)
+
+    # Get input:
+    data = request.get_json(force=True)
+
+    # Handle any errors:
+    errors, result = record.save_invrel_patch(data)
+    if errors:
+        response = {
+            'apiVersion': api_version,
+            'error': {
+                'message': errors[0]['message'],
+                'errors': errors
+            }
+        }
+        return jsonify(response), 400
+
+    # Return report:
+    response = as_response_item(result, callback=do_not_embellish)
+    return jsonify(response)

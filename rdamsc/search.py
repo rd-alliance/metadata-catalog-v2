@@ -188,7 +188,8 @@ def scheme_search():
                     for subform in errors:
                         for subfield, suberrors in subform.items():
                             for f in form[field]:
-                                f[subfield].errors = clean_error_list(f[subfield])
+                                f[subfield].errors = clean_error_list(
+                                    f[subfield])
                 else:
                     # Simple field
                     form[field].errors = clean_error_list(form[field])
@@ -201,6 +202,8 @@ def scheme_search():
     funder_set = set()
     id_set = set()
     for scheme in all_schemes:
+        if not scheme:
+            continue
         title_set.add(scheme.name)
         for type_id in scheme.get('dataTypes', list()):
             type = Datatype.load_by_mscid(type_id)
@@ -247,7 +250,8 @@ def subject(subject):
     th = get_thesaurus()
     uris = th.get_branch(subject)
     if not uris:
-        flash(f'The subject "{subject}" was not found in the thesaurus.', 'error')
+        flash(f'The subject "{subject}" was not found in the thesaurus.',
+              'error')
         return render_template('search-results.html', title=subject)
 
     # Search for schemes
@@ -300,7 +304,7 @@ def group(role, number):
               .format(Pluralizer(no_of_hits), verb))
         results.sort(key=lambda k: k.name.lower())
     else:
-        flash('No schemes found that are {} by this organization.'.format(verb),
+        flash(f"No schemes found that are {verb} by this organization.",
               'error')
     return render_template(
         'search-results.html', title=group.name, results=results)
