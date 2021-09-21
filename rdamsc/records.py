@@ -686,7 +686,48 @@ class Record(Document):
             else:
                 clean_value['type'] = loc_type
 
-            result['value'].append(v)
+            result['value'].append(clean_value)
+        return result
+
+    def _do_namespaces(self, value: List[Mapping[str, str]]):
+        '''API validator for namespaces.'''
+        result = {'errors': list(), 'value': list()}
+        for i, v in enumerate(value):
+            clean_value = dict()
+
+            # Validate prefix
+            prefix = v.get('prefix')
+            if prefix is None:
+                result['errors'].append({
+                    'message': "Missing field: prefix.",
+                    'location': f"[{i}]"})
+            else:
+                validated = self._do_short_text(prefix, 32)
+                for error in validated.get('errors'):
+                    result['errors'].append({
+                        'message': error.get('message', ''),
+                        'location': f"[{i}].prefix"})
+                clean_value['prefix'] = validated.get('value')
+
+            # Validate URI
+            uri = v.get('uri')
+            if uri is None:
+                result['errors'].append({
+                    'message': "Missing field: uri.",
+                    'location': f"[{i}]"})
+            else:
+                validated = self._do_url(uri)
+                if not uri.endswith(('/', '#')):
+                    validated['errors'].append({
+                        'message': "Value must end with `/` or `#`."
+                    })
+                for error in validated.get('errors'):
+                    result['errors'].append({
+                        'message': error.get('message', ''),
+                        'location': f"[{i}].uri"})
+                clean_value['uri'] = validated.get('value')
+
+            result['value'].append(clean_value)
         return result
 
     def _do_period(self, value: Mapping[str, str]):
@@ -1788,6 +1829,8 @@ class Scheme(Record):
         'locations': {
             'type': 'locations',
             'useful': True},
+        'namespaces': {
+            'type': 'namespaces'},
         'identifiers': {
             'type': 'identifiers',
             'useful': True},
@@ -1809,6 +1852,8 @@ class Scheme(Record):
                     'type': 'period'},
                 'locations': {
                     'type': 'locations'},
+                'namespaces': {
+                    'type': 'namespaces'},
                 'identifiers': {
                     'type': 'identifiers'},
                 'samples': {

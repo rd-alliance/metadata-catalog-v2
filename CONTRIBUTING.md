@@ -9,13 +9,24 @@ recommended you make the changes in the following order.
  1. Document what you think the data model should look like in `openapi.yaml`
     under `components["schemas"]`.
 
- 2. Update the `schema` and `rolemap` properties of the respective entity
-    classes in `rdamsc/records.py`. You should see a close correspondence with
-    the schemas in `openapi.yaml`. You may also have to add a custom validator,
-    which should normally be added as a method of the `Record` class with a name
-    starting `_do_`; it should return a dictionary with keys `errors` (a list of
-    dictionaries with key `message`) and `value` (a cleaned version of the
-    input).
+ 2. Make the corresponding changes to the entity classes in `rdamsc/records.py`.
+
+    If you are adding a new relationship between entities, update the `rolemap`
+    properties of each affected entity and `Relation._inversions`. If there is
+    a name collision between several pairwise relationships (as with
+    `maintainers`), update `Relation.inversion_map()`. If an entity would not be
+    considered useful without having that relationship, add the relationship
+    role name to a list at `schema['relatedEntities']['useful']` for the entity.
+
+    If you are adding a new property to an entity, update the `schema` property
+    of the entity class. You should see a close correspondence with the schemas
+    in `openapi.yaml`; `type` refers to the validator for the API to use;
+    `useful` refers to whether the property must be present for the record to be
+    considered useful. If you use a new value for `type`, then you will also
+    need to add a custom validator as a method of the `Record` class named
+    `_do_` plus the type; it should return a dictionary with keys `errors` (a
+    list of dictionaries with key `message`) and `value` (a cleaned version of
+    the input). Note that the `type` is plural if the value is a list.
 
  3. Update the internal implementation of the data model for receiving form data
     in `rdamsc/records.py`. There are sections for defining validators, form
