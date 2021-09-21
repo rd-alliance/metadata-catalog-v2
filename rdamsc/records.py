@@ -35,6 +35,7 @@ from wtforms import (
     StringField, TextAreaField, ValidationError, validators, widgets
 )
 from wtforms.compat import string_types, text_type
+from wtforms.utils import unset_value
 from markupsafe import escape, Markup
 
 # Local
@@ -2994,6 +2995,29 @@ class CheckboxSelect(widgets.Select):
 
 # Custom fields
 # ---------------
+class FormFieldFixed(FormField):
+    '''This does not pass on a form field prefix (unused in this application
+    anyway), so the Form can include a field named ‘prefix’.
+    '''
+    def process(self, formdata, data=unset_value):
+        if data is unset_value:
+            try:
+                data = self.default()
+            except TypeError:
+                data = self.default
+            self._obj = data
+
+        self.object_data = data
+
+        prefix = self.name + self.separator
+        if isinstance(data, dict):
+            self.form = self.form_class(
+                formdata=formdata, prefix=prefix, data=data)
+        else:
+            self.form = self.form_class(
+                formdata=formdata, obj=data, prefix=prefix)
+
+
 class NativeDateField(StringField):
     validators = [Optional(), W3CDate()]
 
@@ -3077,7 +3101,7 @@ class SchemeForm(FlaskForm):
     locations = FieldList(
         FormField(LocationForm), 'Relevant links', min_entries=1)
     namespaces = FieldList(
-        FormField(NamespaceForm),
+        FormFieldFixed(NamespaceForm),
         'Unversioned predicate namespaces for this scheme', min_entries=1)
     identifiers = FieldList(
         FormField(IdentifierForm), 'Identifiers for this scheme',
@@ -3124,7 +3148,7 @@ class SchemeVersionForm(FlaskForm):
     locations = FieldList(
         FormField(LocationForm), 'Relevant links', min_entries=1)
     namespaces = FieldList(
-        FormField(NamespaceForm),
+        FormFieldFixed(NamespaceForm),
         'Predicate namespaces for this version of the scheme', min_entries=1)
     identifiers = FieldList(
         FormField(IdentifierForm), 'Identifiers for this version of the scheme',
