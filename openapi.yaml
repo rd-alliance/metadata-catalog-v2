@@ -1569,6 +1569,15 @@ components:
         scheme:
           type: string
           description: "A keyword indicating the scheme from which the identifier is drawn. Valid keywords may be obtained from the `id_schemes` endpoint."
+    Namespace:
+      type: object
+      properties:
+        prefix:
+          type: string
+          description: "Recommended prefix to use when abbreviating predicate URIs from this namespace."
+        uri:
+          type: string
+          description: "URI of the scheme’s namespace, to which a predicate name can be appended to generate the URI of a predicate of the scheme. Must begin with a protocol string (e.g. `https://`) and end in a slash (/) or a hash (#)."
     Location:
       type: object
       properties:
@@ -1640,6 +1649,11 @@ components:
           description: "Locations where further information about the scheme may be accessed."
           items:
             $ref: '#/components/schemas/Location'
+        namespaces:
+          type: array
+          description: "Namespaces that may be used to identify predicates of the scheme in Linked Data contexts."
+          items:
+            $ref: '#/components/schemas/Namespace'
         identifiers:
           type: array
           description: "Strings used to identify all versions of this scheme collectively."
@@ -1707,6 +1721,11 @@ components:
                 description: "Locations where further information about this version of the scheme may be accessed."
                 items:
                   $ref: '#/components/schemas/Location'
+              namespaces:
+                type: array
+                description: "Namespaces that may be used to identify predicates of the scheme in Linked Data contexts."
+                items:
+                  $ref: '#/components/schemas/Namespace'
               identifiers:
                 type: array
                 description: "Strings used to identify this version of the scheme."
