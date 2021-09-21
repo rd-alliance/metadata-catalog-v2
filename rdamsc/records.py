@@ -717,11 +717,7 @@ class Record(Document):
                     'message': "Missing field: uri.",
                     'location': f"[{i}]"})
             else:
-                validated = self._do_url(uri)
-                if not uri.endswith(('/', '#')):
-                    validated['errors'].append({
-                        'message': "Value must end with `/` or `#`."
-                    })
+                validated = self._do_uri(uri)
                 for error in validated.get('errors'):
                     result['errors'].append({
                         'message': error.get('message', ''),
@@ -886,6 +882,29 @@ class Record(Document):
                     'location': f"[{i}]"})
             elif v not in result['value']:
                 result['value'].append(v)
+        return result
+
+    def _do_uri(self, value: str):
+        '''API validator for namespace URIs.'''
+        result = {'errors': list(), 'value': ''}
+        if not value:
+            return result
+
+        uv = NamespaceURI()
+        if not uv.gen_regex.match(value):
+            result['errors'].append({
+                'message': "Value must include protocol:"
+                           " http, https."})
+        elif not value.endswith(('/', '#')):
+            result['errors'].append({
+                'message': "Value must end with / or #."})
+        else:
+            match = uv.url_regex.match(value)
+            if not (match and uv.validate_hostname(match.group('host'))):
+                result['errors'].append({
+                    'message': f"Invalid URI: {value}."})
+
+        result['value'] = value
         return result
 
     def _do_url(self, value: str):
@@ -2819,7 +2838,7 @@ class EmailOrURL(object):
                 raise ValidationError(message)
 
 
-class NamespaceURL(object):
+class NamespaceURI(object):
     """Adaptation of WTForms URL validator to test for the right ending.
     """
     def __init__(self, require_tld=True):
@@ -3080,7 +3099,7 @@ class NamespaceForm(Form):
         validators=[RequiredIf(['uri']), validators.Length(max=32)])
     uri = StringField(
         'URL',
-        validators=[RequiredIf(['prefix']), NamespaceURL()])
+        validators=[RequiredIf(['prefix']), NamespaceURI()])
 
 
 class SampleForm(Form):

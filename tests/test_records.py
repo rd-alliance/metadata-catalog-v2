@@ -48,8 +48,9 @@ def test_create_view_records(client, auth, app, page, data_db):
     m1 = data_db.get_formdata('m1')
     m1.update(page.get_all_hidden())
     m1["locations-0-type"] = "Not a valid type"
-    m1["locations-1-url"] = "Not a valid URL"
-    m1["locations-0-url"] = "http://Not a valid URL"
+    m1["locations-0-url"] = "Not a valid URL"
+    m1["locations-1-url"] = "http://Not a valid URL"
+    m1["locations-2-url"] = "http://?/Not a valid URL"
     response = client.post('/edit/m0', data=m1, follow_redirects=True)
     assert response.status_code == 200
     html = response.get_data(as_text=True)
@@ -81,6 +82,25 @@ def test_create_view_records(client, auth, app, page, data_db):
     page.read(html)
     page.assert_contains("there was an error")
     page.assert_contains("Not a valid choice")
+
+    # Test NamespaceURI validator:
+    m1 = data_db.get_formdata('m1')
+    m1.update(page.get_all_hidden())
+    m1["namespaces-0-uri"] = "Not a valid URL"
+    m1["namespaces-1-type"] = "foo"
+    m1["namespaces-1-uri"] = "http://schemes/"
+    m1["namespaces-2-type"] = "foo"
+    m1["namespaces-2-uri"] = "https://schemes.org/ns/foo"
+    m1["namespaces-3-type"] = "foo"
+    m1["namespaces-3-uri"] = "http://?/ns/foo#"
+    response = client.post('/edit/m0', data=m1, follow_redirects=True)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains("there was an error")
+    page.assert_contains("That URI does not look quite right.")
+    page.assert_contains("Please provide the protocol")
+    page.assert_contains('The URI must end with "/" or "#".')
 
     # Test success of metadata editing form:
     m1 = data_db.get_formdata('m1')
@@ -156,7 +176,8 @@ def test_create_view_records(client, auth, app, page, data_db):
     response = client.get('/edit/m2/12', follow_redirects=True)
     html = response.get_data(as_text=True)
     page.read(html)
-    page.assert_contains("You are trying to update a version that doesn't exist.")
+    page.assert_contains(
+        "You are trying to update a version that doesn't exist.")
     page.assert_contains("Add new version")
 
     # Test adding second version:

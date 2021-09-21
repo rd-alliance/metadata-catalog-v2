@@ -1011,6 +1011,59 @@ def test_main_write(client, auth_api, app, data_db):
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert ideal == actual
 
+    # Test namespace validators
+    record = data_db.get_apidata('m2')
+    del record['relatedEntities']
+    record['versions'][0]['namespaces'] = [
+        # no prefix
+        {'uri': 'https://schemes.org/ns/bar/1.0/'},
+        # overlong prefix
+        {'prefix': 'bar1'*9, 'uri': 'https://schemes.org/ns/bar/1.0/'},
+        # no uri
+        {'prefix': 'bar1'},
+        # bad uri (no protocol)
+        {'prefix': 'bar1', "uri": "not-a-url"},
+        # bad uri (no / or # at the end)
+        {'prefix': 'bar1', "uri": "https://schemes.org/ns/bar/1.0"},
+        # bad uri (other problem)
+        {'prefix': 'bar1', "uri": "http://not-a-url/"},
+    ]
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        '/api2/m',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 400
+    ideal_error = "Missing field: prefix."
+    ideal = json.dumps({
+        'apiVersion': '2.0.0',
+        'error': {
+            'message': ideal_error,
+            'errors': [{
+                'message': ideal_error,
+                'location': '$.versions[0].namespaces[0]'
+            }, {
+                'message': "Value must be 32 characters or fewer "
+                           "(actual length: 36).",
+                'location': '$.versions[0].namespaces[1].prefix'
+            }, {
+                'message': "Missing field: uri.",
+                'location': '$.versions[0].namespaces[2]'
+            }, {
+                'message': "Value must include protocol: http, https.",
+                'location': '$.versions[0].namespaces[3].uri'
+            }, {
+                'message': "Value must end with / or #.",
+                'location': '$.versions[0].namespaces[4].uri'
+            }, {
+                'message': "Invalid URI: http://not-a-url/.",
+                'location': '$.versions[0].namespaces[5].uri'
+            }]}
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
+
     # Test relation validator:
     record = data_db.get_apidata('m2')
     record['relatedEntities'] = [

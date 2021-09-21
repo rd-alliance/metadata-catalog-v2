@@ -43,6 +43,15 @@ recommended you make the changes in the following order.
     you may need to edit `display-scheme.html`, `edit-scheme.html` and
     `edit-scheme-version.html`.
 
+ 6. Write and run unit tests to ensure the above code works as intended.
+
+    In `tests/conftest.py`, update the test records in
+    `DataDBActions.__init__()`, adding examples of new fields and so on.
+
+    In `tests/test_records.py` and `tests/test_api2.py`, write new tests for any
+    new validators, and adjust the existing tests as necessary (e.g. to take
+    account of new fields on conformance evaluations)
+
 
 ## Testing
 

@@ -59,6 +59,10 @@ class DataDBActions(object):
                 {
                     "url": "http://document.org/m1",
                     "type": "document"}],
+            "namespaces": [
+                {
+                    "prefix": "foo",
+                    "uri": "https://schemes.org/ns/foo#"}],
             "identifiers": [
                 {
                     "id": "10.1234/m1",
@@ -89,14 +93,18 @@ class DataDBActions(object):
                         {
                             "url": "https://document.org/m2v1",
                             "type": "document"}],
-                    "identifiers": [
-                        {
-                            "id": "10.1234/m2v1",
-                            "scheme": "DOI"}],
                     "samples": [
                         {
                             "title": "Sample of Test scheme 2, version 1",
-                            "url": "https://sample.org/m2v1"}]},
+                            "url": "https://sample.org/m2v1"}],
+                    "namespaces": [
+                        {
+                            "prefix": "bar1",
+                            "uri": "https://schemes.org/ns/bar/1.0/"}],
+                    "identifiers": [
+                        {
+                            "id": "10.1234/m2v1",
+                            "scheme": "DOI"}]},
                 {
                     "number": "2",
                     "note": "<p>Paragraph 1.</p><p>Paragraph 2.</p>",
@@ -110,6 +118,10 @@ class DataDBActions(object):
                         {
                             "url": "https://document.org/m2v2",
                             "type": "document"}],
+                    "namespaces": [
+                        {
+                            "prefix": "bar2",
+                            "uri": "https://schemes.org/ns/bar/2.0/"}],
                     "identifiers": [
                         {
                             "id": "10.1234/m2v2",
