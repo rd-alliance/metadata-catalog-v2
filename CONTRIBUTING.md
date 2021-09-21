@@ -34,8 +34,14 @@ recommended you make the changes in the following order.
     closely mirror the schemas contained in `openapi.yaml`.
 
  4. It is possible that you might need to update the `get_form()` or
-    `get_vform()` methods of the record classes in `rdamsc/records.py` if the
-    changed fields need special handling.
+    `get_vform()` methods of the record classes, or `Record.populate_form()`, in
+    `rdamsc/records.py` if the changed fields need special handling (e.g.
+    a dynamic controlled vocabulary).
+
+ 5. Update the HTML templates in `rdamsc/templates` to accommodate the new
+    information. For example, if you have changed the data model for Schemes,
+    you may need to edit `display-scheme.html`, `edit-scheme.html` and
+    `edit-scheme-version.html`.
 
 
 ## Testing

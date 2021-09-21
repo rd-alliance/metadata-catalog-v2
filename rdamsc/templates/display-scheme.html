@@ -71,6 +71,17 @@
     </ul>
   </div>
   {% endif %}
+  {% if 'namespaces' in record %}
+  <div class="namespaces">
+    <h2>Predicate namespaces</h2>
+    <dl class="row">
+    {% for namespace in record['namespaces'] %}
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right">{{ namespace['prefix'] }}</dt>
+      <dd class="col-sm-7 col-md-8 col-lg-9">{{ namespace['uri'] }}</dd>
+    {% endfor %}
+    </dl>
+  </div>
+  {% endif %}
   {% if 'samples' in record %}
   <div class="samples">
     <h2>Samples</h2>
@@ -143,6 +154,16 @@
           </ul>
           {% endif %}
         </div>
+        {% endif %}
+        {% if 'namespaces' in version %}
+        <dl>
+        {% for namespace in version['namespaces'] %}
+          <div class="d-flex">
+            <dt>{{ namespace['prefix'] }}</dt>
+            <dd>{{ namespace['uri'] }}</dd>
+          </div>
+        {% endfor %}
+        </dl>
         {% endif %}
         {% if 'locations' in version or current_user.is_authenticated %}
         <ul class="locations list-inline">

@@ -122,6 +122,32 @@
     </div>
     </fieldset>
     <fieldset>
+    <legend>{{ form.namespaces.label.text }}</legend>
+    <div class="form-group">
+      <ol class="form-list">
+        {% for f in form.namespaces %}
+        <li>
+          <div class="form-subgroup{{ state(f.prefix) }}">
+          {{ f.prefix.label(class="control-label") }}
+          {{ f.prefix(class="form-control", style="width:auto;") }}
+          {{ errors(f.prefix) }}
+          </div>
+          <div class="form-subgroup{{ state(f.uri) }}">
+          {{ f.uri.label(class="control-label") }}
+          {{ f.uri(placeholder="URI e.g. https://www.../", class="form-control") }}
+          {{ errors(f.uri) }}
+          </div>
+        </li>
+        {% endfor %}
+      </ol>
+      <ul class="form-text text-muted">
+        <li>To give several namespaces, save after adding each one.</li>
+        <li>Namespace URIs must begin with a protocol (e.g. https://) and end
+          with a slash (/) or hash (#).</li>
+      </ul>
+    </div>
+    </fieldset>
+    <fieldset>
     <legend>{{ form.identifiers.label.text }}</legend>
     <div class="form-group">
       <ol class="form-list">
