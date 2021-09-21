@@ -2818,6 +2818,46 @@ class EmailOrURL(object):
                 raise ValidationError(message)
 
 
+class NamespaceURL(object):
+    """Adaptation of WTForms URL validator to test for the right ending.
+    """
+    def __init__(self, require_tld=True):
+        self.gen_regex = re.compile(
+            r"^(?P<protocol>[a-z]+):.+",
+            re.IGNORECASE)
+        self.url_regex = re.compile(
+            r"^(?P<protocol>[a-z]+):"
+            r"//(?P<host>[^\/\?:]+)"
+            r"(?P<port>:[0-9]+)?"
+            r"(?P<path>\/.*?)?"
+            r"(?P<query>\?.*)?$",
+            re.IGNORECASE)
+        self.validate_hostname = validators.HostnameValidation(
+            require_tld=require_tld,
+            allow_ip=True,
+        )
+
+    def __call__(self, form, field):
+        datum = field.data if field.data else ''
+
+        if not self.gen_regex.match(datum):
+            raise ValidationError(field.gettext(
+                'Please provide the protocol (e.g. "http://", "mailto:").'))
+
+        if not datum.endswith(('/', '#')):
+            raise ValidationError(field.gettext(
+                'The URI must end with "/" or "#".'
+            ))
+
+        match = self.url_regex.match(datum)
+        message = field.gettext(
+            'That URI does not look quite right.')
+        if not match:
+            raise ValidationError(message)
+        if not self.validate_hostname(match.group('host')):
+            raise ValidationError(message)
+
+
 class Optional(object):
     """This is just like the normal WTForms version but with more explicit
     Boolean logic.
@@ -2954,6 +2994,10 @@ class CheckboxSelect(widgets.Select):
 
 # Custom fields
 # ---------------
+class NativeDateField(StringField):
+    validators = [Optional(), W3CDate()]
+
+
 class SelectRelatedField(SelectMultipleField):
     def __init__(self, label='', record: Type[Record] = Scheme, inverse=False,
                  **kwargs):
@@ -2975,25 +3019,20 @@ class TextHTMLField(TextAreaField):
 
 # Reusable subforms
 # -----------------
-class NativeDateField(StringField):
-    validators = [Optional(), W3CDate()]
+class CreatorForm(Form):
+    fullName = StringField('Full name')
+    givenName = StringField('Given name(s)')
+    familyName = StringField('Family name')
 
 
-class LocationForm(Form):
-    url = StringField('URL', validators=[RequiredIf(['type']), EmailOrURL()])
-    # Setting a default value works around the WTForms (< 2.3.0) bug where
-    # SelectFields return the string 'None' if no selection is made.
-    type = SelectField('Type', validators=[RequiredIf(['url'])], default='')
+class DateRangeForm(Form):
+    start = NativeDateField('from')
+    end = NativeDateField('until')
 
 
 class EndorsementLocationForm(Form):
     url = StringField('URL', validators=[Optional(), EmailOrURL()])
     type = HiddenField('document')
-
-
-class SampleForm(Form):
-    title = StringField('Title', validators=[RequiredIf(['url'])])
-    url = StringField('URL', validators=[RequiredIf(['title']), EmailOrURL()])
 
 
 class IdentifierForm(Form):
@@ -3004,15 +3043,25 @@ class IdentifierForm(Form):
         'ID scheme', validators=[RequiredIf(['id'])], default='')
 
 
-class DateRangeForm(Form):
-    start = NativeDateField('from')
-    end = NativeDateField('until')
+class LocationForm(Form):
+    url = StringField('URL', validators=[RequiredIf(['type']), EmailOrURL()])
+    # Setting a default value works around the WTForms (< 2.3.0) bug where
+    # SelectFields return the string 'None' if no selection is made.
+    type = SelectField('Type', validators=[RequiredIf(['url'])], default='')
 
 
-class CreatorForm(Form):
-    fullName = StringField('Full name')
-    givenName = StringField('Given name(s)')
-    familyName = StringField('Family name')
+class NamespaceForm(Form):
+    prefix = StringField(
+        'Prefix',
+        validators=[RequiredIf(['uri']), validators.Length(max=32)])
+    uri = StringField(
+        'URL',
+        validators=[RequiredIf(['prefix']), NamespaceURL()])
+
+
+class SampleForm(Form):
+    title = StringField('Title', validators=[RequiredIf(['url'])])
+    url = StringField('URL', validators=[RequiredIf(['title']), EmailOrURL()])
 
 
 # Top-level forms
@@ -3027,6 +3076,9 @@ class SchemeForm(FlaskForm):
         'Types of data described by this scheme')
     locations = FieldList(
         FormField(LocationForm), 'Relevant links', min_entries=1)
+    namespaces = FieldList(
+        FormField(NamespaceForm),
+        'Unversioned predicate namespaces for this scheme', min_entries=1)
     identifiers = FieldList(
         FormField(IdentifierForm), 'Identifiers for this scheme',
         min_entries=1)
@@ -3071,8 +3123,11 @@ class SchemeVersionForm(FlaskForm):
     valid = FormField(DateRangeForm, 'Date considered current')
     locations = FieldList(
         FormField(LocationForm), 'Relevant links', min_entries=1)
+    namespaces = FieldList(
+        FormField(NamespaceForm),
+        'Predicate namespaces for this version of the scheme', min_entries=1)
     identifiers = FieldList(
-        FormField(IdentifierForm), 'Identifiers for this scheme',
+        FormField(IdentifierForm), 'Identifiers for this version of the scheme',
         min_entries=1)
     samples = FieldList(
         FormField(SampleForm), 'Sample records conforming to this scheme',
