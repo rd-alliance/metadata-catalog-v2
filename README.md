@@ -11,7 +11,6 @@ see the [Guide for Contributors].
 
 The data model used by the API is documented in OpenAPI format. It is stored
 locally as [openapi.yaml] and may be explored interactively on [SwaggerHub].
-Note that the write API endpoints have not been implemented just yet.
 
 [Metadata Standards Catalog]: https://rdamsc.bath.ac.uk/
 [separate repository]: https://github.com/rd-alliance/metadata-catalog-dev
