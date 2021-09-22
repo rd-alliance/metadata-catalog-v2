@@ -118,10 +118,6 @@ class DataDBActions(object):
                         {
                             "url": "https://document.org/m2v2",
                             "type": "document"}],
-                    "namespaces": [
-                        {
-                            "prefix": "bar2",
-                            "uri": "https://schemes.org/ns/bar/2.0/"}],
                     "identifiers": [
                         {
                             "id": "10.1234/m2v2",

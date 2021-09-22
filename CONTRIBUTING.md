@@ -20,9 +20,21 @@ recommended you make the changes in the following order.
 
     If you are adding a new property to an entity, update the `schema` property
     of the entity class. You should see a close correspondence with the schemas
-    in `openapi.yaml`; `type` refers to the validator for the API to use;
-    `useful` refers to whether the property must be present for the record to be
-    considered useful. If you use a new value for `type`, then you will also
+    in `openapi.yaml`. There are some special keys in the `schema` relating to
+    validation and conformance level calculation:
+
+    - `type` refers to the validator for the API to use;
+    - `useful` (Boolean) refers to whether the property must be present for the
+      record to be considered useful.
+    - `optional` (Boolean) refers to whether the record can be considered
+      complete without including this property.
+    - `or use` (property) means this property can be ignored for conformance level
+      calculations if the other property has a value.
+    - `or use role` (role) means this property can be ignored for conformance
+      level calculations if the entity has the given relationship with another
+      entity.
+
+    If you use a new value for `type`, then you will also
     need to add a custom validator as a method of the `Record` class named
     `_do_` plus the type; it should return a dictionary with keys `errors` (a
     list of dictionaries with key `message`) and `value` (a cleaned version of

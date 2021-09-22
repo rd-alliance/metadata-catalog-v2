@@ -1850,7 +1850,8 @@ class Scheme(Record):
             'type': 'locations',
             'useful': True},
         'namespaces': {
-            'type': 'namespaces'},
+            'type': 'namespaces',
+            'optional': True},
         'identifiers': {
             'type': 'identifiers',
             'useful': True},
