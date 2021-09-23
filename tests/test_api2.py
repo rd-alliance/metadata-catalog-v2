@@ -259,6 +259,53 @@ def test_term_get(client, app, data_db):
     assert json.dumps(ideal, sort_keys=True) == actual
 
 
+def test_main_search(client, app, data_db):
+
+    # Prepare database:
+    data_db.write_db()
+
+    '''
+    Literal search through all fields:
+
+    - Noun
+    - "Noun"
+    - "Noun phrase"
+
+    Literal search in one field:
+
+    - title:Noun
+    - title:"Noun"
+    - title:"Noun phrase"
+
+    Boolean (all caps)
+
+    - OR, || (default)
+    - AND, &&
+    - NOT, !
+
+    Grouping
+
+    - (Noun Verb), (Noun || Verb)
+    - title:(Noun Verb)
+
+    Wildcard
+
+    - ? = any one character
+    - * = any 0-n characters
+
+    RegExp
+
+    - /[mb]oat/
+
+    Field ranges:
+
+    - date:[2002-01-01 TO 2003-01-01] inclusive
+    - date:{2002-01-01 TO 2003-01-01} exclusive
+
+    Above special characters can be escaped with backslash
+    '''
+
+
 def test_thesaurus(client, app, data_db):
 
     # Test getting full scheme record
