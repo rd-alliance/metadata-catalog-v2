@@ -207,6 +207,44 @@ def parse_query(filter: str):
     '''Normalises query string into a form suitable for passing to the
     `passes_filter()` function. Raises ValueError if parsing fails.
 
+    INPUT SYNTAX
+
+    Literal search through all fields:
+
+    - Noun
+    - "Noun"
+    - "Noun phrase"
+
+    Literal search in one field:
+
+    - title:Noun
+    - title:"Noun"
+    - title:"Noun phrase"
+
+    Boolean (all caps)
+
+    - OR (default for adjacent terms)
+    - AND
+    - NOT
+
+    Grouping
+
+    - (Noun Verb), (Noun OR Verb)
+    - title:(Noun Verb) = (title:Noun OR title:Verb)
+
+    Wildcard searching
+
+    - * (for 0-n characters)
+    - ? (for 0-1 characters)
+
+    Inclusive date and numeric ranges:
+
+    - date:[2002-01-01 TO 2003-01-01]
+
+    Above special characters can be escaped with backslash.
+
+    OUTPUT
+
     Query structure is recursive. Innermost value is of the form
 
     - (field, VALUE)
@@ -232,6 +270,19 @@ def parse_query(filter: str):
     # Level of Boolean complexity:
     level = 1
 
+    def push_item(item):
+        if state[-1] == "WORD" and len(working[level - 1]) == 1:
+            working[level - 1].insert(0, "OR")
+        elif state[-1] in ["ANDWORD", "NOTWORD"]:
+            state.pop()
+            state.append("WORD")
+        elif len(working[level - 1]) > 1:
+            if working[level - 1][0] != "OR":
+                raise ValueError(
+                    "Boolean expression missing parentheses."
+                )
+        working[level - 1].append(item)
+
     # Level of processing:
     state = ["WORD"]
     tokens = list(filter)
@@ -252,42 +303,29 @@ def parse_query(filter: str):
                 state.pop()
                 word = "".join(working[level])
                 working[level] = list()
-                if state[-1] == "WORD" and len(working[level - 1]) == 1:
-                    working[level - 1].insert(0, "OR")
-                elif state[-1] in ["ANDWORD", "NOTWORD"]:
-                    state.pop()
-                    state.append("WORD")
-                elif len(working[level - 1]) > 1:
-                    if working[level - 1][0] != "OR":
-                        raise ValueError(
-                            "Boolean expression missing parentheses."
-                        )
-                working[level - 1].append((field, word))
+                push_item((field, word))
                 if field_level == level:
                     field = None
                 continue
 
         if token == "(" and state[-1] in ["WORD", "ANDWORD", "NOTWORD"]:
             level += 1
+            state.append("WORD")
             continue
         if token == ")" and state[-1] in ["WORD", "ANDWORD", "NOTWORD"]:
             if working[level]:
                 word = "".join(working[level])
                 working[level] = list()
-                if state[-1] == "WORD" and len(working[level - 1]) == 1:
-                    working[level - 1].insert(0, "OR")
-                elif state[-1] in ["ANDWORD", "NOTWORD"]:
-                    state.pop()
-                    state.append("WORD")
-                elif len(working[level - 1]) > 1:
-                    if working[level - 1][0] != "OR":
-                        raise ValueError(
-                            "Boolean expression missing parentheses."
-                        )
-                working[level - 1].append((field, word))
+                push_item((field, word))
+                level -= 1
+                state.pop()
+                item = working[level]
+                working[level] = list()
+                push_item(item)
                 if field_level == level:
                     field = None
-            level -= 1
+            else:
+                level -= 1
             continue
 
         if (
@@ -299,58 +337,50 @@ def parse_query(filter: str):
             working[level] = list()
             field = word
             field_level = level
+            continue
 
         if (
             token == " "
             and state[-1] in ["WORD", "ANDWORD", "NOTWORD"]
-            and working[level]
         ):
-            word = "".join(working[level])
-            working[level] = list()
-            if word == "OR":
-                if len(working[level - 1]) == 1:
-                    working[level - 1].insert(0, "OR")
-                    continue
-                elif len(working[level - 1]) > 1:
-                    if working[level - 1][0] != "OR":
+            if working[level]:
+                word = "".join(working[level])
+                working[level] = list()
+                if word == "OR":
+                    if len(working[level - 1]) == 1:
+                        working[level - 1].insert(0, "OR")
+                        continue
+                    elif len(working[level - 1]) > 1:
+                        if working[level - 1][0] != "OR":
+                            raise ValueError(
+                                "Boolean expression missing parentheses."
+                            )
+                        continue
+                elif word == "AND":
+                    state.pop()
+                    state.append("ANDWORD")
+                    if len(working[level - 1]) == 1:
+                        working[level - 1].insert(0, "AND")
+                        continue
+                    elif len(working[level - 1]) > 1:
+                        if working[level - 1][0] != "AND":
+                            raise ValueError(
+                                "Boolean expression missing parentheses."
+                            )
+                        continue
+                elif word == "NOT":
+                    state.pop()
+                    state.append("NOTWORD")
+                    if len(working[level - 1]):
                         raise ValueError(
                             "Boolean expression missing parentheses."
                         )
+                    working[level - 1].append(word)
                     continue
-            elif word == "AND":
-                state.pop()
-                state.append("ANDWORD")
-                if len(working[level - 1]) == 1:
-                    working[level - 1].insert(0, "AND")
-                    continue
-                elif len(working[level - 1]) > 1:
-                    if working[level - 1][0] != "AND":
-                        raise ValueError(
-                            "Boolean expression missing parentheses."
-                        )
-                    continue
-            elif word == "NOT":
-                state.pop()
-                state.append("NOTWORD")
-                if len(working[level - 1]):
-                    raise ValueError(
-                        "Boolean expression missing parentheses."
-                    )
-                working[level - 1].append(word)
 
-            if state[-1] == "WORD" and len(working[level - 1]) == 1:
-                working[level - 1].insert(0, "OR")
-            elif state[-1] in ["ANDWORD", "NOTWORD"]:
-                state.pop()
-                state.append("WORD")
-            elif len(working[level - 1]) > 1:
-                if working[level - 1][0] != "OR":
-                    raise ValueError(
-                        "Boolean expression missing parentheses."
-                    )
-            working[level - 1].append((field, word))
-            if field_level == level:
-                field = None
+                push_item((field, word))
+                if field_level == level:
+                    field = None
             continue
 
         working[level].append(token)
@@ -359,18 +389,10 @@ def parse_query(filter: str):
         raise ValueError("Unmatched parentheses.")
     if state[-1] in ["WORD", "ANDWORD", "NOTWORD"] and working[level]:
         word = "".join(working[level])
+        if word in ["OR", "AND", "NOT"]:
+            raise ValueError("Incomplete Boolean expression.")
         working[level] = list()
-        if state[-1] == "WORD" and len(working[level - 1]) == 1:
-            working[level - 1].insert(0, "OR")
-        elif state[-1] in ["ANDWORD", "NOTWORD"]:
-            state.pop()
-            state.append("WORD")
-        elif len(working[level - 1]) > 1:
-            if working[level - 1][0] != "OR":
-                raise ValueError(
-                    "Boolean expression missing parentheses."
-                )
-        working[level - 1].append((field, word))
+        push_item((field, word))
     elif state[-1] == "QUOTE":
         raise ValueError("Unmatched quote marks.")
     elif state[-1] == "ESC":

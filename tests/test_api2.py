@@ -414,49 +414,61 @@ def test_passes_filter():
 
 
 def test_parse_search(client, app, data_db):
-    '''
-    Literal search through all fields:
-
-    - Noun
-    - "Noun"
-    - "Noun phrase"
-
-    Literal search in one field:
-
-    - title:Noun
-    - title:"Noun"
-    - title:"Noun phrase"
-
-    Boolean (all caps)
-
-    - OR (default)
-    - AND
-    - NOT
-
-    Grouping
-
-    - (Noun Verb), (Noun OR Verb)
-    - title:(Noun Verb) = (title:Noun OR title:Verb)
-
-    Wildcard searching
-
-    - * for 0-n characters
-    - ? for 0-1 characters
-
-    Date and numeric ranges:
-
-    - date:[2002-01-01 TO 2003-01-01] inclusive
-
-    Above special characters can be escaped with backslash
-    '''
     transforms = {
+        # Literal strings
         "Noun": (None, "Noun"),
         "Noun Verb": ["OR", (None, "Noun"), (None, "Verb")],
         '"Noun Phrase"': (None, "Noun Phrase"),
         '\\"Noun Phrase\\"': ["OR", (None, '"Noun'), (None, 'Phrase"')],
+        # Literal string in one field
+        "title:Noun": ("title", "Noun"),
+        "title:Noun Verb": ["OR", ("title", "Noun"), (None, "Verb")],
+        'title:"Noun AND Phrase"': ("title", "Noun AND Phrase"),
+        '"Noun title:Phrase"': (None, "Noun title:Phrase"),
+        '\\"Noun title:Phrase\\"': ["OR", (None, '"Noun'), ("title", 'Phrase"')],
+        # Field scopes
+        "title:(Noun Verb) Adverb": [
+            "OR", ["OR", ("title", "Noun"), ("title", "Verb")], (None, "Adverb")
+        ],
+        # Boolean string combinations
+        "NOT Noun": ["NOT", (None, "Noun")],
+        "Noun OR Verb": ["OR", (None, "Noun"), (None, "Verb")],
+        "Noun OR Verb OR Adverb": [
+            "OR", (None, "Noun"), (None, "Verb"), (None, "Adverb")
+        ],
+        "Noun AND Verb": ["AND", (None, "Noun"), (None, "Verb")],
+        "Noun AND Verb AND Adverb": [
+            "AND", (None, "Noun"), (None, "Verb"), (None, "Adverb")
+        ],
+        "(NOT Noun) AND Verb": ["AND", ["NOT", (None, "Noun")], (None, "Verb")],
+        "Noun (NOT Verb)": ["OR", (None, "Noun"), ["NOT", (None, "Verb")]],
+        "(Noun OR Verb) AND Adverb": [
+            "AND", ["OR", (None, "Noun"), (None, "Verb")], (None, "Adverb")
+        ],
+        "Noun OR (Verb AND Adverb)": [
+            "OR", (None, "Noun"), ["AND", (None, "Verb"), (None, "Adverb")]
+        ],
+        # TODO: Inclusive ranges, wildcards
     }
     for input, output in transforms.items():
+        print(input)
         assert rdamsc.api2.parse_query(input) == output
+
+    bad_strings = [
+        '"Incomplete quote',
+        "(Incomplete parentheses",
+        "Incomplete escape \\",
+        "Incomplete OR",
+        "Incomplete AND",
+        "NOT",
+        "Lack AND parenthesis OR nesting",
+        "Parenthesis OR nesting AND lacking",
+        "Booleans AND NOT parenthesis",
+    ]
+    for input in bad_strings:
+        with pytest.raises(ValueError):
+            print(input)
+            rdamsc.api2.parse_query(input)
 
 
 def test_main_search(client, app, data_db):
