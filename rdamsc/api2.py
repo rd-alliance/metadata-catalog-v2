@@ -421,21 +421,29 @@ def extract_values(record: Mapping, fieldpath: deque) -> List:
         if isinstance(value, dict):
             return extract_values(value, fieldpath)
         if isinstance(value, list):
-            for v in value:
-                values.extend(extract_values(v, fieldpath.copy()))
-            return values
+            if value and isinstance(value[0], dict):
+                for v in value:
+                    values.extend(extract_values(v, fieldpath.copy()))
+                return values
+            return value
 
         # Literal value
         if fieldpath:
             raise KeyError("Literal value has no further keys.")
         return [value]
 
+    if isinstance(record, str):
+        raise ValueError(f"Expected Mapping, not ‘{record}’.")
+
     for field, value in record.items():
         if isinstance(value, dict):
             values.extend(extract_values(value, fieldpath.copy()))
         elif isinstance(value, list):
-            for v in value:
-                values.extend(extract_values(v, fieldpath.copy()))
+            if value and isinstance(value[0], dict):
+                for v in value:
+                    values.extend(extract_values(v, fieldpath.copy()))
+            else:
+                values.extend(value)
         else:
             # Literal value
             values.append(value)
@@ -560,6 +568,10 @@ def get_records(table):
 
     # Get filter parameter
     filter = request.values.get('q')
+    if filter:
+        parsed_filter = parse_query(filter)
+        filtered = [k for k in records if passes_filter(k, parsed_filter)]
+        records = filtered
 
     # Get paging parameters
     start_raw = request.values.get('start')

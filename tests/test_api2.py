@@ -293,16 +293,21 @@ def test_extract_values():
                 "Subkey4": "V11",
                 "Subkey5": "V12",
             }
-        ]
+        ],
+        "Key4": ["V13", "V14"],
     }
 
     # Get all values
     assert rdamsc.api2.extract_values(record, deque()) == [
-        "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11", "V12"
+        "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11", "V12",
+        "V13", "V14",
     ]
 
     # Get field -> one literal value
     assert rdamsc.api2.extract_values(record, deque(["Key1"])) == ["V1"]
+
+    # Get field -> list
+    assert rdamsc.api2.extract_values(record, deque(["Key4"])) == ["V13", "V14"]
 
     # Get field -> all values from a dict
     assert rdamsc.api2.extract_values(record, deque(["Key2"])) == [
@@ -502,7 +507,10 @@ def test_main_search(client, app, data_db):
 
     # Literal search across all fields
     query = '/api2/m?q=10.1234/m'
-    items = [data_db.m1, data_db.m2]
+    items = [
+        data_db.get_apidata("m1", with_embedded=False),
+        data_db.get_apidata("m2", with_embedded=False),
+    ]
     response = client.get(query, follow_redirects=True)
     assert response.status_code == 200
     actual = json.dumps(response.get_json(), sort_keys=True)
@@ -510,7 +518,9 @@ def test_main_search(client, app, data_db):
     assert json.dumps(ideal, sort_keys=True) == actual
 
     query = '/api2/m?q="Scheme version title"'
-    items = [data_db.m2]
+    items = [
+        data_db.get_apidata("m2", with_embedded=False),
+    ]
     response = client.get(query, follow_redirects=True)
     assert response.status_code == 200
     actual = json.dumps(response.get_json(), sort_keys=True)
