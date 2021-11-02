@@ -2,6 +2,7 @@
 # ============
 # Standard
 # --------
+from collections import deque, defaultdict
 import json
 import re
 import os
@@ -12,6 +13,7 @@ from typing import (
     Mapping,
     Tuple,
     Type,
+    Union,
 )
 
 # Non-standard
@@ -201,6 +203,307 @@ def as_response_page(records: List[Mapping], link: str,
     return response
 
 
+def parse_query(filter: str):
+    '''Normalises query string into a form suitable for passing to the
+    `passes_filter()` function. Raises ValueError if parsing fails.
+
+    Query structure is recursive. Innermost value is of the form
+
+    - (field, VALUE)
+    - (field, (MIN, MAX))
+
+    where VALUE can be str, int, re.Pattern, and MIN and MAX can be str
+    or int (representing inclusive limits). The field can be None to
+    match across all available fields. These innermost values can
+    be embedded in lists providing Boolean operations:
+
+    - ["NOT", CONDITION]
+    - ["OR", CONDITION, CONDITION, ...]
+    - ["AND", CONDITION, CONDITION, ...]
+    '''
+    # Where tokens get put after processing:
+    working = defaultdict(list)
+    working[0] = list()
+
+    # Field to which matching will be restricted:
+    field = None
+    field_level = 1
+
+    # Level of Boolean complexity:
+    level = 1
+
+    # Level of processing:
+    state = ["WORD"]
+    tokens = list(filter)
+    for token in tokens:
+        if state[-1] == "ESC":
+            state.pop()
+            working[level].append(token)
+            continue
+        if token == "\\":
+            state.append("ESC")
+            continue
+
+        if token == '"':
+            if state[-1] == "WORD":
+                state.append("QUOTE")
+                continue
+            elif state[-1] == "QUOTE":
+                state.pop()
+                word = "".join(working[level])
+                working[level] = list()
+                if state[-1] == "WORD" and len(working[level - 1]) == 1:
+                    working[level - 1].insert(0, "OR")
+                elif state[-1] in ["ANDWORD", "NOTWORD"]:
+                    state.pop()
+                    state.append("WORD")
+                elif len(working[level - 1]) > 1:
+                    if working[level - 1][0] != "OR":
+                        raise ValueError(
+                            "Boolean expression missing parentheses."
+                        )
+                working[level - 1].append((field, word))
+                if field_level == level:
+                    field = None
+                continue
+
+        if token == "(" and state[-1] in ["WORD", "ANDWORD", "NOTWORD"]:
+            level += 1
+            continue
+        if token == ")" and state[-1] in ["WORD", "ANDWORD", "NOTWORD"]:
+            if working[level]:
+                word = "".join(working[level])
+                working[level] = list()
+                if state[-1] == "WORD" and len(working[level - 1]) == 1:
+                    working[level - 1].insert(0, "OR")
+                elif state[-1] in ["ANDWORD", "NOTWORD"]:
+                    state.pop()
+                    state.append("WORD")
+                elif len(working[level - 1]) > 1:
+                    if working[level - 1][0] != "OR":
+                        raise ValueError(
+                            "Boolean expression missing parentheses."
+                        )
+                working[level - 1].append((field, word))
+                if field_level == level:
+                    field = None
+            level -= 1
+            continue
+
+        if (
+            token == ":"
+            and state[-1] in ["WORD", "ANDWORD", "NOTWORD"]
+            and working[level]
+        ):
+            word = "".join(working[level])
+            working[level] = list()
+            field = word
+            field_level = level
+
+        if (
+            token == " "
+            and state[-1] in ["WORD", "ANDWORD", "NOTWORD"]
+            and working[level]
+        ):
+            word = "".join(working[level])
+            working[level] = list()
+            if word == "OR":
+                if len(working[level - 1]) == 1:
+                    working[level - 1].insert(0, "OR")
+                    continue
+                elif len(working[level - 1]) > 1:
+                    if working[level - 1][0] != "OR":
+                        raise ValueError(
+                            "Boolean expression missing parentheses."
+                        )
+                    continue
+            elif word == "AND":
+                state.pop()
+                state.append("ANDWORD")
+                if len(working[level - 1]) == 1:
+                    working[level - 1].insert(0, "AND")
+                    continue
+                elif len(working[level - 1]) > 1:
+                    if working[level - 1][0] != "AND":
+                        raise ValueError(
+                            "Boolean expression missing parentheses."
+                        )
+                    continue
+            elif word == "NOT":
+                state.pop()
+                state.append("NOTWORD")
+                if len(working[level - 1]):
+                    raise ValueError(
+                        "Boolean expression missing parentheses."
+                    )
+                working[level - 1].append(word)
+
+            if state[-1] == "WORD" and len(working[level - 1]) == 1:
+                working[level - 1].insert(0, "OR")
+            elif state[-1] in ["ANDWORD", "NOTWORD"]:
+                state.pop()
+                state.append("WORD")
+            elif len(working[level - 1]) > 1:
+                if working[level - 1][0] != "OR":
+                    raise ValueError(
+                        "Boolean expression missing parentheses."
+                    )
+            working[level - 1].append((field, word))
+            if field_level == level:
+                field = None
+            continue
+
+        working[level].append(token)
+
+    if level > 1:
+        raise ValueError("Unmatched parentheses.")
+    if state[-1] in ["WORD", "ANDWORD", "NOTWORD"] and working[level]:
+        word = "".join(working[level])
+        working[level] = list()
+        if state[-1] == "WORD" and len(working[level - 1]) == 1:
+            working[level - 1].insert(0, "OR")
+        elif state[-1] in ["ANDWORD", "NOTWORD"]:
+            state.pop()
+            state.append("WORD")
+        elif len(working[level - 1]) > 1:
+            if working[level - 1][0] != "OR":
+                raise ValueError(
+                    "Boolean expression missing parentheses."
+                )
+        working[level - 1].append((field, word))
+    elif state[-1] == "QUOTE":
+        raise ValueError("Unmatched quote marks.")
+    elif state[-1] == "ESC":
+        raise ValueError("Dangling escape character.")
+
+    if len(working[0]) == 1:
+        return working[0][0]
+
+    return working[0]
+
+
+def extract_values(record: Mapping, fieldpath: deque) -> List:
+    '''Gets all values within a record at the given fieldpath address.
+    For example, for a fieldpath of ['genus', 'species'], gets the
+    value at record['genus']['species'] or [v['species'] for v in
+    record['genus']]. If the fieldpath is empty, gets all ‘leaf’
+    values in the record.
+
+    If the record does not have a value at the fieldpath address,
+    raises KeyError. This allows passes_filter() to return immediately.
+    '''
+    values = list()
+    if fieldpath:
+        field = fieldpath.popleft()
+        value = record[field]
+        if isinstance(value, dict):
+            return extract_values(value, fieldpath)
+        if isinstance(value, list):
+            for v in value:
+                values.extend(extract_values(v, fieldpath.copy()))
+            return values
+
+        # Literal value
+        if fieldpath:
+            raise KeyError("Literal value has no further keys.")
+        return [value]
+
+    for field, value in record.items():
+        if isinstance(value, dict):
+            values.extend(extract_values(value, fieldpath.copy()))
+        elif isinstance(value, list):
+            for v in value:
+                values.extend(extract_values(v, fieldpath.copy()))
+        else:
+            # Literal value
+            values.append(value)
+
+    return values
+
+
+def passes_filter(record: Record, filter: Union[List, Tuple]) -> bool:
+    '''Determines whether the record passes the filter (True) or
+    is filtered out (False).
+
+    - str: match means filter value equals or occurs in field value
+    - re.Pattern: match means pattern occurs somewhere in field value
+    - int, float, etc.: match means filter value == field value
+    - int range: match means min <= field value <= max
+    - str range: match means min <= field value for as many characters
+      as they both possess, and field value <= max for as many characters
+      as they both possess. This is optimised for ISO date strings, so
+      2000-01-01 <= 2000 <= 2000-12 works as intended.
+    '''
+    if isinstance(filter, list):
+        if filter[0] == "NOT":
+            return not passes_filter(record, filter[1])
+        if filter[0] == "AND":
+            for f in filter[1:]:
+                if not passes_filter(record, f):
+                    return False
+            return True
+        if filter[0] == "OR":
+            for f in filter[1:]:
+                if passes_filter(record, f):
+                    return True
+            return False
+        raise ValueError("Unknown Boolean operation.")  # pragma: no cover
+
+    if not isinstance(filter, tuple):  # pragma: no cover
+        raise ValueError("Filter must be List or Tuple.")
+
+    # We get a list of values to test, such that if any one of them
+    # matches filter[1], the record passes the given filter.
+    fieldpath = deque(filter[0].split(".")) if filter[0] else deque()
+    try:
+        values_to_test = extract_values(record, fieldpath)
+    except KeyError:
+        return False
+
+    test_cls = type(filter[1])
+
+    if test_cls == str:
+        for v in [d for d in values_to_test if isinstance(d, str)]:
+            if filter[1].casefold() in v.casefold():
+                return True
+        return False
+
+    if test_cls == re.Pattern:
+        for v in [d for d in values_to_test if isinstance(d, str)]:
+            if filter[1].search(v):
+                return True
+        return False
+
+    if test_cls == tuple:
+        if isinstance(filter[1][0], int):
+            for v in [d for d in values_to_test if isinstance(d, int)]:
+                if filter[1][0] <= v <= filter[1][1]:
+                    return True
+            return False
+
+        if isinstance(filter[1][0], str):
+            len_start = len(filter[1][0])
+            len_end = len(filter[1][1])
+            for v in [d for d in values_to_test if isinstance(d, str)]:
+                len_test = len(v)
+                cmp_start = min(len_start, len_test)
+                cmp_end = min(len_end, len_test)
+                if (
+                    filter[1][0][0:cmp_start] <= v[0:cmp_start]
+                    and v[0:cmp_end] <= filter[1][1][0:cmp_end]
+                ):
+                    return True
+            return False
+
+        return False
+
+    for v in values_to_test:
+        if isinstance(v, test_cls):
+            if v == filter[1]:
+                return True
+    return False
+
+
 @basic_auth.verify_password
 def verify_password(username, password):
     user = ApiUser.load_by_userid(username)
@@ -232,6 +535,9 @@ def get_records(table):
     if record_cls is None:  # pragma: no cover
         abort(404)
     records = [k for k in record_cls.all() if k]
+
+    # Get filter parameter
+    filter = request.values.get('q')
 
     # Get paging parameters
     start_raw = request.values.get('start')

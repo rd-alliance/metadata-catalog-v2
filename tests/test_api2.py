@@ -1,9 +1,14 @@
+from collections import deque
 import json
-import pytest
+import re
 import time
+import typing as t
+
 from flask import g, session
+import pytest
 from requests.auth import _basic_auth_str
 from itsdangerous import TimedJSONWebSignatureSerializer as JWS
+import rdamsc.api2
 
 
 def test_main_get(client, app, data_db):
@@ -259,11 +264,156 @@ def test_term_get(client, app, data_db):
     assert json.dumps(ideal, sort_keys=True) == actual
 
 
-def test_main_search(client, app, data_db):
+def test_extract_values():
+    record = {
+        "Key1": "V1",
+        "Key2": {
+            "Subkey1": "V2",
+            "Subkey2": {
+                "Subsubkey1": "V3",
+                "Subsubkey2": "V4",
+            },
+            "Subkey3": [
+                {
+                    "Subsubkey3": "V5",
+                    "Subsubkey4": "V6",
+                },
+                {
+                    "Subsubkey3": "V7",
+                    "Subsubkey4": "V8",
+                },
+            ],
+        },
+        "Key3": [
+            {
+                "Subkey4": "V9",
+                "Subkey5": "V10",
+            },
+            {
+                "Subkey4": "V11",
+                "Subkey5": "V12",
+            }
+        ]
+    }
 
-    # Prepare database:
-    data_db.write_db()
+    # Get all values
+    assert rdamsc.api2.extract_values(record, deque()) == [
+        "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11", "V12"
+    ]
 
+    # Get field -> one literal value
+    assert rdamsc.api2.extract_values(record, deque(["Key1"])) == ["V1"]
+
+    # Get field -> all values from a dict
+    assert rdamsc.api2.extract_values(record, deque(["Key2"])) == [
+        "V2", "V3", "V4", "V5", "V6", "V7", "V8"
+    ]
+
+    # Get field -> all values from a list
+    assert rdamsc.api2.extract_values(record, deque(["Key3"])) == [
+        "V9", "V10", "V11", "V12"
+    ]
+
+    # Get field -> field -> one literal value
+    assert rdamsc.api2.extract_values(record, deque(["Key2", "Subkey1"])) == ["V2"]
+
+    # Get field -> field -> all values from a dict
+    assert rdamsc.api2.extract_values(record, deque(["Key2", "Subkey2"])) == [
+        "V3", "V4"
+    ]
+
+    # Get field -> field -> all values from a list
+    assert rdamsc.api2.extract_values(record, deque(["Key2", "Subkey3"])) == [
+        "V5", "V6", "V7", "V8"
+    ]
+
+    # Get field -> list -> field
+    assert rdamsc.api2.extract_values(record, deque(["Key3", "Subkey4"])) == [
+        "V9", "V11"
+    ]
+    assert rdamsc.api2.extract_values(record, deque([
+        "Key2", "Subkey3", "Subsubkey3"
+    ])) == ["V5", "V7"]
+
+    # Fail to drill into literal value
+    with pytest.raises(KeyError):
+        rdamsc.api2.extract_values(record, deque(["Key1", "Subkey1"]))
+
+
+def test_passes_filter():
+    record = {
+        "Key1": "V1",
+        "Key2": "V2",
+        "Key3": {"Subkey1": "V3"},
+        "Key4": "Data4231Alliance",
+        "Key5": 42,
+        "Key6": "2020-06",
+    }
+
+    # Filter string anywhere
+    assert rdamsc.api2.passes_filter(record, (None, "V"))
+    assert rdamsc.api2.passes_filter(record, (None, "v3"))
+    assert not rdamsc.api2.passes_filter(record, (None, "1V"))
+
+    # Filter by regex
+    pattern = re.compile(r"a\d{4}A")
+    assert rdamsc.api2.passes_filter(record, (None, pattern))
+    assert not rdamsc.api2.passes_filter(record, ("Key3", pattern))
+
+    # Filter by range
+    assert rdamsc.api2.passes_filter(record, ("Key5", (40, 42)))
+    assert rdamsc.api2.passes_filter(record, ("Key5", (41, 43)))
+    assert rdamsc.api2.passes_filter(record, ("Key5", (42, 44)))
+    assert not rdamsc.api2.passes_filter(record, ("Key5", (43, 45)))
+
+    assert not rdamsc.api2.passes_filter(record, ("Key6", ("2018", "2019")))
+    assert rdamsc.api2.passes_filter(record, ("Key6", ("2019", "2020")))
+    assert not rdamsc.api2.passes_filter(record, ("Key6", ("2019", "2020-05")))
+    assert rdamsc.api2.passes_filter(record, ("Key6", ("2019", "2020-06-01")))
+    assert rdamsc.api2.passes_filter(record, ("Key6", ("2020", "2021")))
+    assert not rdamsc.api2.passes_filter(record, ("Key6", ("2020-07", "2021")))
+    assert rdamsc.api2.passes_filter(record, ("Key6", ("2020-06-30", "2021")))
+    assert not rdamsc.api2.passes_filter(record, ("Key6", ("2021", "2023")))
+
+    # Unsupported range type
+    assert not rdamsc.api2.passes_filter(record, ("Key6", (pattern, pattern)))
+
+    # Filter by int
+    assert not rdamsc.api2.passes_filter(record, (None, 41))
+    assert rdamsc.api2.passes_filter(record, (None, 42))
+    assert not rdamsc.api2.passes_filter(record, ("Key4", 42))
+
+    # Filter within field
+    assert rdamsc.api2.passes_filter(record, ("Key1", "V"))
+    assert rdamsc.api2.passes_filter(record, ("Key1", "V1"))
+    assert not rdamsc.api2.passes_filter(record, ("Key1", "V2"))
+    assert not rdamsc.api2.passes_filter(record, ("Key1.Key2", "V1"))
+    assert rdamsc.api2.passes_filter(record, ("Key3.Subkey1", "V3"))
+    assert not rdamsc.api2.passes_filter(record, ("Key3.Subkey1", "V1"))
+
+    # Boolean filters
+    # - condition is True
+    assert not rdamsc.api2.passes_filter(record, ["NOT", (None, "v3")])
+    # - condition is False
+    assert rdamsc.api2.passes_filter(record, ["NOT", (None, "1V")])
+    # - conditions are True, True
+    assert rdamsc.api2.passes_filter(record, [
+        "AND", ("Key5", (40, 42)), ("Key5", (41, 43))
+    ])
+    # - conditions are True, False
+    assert not rdamsc.api2.passes_filter(record, [
+        "AND", ("Key5", (40, 42)), ("Key5", (43, 45))
+    ])
+    assert rdamsc.api2.passes_filter(record, [
+        "OR", ("Key5", (40, 42)), ("Key5", (43, 45))
+    ])
+    # - conditions are False, False
+    assert not rdamsc.api2.passes_filter(record, [
+        "OR", ("Key5", 40), ("Key5", 45)
+    ])
+
+
+def test_parse_search(client, app, data_db):
     '''
     Literal search through all fields:
 
@@ -279,31 +429,81 @@ def test_main_search(client, app, data_db):
 
     Boolean (all caps)
 
-    - OR, || (default)
-    - AND, &&
-    - NOT, !
+    - OR (default)
+    - AND
+    - NOT
 
     Grouping
 
-    - (Noun Verb), (Noun || Verb)
-    - title:(Noun Verb)
+    - (Noun Verb), (Noun OR Verb)
+    - title:(Noun Verb) = (title:Noun OR title:Verb)
 
-    Wildcard
+    Wildcard searching
 
-    - ? = any one character
-    - * = any 0-n characters
+    - * for 0-n characters
+    - ? for 0-1 characters
 
-    RegExp
-
-    - /[mb]oat/
-
-    Field ranges:
+    Date and numeric ranges:
 
     - date:[2002-01-01 TO 2003-01-01] inclusive
-    - date:{2002-01-01 TO 2003-01-01} exclusive
 
     Above special characters can be escaped with backslash
     '''
+    transforms = {
+        "Noun": (None, "Noun"),
+        "Noun Verb": ["OR", (None, "Noun"), (None, "Verb")],
+        '"Noun Phrase"': (None, "Noun Phrase"),
+        '\\"Noun Phrase\\"': ["OR", (None, '"Noun'), (None, 'Phrase"')],
+    }
+    for input, output in transforms.items():
+        assert rdamsc.api2.parse_query(input) == output
+
+
+def test_main_search(client, app, data_db):
+    # Prepare database:
+    data_db.write_db()
+
+    def mimic_output(items: t.List, query: str) -> dict:
+        """Turns list of items into expected response. The query
+        parameter is expected to start with a slash and end with
+        a query, e.g. ?q=value.
+        """
+        total = len(items)
+        current = total if total < 10 else 10
+        page_total = ((total - 1) // 10) + 1
+        ideal = {
+            'apiVersion': '2.0.0',
+            'data': {
+                'itemsPerPage': 10,
+                'currentItemCount': current,
+                'startIndex': 1,
+                'totalItems': total,
+                'pageIndex': 1,
+                'totalPages': page_total,
+                'items': items
+            },
+        }
+        if total > 10:
+            ideal['data']['nextLink'] = (
+                f'http://localhost{query}&start=11&pageSize=10')
+        return ideal
+
+    # Literal search across all fields
+    query = '/api2/m?q=10.1234/m'
+    items = [data_db.m1, data_db.m2]
+    response = client.get(query, follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    ideal = mimic_output(items, query)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
+    query = '/api2/m?q="Scheme version title"'
+    items = [data_db.m2]
+    response = client.get(query, follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    ideal = mimic_output(items, query)
+    assert json.dumps(ideal, sort_keys=True) == actual
 
 
 def test_thesaurus(client, app, data_db):
@@ -472,7 +672,9 @@ def test_thesaurus(client, app, data_db):
         "@type": "skos:Concept",
         "skos:narrower": [{
             "@id": "http://vocabularies.unesco.org/thesaurus/concept2912"}]}]
-    response = client.get('/api2/thesaurus/concept1811?form=tree', follow_redirects=True)
+    response = client.get(
+        '/api2/thesaurus/concept1811?form=tree', follow_redirects=True
+    )
     assert response.status_code == 200
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert json.dumps(ideal, sort_keys=True) == actual
@@ -485,7 +687,9 @@ def test_thesaurus(client, app, data_db):
     assert test_data.get("data").get("currentItemCount") == 10
     assert len(test_data.get("data").get("items")) == 10
     assert test_data.get("data").get("itemsPerPage") == 10
-    assert test_data.get("data").get("nextLink") == "/api2/thesaurus/concepts?start=11&pageSize=10"
+    assert test_data.get("data").get("nextLink") == (
+        "/api2/thesaurus/concepts?start=11&pageSize=10"
+    )
     assert test_data.get("data").get("pageIndex") == 1
     assert test_data.get("data").get("startIndex") == 1
     assert test_data.get("data").get("totalItems") == 4778
