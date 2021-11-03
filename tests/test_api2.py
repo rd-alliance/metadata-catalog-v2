@@ -585,13 +585,56 @@ def test_main_search(client, app, data_db):
     assert json.dumps(ideal, sort_keys=True) == actual
 
     query = '/api2/m?q=Test AND (Unmatched'
-    items = [
-        data_db.get_apidata("m2", with_embedded=False),
-    ]
     response = client.get(query, follow_redirects=True)
     assert response.status_code == 400
     result = response.get_json()
     assert result['error']['message'] == "Bad q parameter: Unmatched parentheses."
+
+    # On rel endpoint
+    query = '/api2/rel?q=funders:"msc:g1"'
+    items = [
+        data_db.get_apirel("m1"),
+        data_db.get_apirel("m3"),
+    ]
+    response = client.get(query, follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    ideal = mimic_output(items, query)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
+    query = '/api2/rel?q=Test AND (Unmatched'
+    response = client.get(query, follow_redirects=True)
+    assert response.status_code == 400
+    result = response.get_json()
+    assert result['error']['message'] == "Bad q parameter: Unmatched parentheses."
+
+    # On invrel endpoint
+    query = '/api2/invrel?q=funded\\ schemes:"msc:m1"'
+    items = [
+        data_db.get_apirel("g1", inverse=True),
+    ]
+    response = client.get(query, follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    ideal = mimic_output(items, query)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
+    query = '/api2/invrel?q="funded schemes":"msc:m1"'
+    items = [
+        data_db.get_apirel("g1", inverse=True),
+    ]
+    response = client.get(query, follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    ideal = mimic_output(items, query)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
+    query = '/api2/invrel?q=Test AND (Unmatched'
+    response = client.get(query, follow_redirects=True)
+    assert response.status_code == 400
+    result = response.get_json()
+    assert result['error']['message'] == "Bad q parameter: Unmatched parentheses."
+
 
 
 def test_thesaurus(client, app, data_db):

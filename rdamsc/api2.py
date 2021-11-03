@@ -320,18 +320,10 @@ def parse_query(filter: str):
             if state[-1] in [WORD, ANDWORD, NOTWORD]:
                 state.append(QUOTE)
                 continue
-            elif state[-1] == QUOTE:
-                state.pop()
-                word = check_type("".join(working[level]))
-                working[level] = list()
-                push_item((field, word))
-                if field_level == level:
-                    field = None
-                continue
             elif state[-1] in [RANGE, TORANGE]:
                 state.append(RQUOTE)
                 continue
-            elif state[-1] == RQUOTE:
+            elif state[-1] in [QUOTE, RQUOTE]:
                 state.pop()
                 continue
 
@@ -531,7 +523,11 @@ def extract_values(record: Mapping, fieldpath: deque) -> List:
     return values
 
 
-def passes_filter(record: Record, filter: Union[List, Tuple]) -> bool:
+def passes_filter(
+    record: Record,
+    filter: Union[List, Tuple],
+    exact: bool = False,
+) -> bool:
     '''Determines whether the record passes the filter (True) or
     is filtered out (False).
 
@@ -574,14 +570,22 @@ def passes_filter(record: Record, filter: Union[List, Tuple]) -> bool:
 
     if test_cls == str:
         for v in [d for d in values_to_test if isinstance(d, str)]:
-            if filter[1].casefold() in v.casefold():
-                return True
+            if exact:
+                if filter[1].casefold() == v.casefold():
+                    return True
+            else:
+                if filter[1].casefold() in v.casefold():
+                    return True
         return False
 
     if test_cls == re.Pattern:
         for v in [d for d in values_to_test if isinstance(d, str)]:
-            if filter[1].search(v):
-                return True
+            if exact:
+                if filter[1].match(v):
+                    return True
+            else:
+                if filter[1].search(v):
+                    return True
         return False
 
     if test_cls == tuple:
@@ -705,6 +709,26 @@ def get_relations():
     rel_records = rel.tb.all()
     rel_records.sort(key=lambda k: sortval(k.get('@id')))
 
+    # Get filter parameter
+    filter = request.values.get('q')
+    if filter:
+        try:
+            parsed_filter = parse_query(filter)
+        except ValueError as e:
+            response = {
+                'apiVersion': api_version,
+                'error': {
+                    'message': f"Bad q parameter: {e}",
+                }
+            }
+            return jsonify(response), 400
+
+        filtered = [
+            k for k in rel_records
+            if passes_filter(k, parsed_filter, exact=True)
+        ]
+        rel_records = filtered
+
     # Get paging parameters:
     start_raw = request.values.get('start')
     start = int(start_raw) if start_raw else None
@@ -754,6 +778,26 @@ def get_inv_relations():
         rel_record = {'@id': mscid}
         rel_record.update(rel.related(mscid, direction=rel.INVERSE))
         rel_records.append(rel_record)
+
+    # Get filter parameter
+    filter = request.values.get('q')
+    if filter:
+        try:
+            parsed_filter = parse_query(filter)
+        except ValueError as e:
+            response = {
+                'apiVersion': api_version,
+                'error': {
+                    'message': f"Bad q parameter: {e}",
+                }
+            }
+            return jsonify(response), 400
+
+        filtered = [
+            k for k in rel_records
+            if passes_filter(k, parsed_filter, exact=True)
+        ]
+        rel_records = filtered
 
     # Get paging parameters:
     start_raw = request.values.get('start')

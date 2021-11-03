@@ -476,8 +476,57 @@ class DataDBActions(object):
             i += 1
         return apidataset
 
+    def get_apirel(self, record: str, inverse=False):
+        '''Returns relation in form that API would respond with.'''
+        rel_id = f'msc:{record}'
+        if inverse:
+            apirel = {
+                "@id": rel_id,
+                "uri": f'http://localhost/api2/invrel/{record}'}
+            i = 1
+            while hasattr(self, f'rel{i}'):
+                rel = getattr(self, f'rel{i}')
+                id = rel['@id']
+                for predicate, objects in rel.items():
+                    if predicate in ['@id', 'uri']:
+                        continue
+                    tag = self.rv_tags[predicate].replace('_', ' ')
+                    if '{}' in tag:
+                        tag = tag.format(self.rc_cls.get(id[4:5]))
+                    for object in objects:
+                        if object != apirel['@id']:
+                            continue
+                        apirel.setdefault(tag, list()).append(id)
+                i += 1
+        else:
+            rel = dict()
+            if record.startswith("rel"):
+                rel = getattr(self, record)
+                rel_id = rel["@id"]
+            else:
+                i = 1
+                while hasattr(self, f'rel{i}'):
+                    test_rel = getattr(self, f'rel{i}')
+                    if test_rel['@id'] == rel_id:
+                        rel = test_rel
+                        break
+                    i += 1
+            apirel = {
+                "@id": rel_id,
+                "uri": f'http://localhost/api2/rel/{rel_id[4:]}'}
+            apirel.update(rel)
+
+        table_order = {'m': 0, 't': 10, 'c': 20, 'g': 30, 'e': 40}
+        n = 5
+        for predicate in apirel.keys():
+            if isinstance(apirel[predicate], list):
+                apirel[predicate].sort(
+                    key=lambda k: table_order[k[n - 1:n]] + int(k[n:]))
+        return apirel
+
     def get_apirelset(self, inverse=False):
         '''Returns table of relations in form that API would respond with.'''
+        table_order = {'m': 0, 't': 10, 'c': 20, 'g': 30, 'e': 40}
         apidataset = list()
         i = 1
         n = 5
@@ -493,12 +542,11 @@ class DataDBActions(object):
                     if '{}' in tag:
                         tag = tag.format(self.rc_cls.get(id[4:5]))
                     for object in objects:
-                        if object not in reldict:
-                            reldict[object] = dict()
-                        if tag not in reldict[object]:
-                            reldict[object][tag] = list()
-                        reldict[object][tag].append(id)
+                        reldict.setdefault(object, dict()).setdefault(
+                            tag, list()
+                        ).append(id)
                 i += 1
+
             for id in sorted(reldict.keys(),
                              key=lambda k: k[:n] + k[n:].zfill(5)):
                 item = {
@@ -506,20 +554,17 @@ class DataDBActions(object):
                     "uri": f'http://localhost/api2/invrel/{id[4:]}'}
                 item.update(reldict[id])
                 apidataset.append(item)
+
+            for item in apidataset:
+                for predicate in item.keys():
+                    if isinstance(item[predicate], list):
+                        item[predicate].sort(
+                            key=lambda k: table_order[k[n - 1:n]] + int(k[n:]))
         else:
             while hasattr(self, f'rel{i}'):
-                record = getattr(self, f'rel{i}')
-                record['uri'] = (
-                    f'http://localhost/api2/rel/'f'{record["@id"][4:]}')
-                apidataset.append(record)
+                apidataset.append(self.get_apirel(f'rel{i}'))
                 i += 1
 
-        table_order = {'m': 0, 't': 10, 'c': 20, 'g': 30, 'e': 40}
-        for results in apidataset:
-            for predicate in results.keys():
-                if isinstance(results[predicate], list):
-                    results[predicate].sort(
-                        key=lambda k: table_order[k[n - 1:n]] + int(k[n:]))
         apidataset.sort(
             key=lambda k: table_order[k['@id'][n - 1:n]] + int(k['@id'][n:]))
         return apidataset
