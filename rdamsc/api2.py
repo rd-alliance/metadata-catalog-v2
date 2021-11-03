@@ -5,7 +5,6 @@
 from collections import deque, defaultdict
 import json
 import re
-import os
 import math
 from typing import (
     Any,
@@ -237,7 +236,7 @@ def parse_query(filter: str):
     - * (for 0-n characters)
     - ? (for 0-1 characters)
 
-    Inclusive date and numeric ranges:
+    Inclusive date ranges:
 
     - date:[2002-01-01 TO 2003-01-01]
 
@@ -259,6 +258,16 @@ def parse_query(filter: str):
     - ["OR", CONDITION, CONDITION, ...]
     - ["AND", CONDITION, CONDITION, ...]
     '''
+    # State constants
+    WORD = 1
+    NOTWORD = 2
+    ANDWORD = 3
+    RANGE = 4
+    TORANGE = 5
+    QUOTE = 6
+    RQUOTE = 7
+    ESC = 8
+
     # Where tokens get put after processing:
     working = defaultdict(list)
     working[0] = list()
@@ -270,12 +279,13 @@ def parse_query(filter: str):
     # Level of Boolean complexity:
     level = 1
 
+    # Repeated code
     def push_item(item):
-        if state[-1] == "WORD" and len(working[level - 1]) == 1:
+        if state[-1] == WORD and len(working[level - 1]) == 1:
             working[level - 1].insert(0, "OR")
-        elif state[-1] in ["ANDWORD", "NOTWORD"]:
+        elif state[-1] in [ANDWORD, NOTWORD]:
             state.pop()
-            state.append("WORD")
+            state.append(WORD)
         elif len(working[level - 1]) > 1:
             if working[level - 1][0] != "OR":
                 raise ValueError(
@@ -283,119 +293,193 @@ def parse_query(filter: str):
                 )
         working[level - 1].append(item)
 
+    def check_type(word: str) -> Union[re.Pattern, str]:
+        '''If wildcards are present, converts to a regex. Otherwise
+        returns the string unaltered. Database currently contains
+        only strings, otherwise coercion to int (say) would happen
+        here.'''
+        if ("\x91" not in word and "\x92" not in word):
+            return word
+        safe_word = re.escape(word)
+        safe_word = safe_word.replace("\x91", ".*")
+        safe_word = safe_word.replace("\x92", ".?")
+        return re.compile(safe_word)
+
+    def unwild(word: str) -> str:
+        return word.replace("\x91", "*").replace("\x92", "?")
+
     # Level of processing:
-    state = ["WORD"]
+    state = [WORD]
     tokens = list(filter)
     for token in tokens:
-        if state[-1] == "ESC":
+        if state[-1] == ESC:
             state.pop()
             working[level].append(token)
             continue
         if token == "\\":
-            state.append("ESC")
+            state.append(ESC)
             continue
 
         if token == '"':
-            if state[-1] == "WORD":
-                state.append("QUOTE")
+            if state[-1] in [WORD, ANDWORD, NOTWORD]:
+                state.append(QUOTE)
                 continue
-            elif state[-1] == "QUOTE":
+            elif state[-1] == QUOTE:
                 state.pop()
-                word = "".join(working[level])
+                word = check_type("".join(working[level]))
                 working[level] = list()
                 push_item((field, word))
                 if field_level == level:
                     field = None
+                continue
+            elif state[-1] in [RANGE, TORANGE]:
+                state.append(RQUOTE)
+                continue
+            elif state[-1] == RQUOTE:
+                state.pop()
                 continue
 
-        if token == "(" and state[-1] in ["WORD", "ANDWORD", "NOTWORD"]:
+        if token == "[" and state[-1] in [WORD, ANDWORD, NOTWORD]:
             level += 1
-            state.append("WORD")
+            state.append(RANGE)
             continue
-        if token == ")" and state[-1] in ["WORD", "ANDWORD", "NOTWORD"]:
-            if working[level]:
-                word = "".join(working[level])
-                working[level] = list()
-                push_item((field, word))
+        if token == "]":
+            if state[-1] == TORANGE:
+                if level < 2:
+                    raise ValueError("Unmatched square brackets.")
+                if working[level]:
+                    word = "".join(working[level])
+                    working[level] = list()
+                    working[level - 1].append(word)
                 level -= 1
                 state.pop()
-                item = working[level]
+                if len(working[level]) != 2:
+                    raise ValueError("Invalid range specification.")
+                item = tuple(working[level])
                 working[level] = list()
-                push_item(item)
+                push_item((field, item))
                 if field_level == level:
                     field = None
-            else:
-                level -= 1
+                continue
+            elif state[-1] == RANGE:
+                raise ValueError("Invalid range specification.")
+            elif state[-1] in [WORD, ANDWORD, NOTWORD]:
+                raise ValueError("Unmatched square brackets.")
+
+        if token == "(" and state[-1] in [WORD, ANDWORD, NOTWORD]:
+            level += 1
+            state.append(WORD)
+            continue
+        if token == ")" and state[-1] in [WORD, ANDWORD, NOTWORD]:
+            if level < 2:
+                raise ValueError("Unmatched parentheses.")
+            if working[level]:
+                word = check_type("".join(working[level]))
+                working[level] = list()
+                push_item((field, word))
+            level -= 1
+            state.pop()
+            item = working[level]
+            working[level] = list()
+            push_item(item)
+            if field_level == level:
+                field = None
             continue
 
         if (
             token == ":"
-            and state[-1] in ["WORD", "ANDWORD", "NOTWORD"]
+            and state[-1] in [WORD, ANDWORD, NOTWORD]
             and working[level]
         ):
-            word = "".join(working[level])
+            word = unwild("".join(working[level]))
             working[level] = list()
             field = word
             field_level = level
             continue
 
-        if (
-            token == " "
-            and state[-1] in ["WORD", "ANDWORD", "NOTWORD"]
-        ):
-            if working[level]:
-                word = "".join(working[level])
-                working[level] = list()
-                if word == "OR":
-                    if len(working[level - 1]) == 1:
-                        working[level - 1].insert(0, "OR")
+        if token == " ":
+            if state[-1] in [WORD, ANDWORD, NOTWORD]:
+                if working[level]:
+                    word = "".join(working[level])
+                    working[level] = list()
+                    if word in ["OR", "AND"]:
+                        if word == "AND":
+                            state.pop()
+                            state.append(ANDWORD)
+                        if len(working[level - 1]) == 0:
+                            raise ValueError(
+                                "Boolean expression missing first value."
+                            )
+                        elif len(working[level - 1]) == 1:
+                            working[level - 1].insert(0, word)
+                        else:
+                            if working[level - 1][0] != word:
+                                raise ValueError(
+                                    "Boolean expression missing parentheses."
+                                )
                         continue
-                    elif len(working[level - 1]) > 1:
-                        if working[level - 1][0] != "OR":
+                    elif word == "NOT":
+                        state.pop()
+                        state.append(NOTWORD)
+                        if len(working[level - 1]):
                             raise ValueError(
                                 "Boolean expression missing parentheses."
                             )
+                        working[level - 1].append(word)
                         continue
-                elif word == "AND":
-                    state.pop()
-                    state.append("ANDWORD")
-                    if len(working[level - 1]) == 1:
-                        working[level - 1].insert(0, "AND")
-                        continue
-                    elif len(working[level - 1]) > 1:
-                        if working[level - 1][0] != "AND":
-                            raise ValueError(
-                                "Boolean expression missing parentheses."
-                            )
-                        continue
-                elif word == "NOT":
-                    state.pop()
-                    state.append("NOTWORD")
-                    if len(working[level - 1]):
-                        raise ValueError(
-                            "Boolean expression missing parentheses."
-                        )
-                    working[level - 1].append(word)
-                    continue
 
-                push_item((field, word))
-                if field_level == level:
-                    field = None
-            continue
+                    word = check_type(word)
+                    push_item((field, word))
+                    if field_level == level:
+                        field = None
+                continue
+            elif state[-1] == RANGE:
+                if working[level]:
+                    word = "".join(working[level])
+                    working[level] = list()
+                    if len(working[level - 1]) == 1:
+                        if word == "TO":
+                            state.pop()
+                            state.append(TORANGE)
+                            continue
+                        raise ValueError("Invalid range specification.")
+                    if len(working[level - 1]):
+                        raise ValueError("Invalid range specification.")
+                    working[level - 1].append(word)
+                continue
+            elif state[-1] == TORANGE:
+                if working[level]:
+                    word = "".join(working[level])
+                    working[level] = list()
+                    if len(working[level - 1]) != 1:
+                        raise ValueError("Invalid range specification.")
+                    working[level - 1].append(word)
+                continue
+
+        if state[-1] not in [RANGE, TORANGE]:
+            if token == "*":
+                token = "\x91"
+            elif token == "?":
+                token = "\x92"
 
         working[level].append(token)
 
     if level > 1:
-        raise ValueError("Unmatched parentheses.")
-    if state[-1] in ["WORD", "ANDWORD", "NOTWORD"] and working[level]:
-        word = "".join(working[level])
+        if (RANGE in state or TORANGE in state):
+            raise ValueError("Unmatched square brackets.")
+        else:
+            raise ValueError("Unmatched parentheses.")
+    if state[-1] in [WORD, ANDWORD, NOTWORD] and working[level]:
+        word = check_type("".join(working[level]))
         if word in ["OR", "AND", "NOT"]:
             raise ValueError("Incomplete Boolean expression.")
         working[level] = list()
         push_item((field, word))
-    elif state[-1] == "QUOTE":
+    elif state[-1] in [RANGE, TORANGE]:
+        raise ValueError("Unmatched square brackets.")
+    elif state[-1] == QUOTE:
         raise ValueError("Unmatched quote marks.")
-    elif state[-1] == "ESC":
+    elif state[-1] == ESC:
         raise ValueError("Dangling escape character.")
 
     if len(working[0]) == 1:

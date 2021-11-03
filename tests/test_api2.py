@@ -422,18 +422,28 @@ def test_parse_search(client, app, data_db):
     transforms = {
         # Literal strings
         "Noun": (None, "Noun"),
+        'No"un"': (None, "Noun"),
         "Noun Verb": ["OR", (None, "Noun"), (None, "Verb")],
         '"Noun Phrase"': (None, "Noun Phrase"),
         '\\"Noun Phrase\\"': ["OR", (None, '"Noun'), (None, 'Phrase"')],
+        # Wildcards
+        "Noun?": (None, re.compile(r"Noun.?")),
+        "*verb": (None, re.compile(r".*verb")),
+        # - spaces are escaped as protection against re.VERBOSE
+        '"Noun? *verb"': (None, re.compile(r"Noun.?\ .*verb")),
         # Literal string in one field
         "title:Noun": ("title", "Noun"),
         "title:Noun Verb": ["OR", ("title", "Noun"), (None, "Verb")],
         'title:"Noun AND Phrase"': ("title", "Noun AND Phrase"),
         '"Noun title:Phrase"': (None, "Noun title:Phrase"),
         '\\"Noun title:Phrase\\"': ["OR", (None, '"Noun'), ("title", 'Phrase"')],
+        "ti?le:Noun": ("ti?le", "Noun"),
         # Field scopes
         "title:(Noun Verb) Adverb": [
             "OR", ["OR", ("title", "Noun"), ("title", "Verb")], (None, "Adverb")
+        ],
+        "title:((Noun Verb) AND Adverb)": [
+            "AND", ["OR", ("title", "Noun"), ("title", "Verb")], ("title", "Adverb")
         ],
         # Boolean string combinations
         "NOT Noun": ["NOT", (None, "Noun")],
@@ -447,13 +457,28 @@ def test_parse_search(client, app, data_db):
         ],
         "(NOT Noun) AND Verb": ["AND", ["NOT", (None, "Noun")], (None, "Verb")],
         "Noun (NOT Verb)": ["OR", (None, "Noun"), ["NOT", (None, "Verb")]],
+        'Noun (NOT "Verb")': ["OR", (None, "Noun"), ["NOT", (None, "Verb")]],
         "(Noun OR Verb) AND Adverb": [
             "AND", ["OR", (None, "Noun"), (None, "Verb")], (None, "Adverb")
         ],
         "Noun OR (Verb AND Adverb)": [
             "OR", (None, "Noun"), ["AND", (None, "Verb"), (None, "Adverb")]
         ],
-        # TODO: Inclusive ranges, wildcards
+        "Noun OR ( Verb AND Adverb )": [
+            "OR", (None, "Noun"), ["AND", (None, "Verb"), (None, "Adverb")]
+        ],
+        'Noun OR (Verb AND "Adverb")': [
+            "OR", (None, "Noun"), ["AND", (None, "Verb"), (None, "Adverb")]
+        ],
+        # Ranges
+        "date:[2000 TO 2020]": ("date", ("2000", "2020")),
+        "date: [ 2000 TO 2020 ]": ("date", ("2000", "2020")),
+        'date: ["2000" TO "2020"]': ("date", ("2000", "2020")),
+        "title:Noun date:[2000 TO 2020]": [
+            "OR", ("title", "Noun"), ("date", ("2000", "2020"))
+        ],
+        "\\[Noun": (None, "[Noun"),
+        '"[Noun Phrase]"': (None, "[Noun Phrase]"),
     }
     for input, output in transforms.items():
         print(input)
@@ -462,9 +487,16 @@ def test_parse_search(client, app, data_db):
     bad_strings = [
         '"Incomplete quote',
         "(Incomplete parentheses",
+        "Incomplete parentheses)",
+        "[Incomplete_range",
+        "[Bad range specification]",
+        "[not_a_range]",
+        "Incomplete range]",
         "Incomplete escape \\",
         "Incomplete OR",
         "Incomplete AND",
+        "OR Incomplete",
+        "AND Incomplete",
         "NOT",
         "Lack AND parenthesis OR nesting",
         "Parenthesis OR nesting AND lacking",
