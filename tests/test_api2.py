@@ -290,8 +290,8 @@ def test_extract_values():
                 "Subkey5": "V10",
             },
             {
-                "Subkey4": "V11",
-                "Subkey5": "V12",
+                "Subkey5": "V11",
+                "Subkey6": "V12",
             }
         ],
         "Key4": ["V13", "V14"],
@@ -333,9 +333,7 @@ def test_extract_values():
     ]
 
     # Get field -> list -> field
-    assert rdamsc.api2.extract_values(record, deque(["Key3", "Subkey4"])) == [
-        "V9", "V11"
-    ]
+    assert rdamsc.api2.extract_values(record, deque(["Key3", "Subkey4"])) == ["V9"]
     assert rdamsc.api2.extract_values(record, deque([
         "Key2", "Subkey3", "Subsubkey3"
     ])) == ["V5", "V7"]
@@ -550,6 +548,26 @@ def test_main_search(client, app, data_db):
     assert json.dumps(ideal, sort_keys=True) == actual
 
     query = '/api2/m?q="Scheme version title"'
+    items = [
+        data_db.get_apidata("m2", with_embedded=False),
+    ]
+    response = client.get(query, follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    ideal = mimic_output(items, query)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
+    query = '/api2/m?q=versions.title:"Scheme * title"'
+    items = [
+        data_db.get_apidata("m2", with_embedded=False),
+    ]
+    response = client.get(query, follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    ideal = mimic_output(items, query)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
+    query = '/api2/m?q=versions.valid.end:[2021-01 TO 2023-01]'
     items = [
         data_db.get_apidata("m2", with_embedded=False),
     ]

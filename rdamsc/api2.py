@@ -4,8 +4,8 @@
 # --------
 from collections import deque, defaultdict
 import json
-import re
 import math
+import re
 from typing import (
     Any,
     List,
@@ -506,8 +506,15 @@ def extract_values(record: Mapping, fieldpath: deque) -> List:
             return extract_values(value, fieldpath)
         if isinstance(value, list):
             if value and isinstance(value[0], dict):
+                key_error = True
                 for v in value:
-                    values.extend(extract_values(v, fieldpath.copy()))
+                    try:
+                        values.extend(extract_values(v, fieldpath.copy()))
+                        key_error = False
+                    except KeyError:
+                        pass
+                if key_error:
+                    raise KeyError(fieldpath[0])
                 return values
             return value
 
@@ -524,8 +531,15 @@ def extract_values(record: Mapping, fieldpath: deque) -> List:
             values.extend(extract_values(value, fieldpath.copy()))
         elif isinstance(value, list):
             if value and isinstance(value[0], dict):
+                key_error = True
                 for v in value:
-                    values.extend(extract_values(v, fieldpath.copy()))
+                    try:
+                        values.extend(extract_values(v, fieldpath.copy()))
+                        key_error = False
+                    except KeyError:
+                        pass
+                if key_error:
+                    raise KeyError(fieldpath[0])
             else:
                 values.extend(value)
         else:
