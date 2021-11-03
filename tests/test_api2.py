@@ -342,6 +342,9 @@ def test_extract_values():
     with pytest.raises(KeyError):
         rdamsc.api2.extract_values(record, deque(["Key1", "Subkey1"]))
 
+    with pytest.raises(KeyError):
+        rdamsc.api2.extract_values(record, deque(["Key3", "Subkey7"]))
+
 
 def test_passes_filter():
     record = {
@@ -416,7 +419,7 @@ def test_passes_filter():
     ])
 
 
-def test_parse_search(client, app, data_db):
+def test_parse_query(client, app, data_db):
     transforms = {
         # Literal strings
         "Noun": (None, "Noun"),
@@ -437,6 +440,7 @@ def test_parse_search(client, app, data_db):
         '\\"Noun title:Phrase\\"': ["OR", (None, '"Noun'), ("title", 'Phrase"')],
         "ti?le:Noun": ("ti?le", "Noun"),
         # Field scopes
+        'title:("Noun" "Verb")': ["OR", ("title", "Noun"), ("title", "Verb")],
         "title:(Noun Verb) Adverb": [
             "OR", ["OR", ("title", "Noun"), ("title", "Verb")], (None, "Adverb")
         ],
@@ -490,6 +494,7 @@ def test_parse_search(client, app, data_db):
         "[Bad range specification]",
         "[not_a_range]",
         "Incomplete range]",
+        "[Odd TO the Ends ]",
         "Incomplete escape \\",
         "Incomplete OR",
         "Incomplete AND",
@@ -557,6 +562,7 @@ def test_main_search(client, app, data_db):
     ideal = mimic_output(items, query)
     assert json.dumps(ideal, sort_keys=True) == actual
 
+    # Wildcard search in one field
     query = '/api2/m?q=versions.title:"Scheme * title"'
     items = [
         data_db.get_apidata("m2", with_embedded=False),
@@ -567,7 +573,8 @@ def test_main_search(client, app, data_db):
     ideal = mimic_output(items, query)
     assert json.dumps(ideal, sort_keys=True) == actual
 
-    query = '/api2/m?q=versions.valid.end:[2021-01 TO 2023-01]'
+    # Range search in one field
+    query = '/api2/m?q=versions.valid:[2021-01 TO 2023-01]'
     items = [
         data_db.get_apidata("m2", with_embedded=False),
     ]
@@ -576,6 +583,15 @@ def test_main_search(client, app, data_db):
     actual = json.dumps(response.get_json(), sort_keys=True)
     ideal = mimic_output(items, query)
     assert json.dumps(ideal, sort_keys=True) == actual
+
+    query = '/api2/m?q=Test AND (Unmatched'
+    items = [
+        data_db.get_apidata("m2", with_embedded=False),
+    ]
+    response = client.get(query, follow_redirects=True)
+    assert response.status_code == 400
+    result = response.get_json()
+    assert result['error']['message'] == "Bad q parameter: Unmatched parentheses."
 
 
 def test_thesaurus(client, app, data_db):

@@ -3,15 +3,12 @@
 # Standard
 # --------
 from collections import deque, defaultdict
-import json
 import math
 import re
 from typing import (
-    Any,
     List,
     Mapping,
     Tuple,
-    Type,
     Union,
 )
 
@@ -21,7 +18,6 @@ from tinydb.database import Document
 from flask import (
     abort,
     Blueprint,
-    g,
     jsonify,
     make_response,
     redirect,
@@ -345,8 +341,8 @@ def parse_query(filter: str):
             continue
         if token == "]":
             if state[-1] == TORANGE:
-                if level < 2:
-                    raise ValueError("Unmatched square brackets.")
+                # if level < 2:
+                #     raise ValueError("Unmatched square brackets.")
                 if working[level]:
                     word = "".join(working[level])
                     working[level] = list()
@@ -443,8 +439,6 @@ def parse_query(filter: str):
                             state.append(TORANGE)
                             continue
                         raise ValueError("Invalid range specification.")
-                    if len(working[level - 1]):
-                        raise ValueError("Invalid range specification.")
                     working[level - 1].append(word)
                 continue
             elif state[-1] == TORANGE:
@@ -465,7 +459,7 @@ def parse_query(filter: str):
         working[level].append(token)
 
     if level > 1:
-        if (RANGE in state or TORANGE in state):
+        if state[-1] in [RANGE, TORANGE]:
             raise ValueError("Unmatched square brackets.")
         else:
             raise ValueError("Unmatched parentheses.")
@@ -475,8 +469,6 @@ def parse_query(filter: str):
             raise ValueError("Incomplete Boolean expression.")
         working[level] = list()
         push_item((field, word))
-    elif state[-1] in [RANGE, TORANGE]:
-        raise ValueError("Unmatched square brackets.")
     elif state[-1] == QUOTE:
         raise ValueError("Unmatched quote marks.")
     elif state[-1] == ESC:
@@ -523,23 +515,13 @@ def extract_values(record: Mapping, fieldpath: deque) -> List:
             raise KeyError("Literal value has no further keys.")
         return [value]
 
-    if isinstance(record, str):
-        raise ValueError(f"Expected Mapping, not ‘{record}’.")
-
     for field, value in record.items():
         if isinstance(value, dict):
-            values.extend(extract_values(value, fieldpath.copy()))
+            values.extend(extract_values(value, fieldpath))
         elif isinstance(value, list):
             if value and isinstance(value[0], dict):
-                key_error = True
                 for v in value:
-                    try:
-                        values.extend(extract_values(v, fieldpath.copy()))
-                        key_error = False
-                    except KeyError:
-                        pass
-                if key_error:
-                    raise KeyError(fieldpath[0])
+                    values.extend(extract_values(v, fieldpath))
             else:
                 values.extend(value)
         else:
@@ -667,7 +649,17 @@ def get_records(table):
     # Get filter parameter
     filter = request.values.get('q')
     if filter:
-        parsed_filter = parse_query(filter)
+        try:
+            parsed_filter = parse_query(filter)
+        except ValueError as e:
+            response = {
+                'apiVersion': api_version,
+                'error': {
+                    'message': f"Bad q parameter: {e}",
+                }
+            }
+            return jsonify(response), 400
+
         filtered = [k for k in records if passes_filter(k, parsed_filter)]
         records = filtered
 
