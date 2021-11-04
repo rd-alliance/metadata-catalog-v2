@@ -90,11 +90,15 @@ In the virtual environment, you can upgrade the requirements file as follows.
 ```bash
 sed -i 's/[~=]=/>=/' requirements.txt
 pip install -U -r requirements.txt
-pip freeze | sed 's/==/~=/' | grep -ve "^-e" > requirements.txt
+pip freeze | sed 's/==/~=/' | grep -vEe "^(-e|pkg_resources)" > requirements.txt
 ```
 
 Remove any lines that are unique to your virtual environment, such as linters
-or code formatters.
+or code formatters, for example by replacing the `grep` argument:
+
+```bash
+grep -vEe "^(-e|pkg_resources|pycodestyle)"
+```
 
 Run unit tests and ensure that all tests pass by doing one of the following:
 
