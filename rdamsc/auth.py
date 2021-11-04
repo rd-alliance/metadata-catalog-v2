@@ -7,27 +7,31 @@ from email.utils import parsedate_tz, mktime_tz
 
 # Non-standard
 # ------------
-import requests
-# See https://flask.palletsprojects.com/en/1.1.x/
+# See https://flask.palletsprojects.com/en/2.0.x/
 from flask import (
     abort, Blueprint, current_app, flash, g, redirect, render_template,
     request, session, url_for
 )
-# See https://flask-wtf.readthedocs.io/ and https://wtforms.readthedocs.io/
-from flask_wtf import FlaskForm
-from wtforms import validators, StringField
 # See https://flask-login.readthedocs.io/
 from flask_login import (
     LoginManager, login_user, logout_user, current_user, login_required
 )
-# See https://rauth.readthedocs.io/
-from rauth import OAuth1Service, OAuth2Service
+# See https://pythonhosted.org/Flask-OpenID/
+# Following two statements remove a DeprecationWarning
+import openid.oidutil
+openid.oidutil.xxe_safe_elementtree_modules = ['defusedxml.ElementTree']
+from flask_openid import OpenID
+# See https://flask-wtf.readthedocs.io/
+from flask_wtf import FlaskForm
 # See https://developers.google.com/api-client-library/python/guide/aaa_oauth
 from oauth2client import client, crypt
-# See https://pythonhosted.org/Flask-OpenID/
-from flask_openid import OpenID
+# See https://rauth.readthedocs.io/
+from rauth import OAuth1Service, OAuth2Service
+import requests
 # See http://tinydb.readthedocs.io/
 from tinydb import TinyDB, Query
+# See https://wtforms.readthedocs.io/
+from wtforms import validators, StringField
 
 # Local
 # -----

@@ -82,3 +82,27 @@ To generate the coverage report, run the following command:
 ```bash
 coverage html -d "test_coverage_report"
 ```
+
+## Upgrading dependencies
+
+In the virtual environment, you can upgrade the requirements file as follows.
+
+```bash
+sed -i 's/[~=]=/>=/' requirements.txt
+pip install -U -r requirements.txt
+pip freeze | sed 's/==/~=/' | grep -ve "^-e" > requirements.txt
+```
+
+Remove any lines that are unique to your virtual environment, such as linters
+or code formatters.
+
+Run unit tests and ensure that all tests pass by doing one of the following:
+
+- updating the code;
+- reverting individual requirements;
+- reverting the whole requirements file.
+
+Once all tests pass successfully, commit any changes to the requirements file.
+If you needed to update code, the live server must be put into maintenance mode
+before the change is pushed to the live branch so that the installed
+requirements can be updated immediately afterwards.

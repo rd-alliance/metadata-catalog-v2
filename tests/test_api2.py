@@ -4,14 +4,16 @@ import re
 import time
 import typing as t
 
-from flask import g, session
+from authlib.jose import jwt
 import pytest
 from requests.auth import _basic_auth_str
-from itsdangerous import TimedJSONWebSignatureSerializer as JWS
+
 import rdamsc.api2
 
+api_version = rdamsc.api2.api_version
 
-def test_main_get(client, app, data_db):
+
+def test_main_get(client, data_db):
 
     # Prepare database:
     data_db.write_db()
@@ -20,7 +22,7 @@ def test_main_get(client, app, data_db):
     response = client.get('/api2/m1', follow_redirects=True)
     assert response.status_code == 200
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'data': data_db.get_apidata('m1')
     }, sort_keys=True)
     actual = json.dumps(response.get_json(), sort_keys=True)
@@ -29,7 +31,7 @@ def test_main_get(client, app, data_db):
     response = client.get('/api2/m3', follow_redirects=True)
     assert response.status_code == 200
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'data': data_db.get_apidata('m3')
     }, sort_keys=True)
     actual = json.dumps(response.get_json(), sort_keys=True)
@@ -48,7 +50,7 @@ def test_main_get(client, app, data_db):
     current = total if total < 10 else 10
     page_total = ((total - 1) // 10) + 1
     ideal = {
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'data': {
             'itemsPerPage': 10,
             'currentItemCount': current,
@@ -110,7 +112,7 @@ def test_main_get(client, app, data_db):
     response = client.get('/api2/rel/m1', follow_redirects=True)
     assert response.status_code == 200
     ideal = {
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'data': data_db.rel3
     }
     ideal['data']['uri'] = "http://localhost/api2/rel/m1"
@@ -128,7 +130,7 @@ def test_main_get(client, app, data_db):
     current = total if total < 10 else 10
     page_total = ((total - 1) // 10) + 1
     ideal = {
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'data': {
             'itemsPerPage': 10,
             'currentItemCount': current,
@@ -156,7 +158,7 @@ def test_main_get(client, app, data_db):
     else:
         g1rel = None
     ideal = {
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'data': g1rel}
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert json.dumps(ideal, sort_keys=True) == actual
@@ -171,7 +173,7 @@ def test_main_get(client, app, data_db):
     current = total if total < 10 else 10
     page_total = ((total - 1) // 10) + 1
     ideal = {
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'data': {
             'itemsPerPage': 10,
             'currentItemCount': current,
@@ -189,7 +191,7 @@ def test_main_get(client, app, data_db):
     assert json.dumps(ideal, sort_keys=True) == actual
 
 
-def test_term_get(client, app, data_db):
+def test_term_get(client, data_db):
 
     # Prepare term database:
     data_db.write_terms()
@@ -198,7 +200,7 @@ def test_term_get(client, app, data_db):
     response = client.get('/api2/datatype1', follow_redirects=True)
     assert response.status_code == 200
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'data': data_db.get_apidata('datatype1')
     }, sort_keys=True)
     actual = json.dumps(response.get_json(), sort_keys=True)
@@ -211,7 +213,7 @@ def test_term_get(client, app, data_db):
     current = total if total < 10 else 10
     page_total = ((total - 1) // 10) + 1
     ideal = {
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'data': {
             'itemsPerPage': 10,
             'currentItemCount': current,
@@ -232,7 +234,7 @@ def test_term_get(client, app, data_db):
     response = client.get('/api2/location1', follow_redirects=True)
     assert response.status_code == 200
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'data': data_db.get_apiterm('location', 1)
     }, sort_keys=True)
     actual = json.dumps(response.get_json(), sort_keys=True)
@@ -246,7 +248,7 @@ def test_term_get(client, app, data_db):
     current = total if total < 10 else 10
     page_total = ((total - 1) // 10) + 1
     ideal = {
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'data': {
             'itemsPerPage': 10,
             'currentItemCount': current,
@@ -419,7 +421,7 @@ def test_passes_filter():
     ])
 
 
-def test_parse_query(client, app, data_db):
+def test_parse_query():
     transforms = {
         # Literal strings
         "Noun": (None, "Noun"),
@@ -511,7 +513,7 @@ def test_parse_query(client, app, data_db):
             rdamsc.api2.parse_query(input)
 
 
-def test_main_search(client, app, data_db):
+def test_main_search(client, data_db):
     # Prepare database:
     data_db.write_db()
 
@@ -524,7 +526,7 @@ def test_main_search(client, app, data_db):
         current = total if total < 10 else 10
         page_total = ((total - 1) // 10) + 1
         ideal = {
-            'apiVersion': '2.0.0',
+            'apiVersion': api_version,
             'data': {
                 'itemsPerPage': 10,
                 'currentItemCount': current,
@@ -642,11 +644,11 @@ def test_main_search(client, app, data_db):
     assert result['error']['message'] == "Bad q parameter: Unmatched parentheses."
 
 
-def test_thesaurus(client, app, data_db):
+def test_thesaurus(client, data_db):
 
     # Test getting full scheme record
     ideal = {
-        "apiVersion": "2.0.0",
+        "apiVersion": api_version,
         "data": {
             "@context": {
                 "skos": "http://www.w3.org/2004/02/skos/core#"},
@@ -686,7 +688,7 @@ def test_thesaurus(client, app, data_db):
     assert response.status_code == 200
 
     ideal = {
-        "apiVersion": "2.0.0",
+        "apiVersion": api_version,
         "data": {
             "@context": {
                 "skos": "http://www.w3.org/2004/02/skos/core#"},
@@ -735,7 +737,7 @@ def test_thesaurus(client, app, data_db):
     assert response.status_code == 404
 
     ideal = {
-        "apiVersion": "2.0.0",
+        "apiVersion": api_version,
         "data": {
             "@context": {
                 "skos": "http://www.w3.org/2004/02/skos/core#"},
@@ -774,7 +776,7 @@ def test_thesaurus(client, app, data_db):
     assert response.status_code == 404
 
     ideal = {
-        "apiVersion": "2.0.0",
+        "apiVersion": api_version,
         "data": {
             "@context": {
                 "skos": "http://www.w3.org/2004/02/skos/core#"},
@@ -819,7 +821,7 @@ def test_thesaurus(client, app, data_db):
     response = client.get('/api2/thesaurus/concepts')
     assert response.status_code == 200
     test_data = response.get_json()
-    assert test_data.get("apiVersion") == "2.0.0"
+    assert test_data.get("apiVersion") == api_version
     assert test_data.get("data").get("currentItemCount") == 10
     assert len(test_data.get("data").get("items")) == 10
     assert test_data.get("data").get("itemsPerPage") == 10
@@ -848,7 +850,7 @@ def test_thesaurus(client, app, data_db):
     response = client.get('/api2/thesaurus/concepts/used')
     assert response.status_code == 200
     test_data = response.get_json()
-    assert test_data.get("apiVersion") == "2.0.0"
+    assert test_data.get("apiVersion") == api_version
     assert test_data.get("data").get("currentItemCount") == 0
     assert len(test_data.get("data").get("items")) == 0
     assert test_data.get("data").get("itemsPerPage") == 10
@@ -862,7 +864,7 @@ def test_thesaurus(client, app, data_db):
     response = client.get('/api2/thesaurus/concepts/used')
     assert response.status_code == 200
     test_data = response.get_json()
-    assert test_data.get("apiVersion") == "2.0.0"
+    assert test_data.get("apiVersion") == api_version
     assert test_data.get("data").get("currentItemCount") == 2
     assert len(test_data.get("data").get("items")) == 2
     assert test_data.get("data").get("itemsPerPage") == 10
@@ -902,11 +904,14 @@ def test_thesaurus(client, app, data_db):
         }]}
 
 
-def test_auth_api2(client, app, data_db, user_db):
+def test_auth_api2(client, app, user_db):
 
     # Generate expired token:
-    s = JWS(app.config['SECRET_KEY'], expires_in=1)
-    old_token = s.dumps({'id': 1}).decode('ascii')
+    old_token = jwt.encode(
+        {'alg': 'HS256'},
+        {'id': 1, 'exp': time.time() + 1},
+        app.config['SECRET_KEY']
+    )
     expires = time.time() + 2
 
     # Install API user account
@@ -1047,7 +1052,7 @@ def test_auth_api2(client, app, data_db, user_db):
     assert response.status_code == 200
 
 
-def test_main_write(client, auth_api, app, data_db):
+def test_main_write(client, auth_api, data_db):
 
     available_records = set()
 
@@ -1076,7 +1081,7 @@ def test_main_write(client, auth_api, app, data_db):
         follow_redirects=True)
     assert_okay(response)
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'meta': {'conformance': 'useful'},
         'data': record
     }, sort_keys=True)
@@ -1111,7 +1116,7 @@ def test_main_write(client, auth_api, app, data_db):
         follow_redirects=True)
     assert response.status_code == 400
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'error': {
             'message': "Missing field: url.",
             'errors': [{
@@ -1167,7 +1172,7 @@ def test_main_write(client, auth_api, app, data_db):
         follow_redirects=True)
     assert response.status_code == 400
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'error': {
             'message': "Missing field: id.",
             'errors': [{
@@ -1207,7 +1212,7 @@ def test_main_write(client, auth_api, app, data_db):
         "Invalid type: not-a-type. Valid types: standards body, archive, "
         "professional group, coordination group.")
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'error': {
             'message': errmess,
             'errors': [{
@@ -1231,7 +1236,7 @@ def test_main_write(client, auth_api, app, data_db):
         follow_redirects=True)
     assert response.status_code == 400
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'error': {
             'message': "Malformed Handle.",
             'errors': [{
@@ -1253,7 +1258,7 @@ def test_main_write(client, auth_api, app, data_db):
         follow_redirects=True)
     assert_okay(response)
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'meta': {'conformance': 'useful'},
         'data': record
     }, sort_keys=True)
@@ -1273,7 +1278,7 @@ def test_main_write(client, auth_api, app, data_db):
         follow_redirects=True)
     assert response.status_code == 400
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'error': {
             'message': f"Invalid term URI: {bad_keyword}.",
             'errors': [{
@@ -1297,7 +1302,7 @@ def test_main_write(client, auth_api, app, data_db):
         follow_redirects=True)
     assert response.status_code == 400
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'error': {
             'message': f"No such datatype record: {bad_keyword}.",
             'errors': [{
@@ -1325,7 +1330,7 @@ def test_main_write(client, auth_api, app, data_db):
         follow_redirects=True)
     assert response.status_code == 400
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'error': {
             'message': "Malformed Handle.",
             'errors': [{
@@ -1354,7 +1359,7 @@ def test_main_write(client, auth_api, app, data_db):
     assert response.status_code == 400
     ideal_error = "Value must be 32 characters or fewer (actual length: 33)."
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'error': {
             'message': ideal_error,
             'errors': [{
@@ -1381,7 +1386,7 @@ def test_main_write(client, auth_api, app, data_db):
     assert response.status_code == 400
     ideal_error = "Date must be in yyyy or yyyy-mm or yyyy-mm-dd format."
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'error': {
             'message': ideal_error,
             'errors': [{
@@ -1424,7 +1429,7 @@ def test_main_write(client, auth_api, app, data_db):
     assert response.status_code == 400
     ideal_error = "Missing field: prefix."
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'error': {
             'message': ideal_error,
             'errors': [{
@@ -1474,7 +1479,7 @@ def test_main_write(client, auth_api, app, data_db):
         follow_redirects=True)
     assert response.status_code == 400
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'error': {
             'message': "Missing field: role.",
             'errors': [{
@@ -1530,7 +1535,7 @@ def test_main_write(client, auth_api, app, data_db):
         follow_redirects=True)
     assert_okay(response)
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'meta': {'conformance': 'complete'},
         'data': record
     }, sort_keys=True)
@@ -1548,7 +1553,7 @@ def test_main_write(client, auth_api, app, data_db):
         follow_redirects=True)
     assert_okay(response)
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'meta': {'conformance': 'complete'},
         'data': record
     }, sort_keys=True)
@@ -1568,7 +1573,7 @@ def test_main_write(client, auth_api, app, data_db):
     assert_okay(response)
     del record['extra']
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'meta': {'conformance': 'useful'},
         'data': record
     }, sort_keys=True)
@@ -1601,7 +1606,7 @@ def test_main_write(client, auth_api, app, data_db):
         follow_redirects=True)
     assert_okay(response)
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'meta': {'conformance': 'valid'},
         'data': record
     }, sort_keys=True)
@@ -1716,7 +1721,7 @@ def test_main_write(client, auth_api, app, data_db):
             response = client.get(f'/api2/{table}{i}', follow_redirects=True)
             assert_okay(response)
             ideal = json.dumps({
-                'apiVersion': '2.0.0',
+                'apiVersion': api_version,
                 'data': data_db.get_apidata(f"{table}{i}")
             }, sort_keys=True)
             actual = json.dumps(response.get_json(), sort_keys=True)
@@ -1806,7 +1811,7 @@ def test_main_write(client, auth_api, app, data_db):
 
 
 # Test suite for patch handling.
-def test_rel_patch(client, auth_api, app, data_db):
+def test_rel_patch(client, auth_api, data_db):
 
     # Install terms
     data_db.write_terms()
@@ -2234,7 +2239,7 @@ def test_rel_patch(client, auth_api, app, data_db):
 
 
 # Test suite for editing DataTypes and VocabTerms.
-def test_term_write(client, auth_api, app, data_db):
+def test_term_write(client, auth_api, data_db):
 
     # Test error on missing required field:
     record = data_db.get_apidata('datatype1')
@@ -2262,7 +2267,7 @@ def test_term_write(client, auth_api, app, data_db):
         follow_redirects=True)
     assert response.status_code == 200
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'meta': {'conformance': 'complete'},
         'data': record
     }, sort_keys=True)
@@ -2337,7 +2342,7 @@ def test_term_write(client, auth_api, app, data_db):
     assert response.status_code == 200
     record['uri'] = "http://localhost/api2/id_scheme4"
     ideal = json.dumps({
-        'apiVersion': '2.0.0',
+        'apiVersion': api_version,
         'meta': {'conformance': 'complete'},
         'data': record
     }, sort_keys=True)

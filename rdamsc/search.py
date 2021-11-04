@@ -2,20 +2,17 @@
 # ============
 # Non-standard
 # ------------
-# See https://flask.palletsprojects.com/en/1.1.x/
+# See https://flask.palletsprojects.com/en/2.0.x/
 from flask import (
-    abort, Blueprint, current_app, flash, g, redirect, render_template,
-    request, session, url_for
+    Blueprint, abort, flash, redirect, render_template, request, url_for
 )
+# See https://flask-wtf.readthedocs.io/
+from flask_wtf import FlaskForm
 # See http://tinydb.readthedocs.io/
 from tinydb import Query
-# See http://flask-cors.readthedocs.io/
-# from flask_cors import cross_origin
-# See https://flask-wtf.readthedocs.io/ and https://wtforms.readthedocs.io/
-from flask_wtf import FlaskForm
+# See https://wtforms.readthedocs.io/
 from wtforms import (
-    FieldList, Form, FormField, HiddenField, SelectField, SelectMultipleField,
-    StringField, TextAreaField, ValidationError, validators, widgets
+    FieldList, StringField, validators
 )
 
 # Local

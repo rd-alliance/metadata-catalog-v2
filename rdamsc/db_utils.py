@@ -2,24 +2,21 @@
 # ============
 # Standard
 # --------
-import os
 import json
+import os
 
 # Non-standard
 # ------------
-# See https://flask.palletsprojects.com/en/1.1.x/
-from flask import g
-# See https://flask-login.readthedocs.io/
-from flask_login import current_user
-# See http://tinydb.readthedocs.io/
-from tinydb import TinyDB, Query, where
-from tinydb.database import Document
-from tinydb.operations import delete
-from tinydb.storages import Storage, touch
 # See https://www.dulwich.io/
 from dulwich.repo import Repo
 from dulwich.errors import NotGitRepository
 import dulwich.porcelain as git
+# See https://flask.palletsprojects.com/en/2.0.x/
+from flask import g
+# See https://flask-login.readthedocs.io/
+from flask_login import current_user
+# See http://tinydb.readthedocs.io/
+from tinydb.storages import Storage, touch
 
 mscwg_email = 'mscwg@rda-groups.org'
 

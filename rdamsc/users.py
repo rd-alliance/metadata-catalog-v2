@@ -2,28 +2,28 @@
 # ============
 # Standard
 # --------
-from typing import (
-    List,
-    Mapping,
-    Tuple,
-    Type,
-)
+import time
+from typing import Mapping
 
 # Non-standard
 # ------------
+# See https://docs.authlib.org/en/stable/
+from authlib.jose import jwt
+from authlib.jose.errors import (
+    BadSignatureError,
+    DecodeError,
+    ExpiredTokenError,
+    InvalidClaimError,
+)
+# See https://flask.palletsprojects.com/en/2.0.x/
+from flask import current_app, g
+# See https://passlib.readthedocs.io/
+from passlib.apps import custom_app_context as pwd_context
 # See http://tinydb.readthedocs.io/
 from tinydb import TinyDB, Query
 from tinydb.database import Document
 from tinydb.operations import delete
 from tinyrecord import transaction
-# See https://flask.palletsprojects.com/en/1.1.x/
-from flask import current_app, g
-from itsdangerous import (TimedJSONWebSignatureSerializer
-                          as JWS, BadSignature, SignatureExpired)
-# See https://flask-login.readthedocs.io/
-from flask_login import LoginManager
-# See https://passlib.readthedocs.io/
-from passlib.apps import custom_app_context as pwd_context
 
 # Local
 # -----
@@ -119,17 +119,22 @@ class ApiUser(User):
         '''If the token is valid, loads and returns the API user with the
         doc_id encoded by the token. Otherwise returns a blank instance.
         '''
-
-        s = JWS(current_app.config['SECRET_KEY'], expires_in=expiration)
         try:
-            data = s.loads(token)
-        except SignatureExpired:
-            # valid token, but expired
-            return cls(value=dict(), doc_id=0)
-        except BadSignature:
+            claims = jwt.decode(token, current_app.config['SECRET_KEY'])
+            claims.validate_exp(time.time(), 1)
+        except DecodeError:
             # invalid token
             return cls(value=dict(), doc_id=0)
-        doc_id = int(data.get('id', 0))
+        except BadSignatureError:
+            # invalid token
+            return cls(value=dict(), doc_id=0)
+        except InvalidClaimError:  # pragma: no cover
+            # invalid time stamp
+            return cls(value=dict(), doc_id=0)
+        except ExpiredTokenError:
+            # valid token, but expired
+            return cls(value=dict(), doc_id=0)
+        doc_id = int(claims.get('id', 0))
         if not doc_id:
             return cls(value=dict(), doc_id=0)
 
@@ -160,8 +165,12 @@ class ApiUser(User):
         return is_verified
 
     def generate_auth_token(self, expiration=600):
-        s = JWS(current_app.config['SECRET_KEY'], expires_in=expiration)
-        return s.dumps({'id': self.doc_id})
+        s = jwt.encode(
+            {'alg': 'HS256'},
+            {'id': self.doc_id, 'exp': time.time() + expiration},
+            current_app.config['SECRET_KEY']
+        )
+        return s
 
 
 def get_user_db():

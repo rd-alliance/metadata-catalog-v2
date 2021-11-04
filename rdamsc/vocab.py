@@ -3,27 +3,24 @@
 # Standard
 # --------
 import os
-import shutil
 from typing import (
     List,
     Mapping,
-    Tuple,
     Union,
 )
 
 # Non-standard
 # ------------
-# See https://flask.palletsprojects.com/en/1.1.x/
+# See https://flask.palletsprojects.com/en/2.0.x/
 from flask import current_app, g, url_for
+# See http://rdflib.readthedocs.io/
+from rdflib import Graph, Namespace, URIRef
+from rdflib.namespace import SKOS, RDFS
 # See http://tinydb.readthedocs.io/
 from tinydb import TinyDB, Query
 from tinydb.database import Document
 # See https://github.com/eugene-eeo/tinyrecord
 from tinyrecord import transaction
-# See http://rdflib.readthedocs.io/
-import rdflib
-from rdflib import Graph, Literal, Namespace, URIRef
-from rdflib.namespace import SKOS, RDF
 
 # Local
 # -----
@@ -82,6 +79,39 @@ class Thesaurus(object):
     def tree(self):
         return self.trees.all()
 
+    def _preferredLabel(
+        self,
+        subject,
+        lang=None,
+        default=None,
+        labelProperties=(SKOS.prefLabel, RDFS.label),
+    ):  # pragma: no cover
+        """
+        Deprecated function from rdflib library, preserved anticipating removal.
+        """
+        if default is None:
+            default = []
+
+        # optional language filtering
+        if lang is not None:
+            if lang == "":
+                def langfilter(l_):
+                    return l_.language is None
+            else:
+                def langfilter(l_):
+                    return l_.language == lang
+        else:
+            def langfilter(l_):
+                return True
+
+        for labelProp in labelProperties:
+            labels = list(filter(langfilter, self.g.objects(subject, labelProp)))
+            if len(labels) == 0:
+                continue
+            else:
+                return [(labelProp, l_) for l_ in labels]
+        return default
+
     def _to_list(self, parent_uris: List[URIRef] = None,
                  parent_label: str = None)\
             -> List[Mapping[str, Union[URIRef, str]]]:
@@ -90,7 +120,7 @@ class Thesaurus(object):
         if parent_uris is None:
             domains = self.g.subjects(SKOS.topConceptOf, self.uriref)
             for domain in domains:
-                label = str(self.g.preferredLabel(domain, lang='en')[0][1])
+                label = str(self._preferredLabel(domain, lang='en')[0][1])
                 sub_list.append({
                     'uri': domain,
                     'label': label,
@@ -105,7 +135,7 @@ class Thesaurus(object):
             parent_uri = parent_uris[-1]
             children = self.g.objects(parent_uri, SKOS.narrower)
             for child in children:
-                label = str(self.g.preferredLabel(child, lang='en')[0][1])
+                label = str(self._preferredLabel(child, lang='en')[0][1])
                 long_label = label + parent_label
                 sub_list.append({
                     'uri': child,
@@ -131,7 +161,7 @@ class Thesaurus(object):
         if not uris:
             return tree
         for uri in uris:
-            label = str(self.g.preferredLabel(uri, lang='en')[0][1])
+            label = str(self._preferredLabel(uri, lang='en')[0][1])
             entry = {'uri': uri, 'label': label}
             children = self._to_tree(uri)
             if children:

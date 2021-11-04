@@ -14,7 +14,6 @@ from typing import (
 
 # Non-standard
 # ------------
-from tinydb.database import Document
 from flask import (
     abort,
     Blueprint,
@@ -25,6 +24,7 @@ from flask import (
     url_for,
 )
 from flask_httpauth import HTTPBasicAuth, HTTPTokenAuth, MultiAuth
+from tinydb.database import Document
 
 # Local
 # -----
@@ -35,14 +35,14 @@ from .records import (
     mscid_prefix,
     sortval,
 )
+from .users import ApiUser
 from .vocab import Thesaurus
-from .users import ApiUser, get_user_db
 
 bp = Blueprint('api2', __name__)
 basic_auth = HTTPBasicAuth()
 token_auth = HTTPTokenAuth('Bearer')
 multi_auth = MultiAuth(basic_auth, token_auth)
-api_version = "2.0.0"
+api_version = "2.1.0"
 
 
 # Handy functions

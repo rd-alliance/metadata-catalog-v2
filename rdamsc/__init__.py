@@ -9,17 +9,15 @@ import subprocess
 
 # Non-standard
 # ------------
-# See https://flask.palletsprojects.com/en/1.1.x/
+# See https://flask.palletsprojects.com/en/2.0.x/
 from flask import Flask, render_template, redirect, url_for
-# See https://flask-login.readthedocs.io/
-from flask_login import current_user
 # See https://bloomberg.github.io/python-github-webhook/
 from github_webhook import Webhook
 
 # Local
 # -----
-from .utils import *
 from .records import VocabTerm
+from .utils import *
 
 
 def create_app(test_config=None):

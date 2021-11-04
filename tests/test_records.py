@@ -1,8 +1,4 @@
-import re
-from urllib.parse import urlencode
 import json
-import pytest
-from flask import g, session
 
 
 def test_create_view_records(client, auth, app, page, data_db):
@@ -569,7 +565,7 @@ def test_create_terms(client, auth, app, page, data_db):
         "A term with ID ‘document’ has already been coined for scheme.")
 
 
-def test_auth_protection(client, auth, app, page, data_db):
+def test_auth_protection(client, page, data_db):
     data_db.write_db()
     data_db.write_terms()
 
@@ -590,5 +586,3 @@ def test_auth_protection(client, auth, app, page, data_db):
     page.read(html)
     page.assert_contains("Please sign in to access this page.")
     page.assert_contains("<h1>Sign in</h1>")
-
-

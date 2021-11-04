@@ -1,8 +1,6 @@
-import json
 import hashlib
 import hmac
-import pytest
-from flask import g, session
+
 from werkzeug.test import EnvironBuilder
 
 

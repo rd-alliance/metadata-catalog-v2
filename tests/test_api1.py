@@ -1,9 +1,7 @@
 import json
-import pytest
-from flask import g, session
 
 
-def test_main_get(client, app, data_db):
+def test_main_get(client, data_db):
 
     # Prepare database:
     data_db.write_db()
@@ -88,7 +86,7 @@ def test_main_get(client, app, data_db):
     assert ideal == actual
 
 
-def test_tree_get(client, app, data_db):
+def test_tree_get(client, data_db):
     # Prepare database:
     data_db.write_db()
     data_db.write_terms()

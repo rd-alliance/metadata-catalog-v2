@@ -6,12 +6,8 @@ from typing import List, Mapping
 
 # Non-standard
 # ------------
-import requests
-# See https://flask.palletsprojects.com/en/1.1.x/
-from flask import (
-    abort, Blueprint, render_template, url_for,
-    current_app
-)
+# See https://flask.palletsprojects.com/en/2.0.x/
+from flask import Blueprint, abort, render_template, url_for
 
 # Local
 # -----

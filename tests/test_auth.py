@@ -1,8 +1,8 @@
-from urllib.parse import urlencode
 import json
+from urllib.parse import urlencode
 
 
-def test_bad_provider(client, page):
+def test_bad_provider(client):
     # Unsupported provider:
     response = client.get('/authorize/null')
     assert response.status_code == 404

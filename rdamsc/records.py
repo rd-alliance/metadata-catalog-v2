@@ -3,8 +3,8 @@
 # Standard
 # --------
 import json
-import re
 import os
+import re
 from typing import (
     List,
     Mapping,
@@ -15,28 +15,29 @@ from urllib.parse import urlparse
 
 # Non-standard
 # ------------
-# See http://tinydb.readthedocs.io/
-from tinydb import TinyDB, Query, where
-from tinydb.database import Document
-from tinydb.operations import delete
 # See https://github.com/eugene-eeo/tinyrecord
 from tinyrecord import transaction
-# See https://flask.palletsprojects.com/en/1.1.x/
+# See https://flask.palletsprojects.com/en/2.0.x/
 from flask import (
-    abort, Blueprint, current_app, flash, g, redirect, render_template,
-    request, session, url_for
+    Blueprint, abort, current_app, flash, g, redirect, render_template,
+    request, url_for
 )
 # See https://flask-login.readthedocs.io/
 from flask_login import login_required
-# See https://flask-wtf.readthedocs.io/ and https://wtforms.readthedocs.io/
+# See https://flask-wtf.readthedocs.io/
 from flask_wtf import FlaskForm
+from markupsafe import escape, Markup
+# See http://tinydb.readthedocs.io/
+from tinydb import TinyDB, Query
+from tinydb.database import Document
+from tinydb.operations import delete
+# See https://wtforms.readthedocs.io/
 from wtforms import (
     FieldList, Form, FormField, HiddenField, SelectField, SelectMultipleField,
     StringField, TextAreaField, ValidationError, validators, widgets
 )
 from wtforms.compat import string_types, text_type
 from wtforms.utils import unset_value
-from markupsafe import escape, Markup
 
 # Local
 # -----

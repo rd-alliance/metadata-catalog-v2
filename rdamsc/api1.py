@@ -2,30 +2,22 @@
 # ============
 # Standard
 # --------
-import json
-import re
-import os
-import math
 from typing import (
     List,
     Mapping,
-    Tuple,
-    Type,
 )
 
 # Non-standard
 # ------------
-from tinydb.database import Document
 from flask import (
     abort,
     Blueprint,
-    g,
     jsonify,
     request,
     url_for,
 )
-from flask_cors import CORS, cross_origin
-
+from flask_cors import cross_origin
+from tinydb.database import Document
 
 # Local
 # -----
@@ -201,6 +193,7 @@ def get_record(table, number):
 
     # Return result
     return jsonify(as_response_item(record, '.get_record'))
+
 
 @bp.route(
     '/subject-index',

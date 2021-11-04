@@ -273,7 +273,7 @@ def test_group_search(client, page, data_db):
     assert response.status_code == 404
 
 
-def test_search_no_data(client, page):
+def test_search_no_data(client):
 
     # Make sure page still renders with empty database
     response = client.get('/search')

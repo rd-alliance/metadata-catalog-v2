@@ -110,7 +110,7 @@ These instructions are one way to go about using the Catalog in production.
 For other options, please refer to the [deployment options] documented by the
 Flask developers.
 
-[deployment options]: https://flask.palletsprojects.com/en/1.1.x/deploying/
+[deployment options]: https://flask.palletsprojects.com/en/2.0.x/deploying/
 
 On the Web server, let's assume for example that you have installed the
 application using the above instructions in `/opt/rdamsc`.

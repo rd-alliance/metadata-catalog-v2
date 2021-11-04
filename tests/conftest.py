@@ -1,14 +1,14 @@
+from html import unescape
+import json
 import os
 import re
 import tempfile
-import json
-from html import unescape
 import time
-import pytest
-from werkzeug.datastructures import MultiDict
-from passlib.apps import custom_app_context as pwd_context
-from requests.auth import _basic_auth_str
 
+from passlib.apps import custom_app_context as pwd_context
+import pytest
+from requests.auth import _basic_auth_str
+from werkzeug.datastructures import MultiDict
 
 from rdamsc import create_app
 
