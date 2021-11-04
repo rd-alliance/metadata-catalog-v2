@@ -608,6 +608,12 @@ def test_main_search(client, app, data_db):
     result = response.get_json()
     assert result['error']['message'] == "Bad q parameter: Unmatched parentheses."
 
+    query = '/api2/rel?q=' + ('(' * 257)
+    response = client.get(query, follow_redirects=True)
+    assert response.status_code == 400
+    result = response.get_json()
+    assert result['error']['message'] == "Bad q parameter: Too long."
+
     # On invrel endpoint
     query = '/api2/invrel?q=funded\\ schemes:"msc:m1"'
     items = [
@@ -634,7 +640,6 @@ def test_main_search(client, app, data_db):
     assert response.status_code == 400
     result = response.get_json()
     assert result['error']['message'] == "Bad q parameter: Unmatched parentheses."
-
 
 
 def test_thesaurus(client, app, data_db):

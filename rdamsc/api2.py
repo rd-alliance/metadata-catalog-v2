@@ -254,6 +254,10 @@ def parse_query(filter: str):
     - ["OR", CONDITION, CONDITION, ...]
     - ["AND", CONDITION, CONDITION, ...]
     '''
+    # Sanity check
+    if len(filter) > 256:
+        raise ValueError("Too long.")
+
     # State constants
     WORD = 1
     NOTWORD = 2
