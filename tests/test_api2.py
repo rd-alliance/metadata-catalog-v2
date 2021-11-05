@@ -2331,7 +2331,7 @@ def test_term_write(client, auth_api, data_db):
     record = {
         'mscid': 'msc:id_scheme4',
         'id': "ISNI",
-        'label': "ISNI",
+        'label': "INSI",
         'applies': ['organization']}
     credentials = f"Bearer {auth_api.get_token()}"
     response = client.post(
@@ -2340,6 +2340,27 @@ def test_term_write(client, auth_api, data_db):
         json=record,
         follow_redirects=True)
     assert response.status_code == 200
+    record['uri'] = "http://localhost/api2/id_scheme4"
+    ideal = json.dumps({
+        'apiVersion': api_version,
+        'meta': {'conformance': 'complete'},
+        'data': record
+    }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
+
+    record = {
+        'id': "ISNI",
+        'label': "ISNI",
+        'applies': ['organization']}
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.put(
+        '/api2/id_scheme4',
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True)
+    assert response.status_code == 200
+    record['mscid'] = 'msc:id_scheme4'
     record['uri'] = "http://localhost/api2/id_scheme4"
     ideal = json.dumps({
         'apiVersion': api_version,
