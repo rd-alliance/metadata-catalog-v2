@@ -8,6 +8,7 @@ import re
 from typing import (
     List,
     Mapping,
+    Pattern,
     Tuple,
     Union,
 )
@@ -245,7 +246,7 @@ def parse_query(filter: str):
     - (field, VALUE)
     - (field, (MIN, MAX))
 
-    where VALUE can be str, int, re.Pattern, and MIN and MAX can be str
+    where VALUE can be str, int, Pattern, and MIN and MAX can be str
     or int (representing inclusive limits). The field can be None to
     match across all available fields. These innermost values can
     be embedded in lists providing Boolean operations:
@@ -293,7 +294,7 @@ def parse_query(filter: str):
                 )
         working[level - 1].append(item)
 
-    def check_type(word: str) -> Union[re.Pattern, str]:
+    def check_type(word: str) -> Union[Pattern, str]:
         '''If wildcards are present, converts to a regex. Otherwise
         returns the string unaltered. Database currently contains
         only strings, otherwise coercion to int (say) would happen
@@ -536,7 +537,7 @@ def passes_filter(
     is filtered out (False).
 
     - str: match means filter value equals or occurs in field value
-    - re.Pattern: match means pattern occurs somewhere in field value
+    - Pattern: match means pattern occurs somewhere in field value
     - int, float, etc.: match means filter value == field value
     - int range: match means min <= field value <= max
     - str range: match means min <= field value for as many characters
@@ -570,9 +571,7 @@ def passes_filter(
     except KeyError:
         return False
 
-    test_cls = type(filter[1])
-
-    if test_cls == str:
+    if isinstance(filter[1], str):
         for v in [d for d in values_to_test if isinstance(d, str)]:
             if exact:
                 if filter[1].casefold() == v.casefold():
@@ -582,7 +581,7 @@ def passes_filter(
                     return True
         return False
 
-    if test_cls == re.Pattern:
+    if isinstance(filter[1], Pattern):
         for v in [d for d in values_to_test if isinstance(d, str)]:
             if exact:
                 if filter[1].match(v):
@@ -592,7 +591,7 @@ def passes_filter(
                     return True
         return False
 
-    if test_cls == tuple:
+    if isinstance(filter[1], tuple):
         if isinstance(filter[1][0], int):
             for v in [d for d in values_to_test if isinstance(d, int)]:
                 if filter[1][0] <= v <= filter[1][1]:
@@ -615,6 +614,7 @@ def passes_filter(
 
         return False
 
+    test_cls = type(filter[1])
     for v in values_to_test:
         if isinstance(v, test_cls):
             if v == filter[1]:
