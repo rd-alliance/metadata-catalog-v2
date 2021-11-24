@@ -6,7 +6,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
-    python_requires='>= 3.6',
+    python_requires='>= 3.8',
     install_requires=[
         'authlib',
         'coverage',

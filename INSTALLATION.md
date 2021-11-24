@@ -3,9 +3,9 @@
 ## Pre-requisite software
 
 The Metadata Standards Catalog is written in [Python 3.8+], so as a first step
-this will need to be installed on your machine. (It should work with Python 3.6
-and 3.7 as well, but this has not been tested recently. It will not work on
-earlier versions.)
+this will need to be installed on your machine. (It should work with Python 3.7
+as well, but this has not been tested recently. It will not work on earlier
+versions.)
 
 You will also need quite a few non-standard packages; the instructions below
 will install these for you in an isolated virtual environment, but here they
@@ -126,6 +126,15 @@ Debian or a derivative like Ubuntu, you'd do this:
 sudo apt install apache2 libapache2-mod-wsgi-py3
 ```
 
+If you need to use an upgraded Python alongside the system version and a
+pre-compiled mod_wsgi is not available for it (as is the case on Ubuntu 18.04),
+you will need something like this instead, assuming you already have (say)
+`python3.8` and `python3.8-venv`:
+
+```bash
+sudo apt install apache2 apache2-dev python3.8-dev
+```
+
 It is recommended that you set up a non-privileged system user to run the
 Catalog (say, `rdamsc`) and that this user and the Apache user (`www-data` on
 Debian-based Linux distros) are in each other's groups. Be sure to assign
@@ -171,12 +180,15 @@ git add rdamsc/__init__.py
 git commit -m "Update production instance path"
 ```
 
-Inside your virtual environment, you need the `activate_this.py` script so you
-can activate it with the system's Python installation. The latest copy is
-available from the GitHub repository for [virtualenv]. Install it to
-`venv/bin/activate_this.py`.
+If a pre-compiled WSGI mod is not available for the Python you used in the
+virtual environment, then you can compile a matching version in your virtual
+environment at this point:
 
-[virtualenv]: https://github.com/pypa/virtualenv/blob/master/src/virtualenv/activation/python/activate_this.py
+```bash
+. venv/bin/activate
+pip install mod_wsgi
+deactivate
+```
 
 Now you need to create the WSGI file that will run the application for you.
 Let's say you want to run your website content from `/srv/` and have set this up
@@ -184,7 +196,6 @@ in your Apache configuration (`/etc/apache2/apache2.conf`). Create the site
 directory:
 
 ```bash
-deactivate
 exit
 sudo mkdir /srv/rdamsc
 sudo chown rdamsc:www-data /srv/rdamsc
@@ -193,10 +204,6 @@ sudo chown rdamsc:www-data /srv/rdamsc
 As the `rdamsc` user, create a file `/srv/rdamsc/rdamsc.wsgi` with this content:
 
 ```python
-activate_this = '/opt/rdamsc/venv/bin/activate_this.py'
-with open(activate_this) as file_:
-    exec(file_.read(), dict(__file__=activate_this))
-
 from rdamsc import create_app
 application = create_app()
 ```
@@ -232,15 +239,14 @@ WSGIPassAuthorization On
 </VirtualHost>
 ```
 
-If your system Python is not able to run the Catalog and you have to use the
-version in your virtual environment, you will need an extra line at the top to
-switch to the correct WSGI module:
+If you compiled a custom WSGI module in your virtual environment, you will need
+an extra line at the top of this file to use it:
 
 ```apache
 LoadModule wsgi_module "/opt/rdamsc/venv/path/to/mod_wsgi...so"
 ```
 
-You may also want extra lines to configure logging or SSL.
+You may also want extra lines to configure logging, SSL or proxies.
 
 You should then configure the Catalog (see below, it deserves its own section)
 before activating the site:
@@ -421,14 +427,14 @@ WSGIPassAuthorization On
 
     Alias /maintenance.html /srv/rdamsc/maintenance.html
 
-    WSGIDaemonProcess rdamsc user=rdamsc group=rdamsc threads=5
+    WSGIDaemonProcess rdamsc user=rdamsc group=rdamsc threads=5 python-home=/opt/rdamsc/venv
     WSGIScriptAlias / /srv/rdamsc/rdamsc.wsgi
 
     <Directory /srv/rdamsc>
         WSGIProcessGroup rdamsc
         WSGIApplicationGroup %{GLOBAL}
         Require all granted
-    </Directory>/maintenance.html
+    </Directory>
 
     <IfDefine Maintenance>
         ErrorDocument 503 /maintenance.html
@@ -452,7 +458,7 @@ WSGIPassAuthorization On
     <IfDefine !Maintenance>
         # Redirect requests for maintenance page to home page:
         RewriteEngine on
-        RewriteRule ^/maintenance/index.html$ / [R,L]
+        RewriteRule ^/maintenance.html$ / [R,L]
     </IfDefine>
 </VirtualHost>
 ```

@@ -298,7 +298,7 @@ def parse_query(filter: str):
         '''If wildcards are present, converts to a regex. Otherwise
         returns the string unaltered. Database currently contains
         only strings, otherwise coercion to int (say) would happen
-        here.'''
+        here. The re.escape() from Python 3.7+ is required.'''
         if ("\x91" not in word and "\x92" not in word):
             return word
         safe_word = re.escape(word)
