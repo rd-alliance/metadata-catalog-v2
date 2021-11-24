@@ -2,8 +2,10 @@
 
 ## Pre-requisite software
 
-The Metadata Standards Catalog is written in [Python 3.6+], so as a first step
-this will need to be installed on your machine.
+The Metadata Standards Catalog is written in [Python 3.8+], so as a first step
+this will need to be installed on your machine. (It should work with Python 3.6
+and 3.7 as well, but this has not been tested recently. It will not work on
+earlier versions.)
 
 You will also need quite a few non-standard packages; the instructions below
 will install these for you in an isolated virtual environment, but here they
@@ -44,9 +46,11 @@ are if you want to look up the documentation:
 
 ## Installation
 
-Use `git clone` as normal to get a copy of this code folder where you want it on your file system, then enter the folder on the command line.
+Use `git clone` as normal to get a copy of this code folder where you want it on
+your file system, then enter the folder on the command line.
 
-Set up a virtual environment:
+Set up a virtual environment (you might need an additional package for this on a
+*nix system):
 
 ```bash
 # *nix
@@ -131,7 +135,7 @@ ownership of the source code directory to this user. Example:
 sudo adduser --system --group rdamsc
 sudo usermod -aG www-data rdamsc
 sudo usermod -aG rdamsc www-data
-sudo chown rdamsc:www-data /opt/rdamsc
+sudo chown -R rdamsc:www-data /opt/rdamsc
 ```
 
 You should create an instance folder where the Catalog can keep its data. You
@@ -142,15 +146,30 @@ sudo mkdir /var/rdamsc
 sudo chown rdamsc:www-data /var/rdamsc
 ```
 
+You can now switch to the `rdamsc` user:
+
+```bash
+sudo -Hsu rdamsc
+```
+
 Configure the Catalog to use this folder explicitly by changing the `app`
-assignment line to include the information:
+assignment line in `rdamsc/__init__.py` to include the information:
 
 ```python
 # Create the app:
 app = Flask(__name__, instance_relative_config=True, instance_path='/var/rdamsc')
 ```
 
-Commit this change so Git can reapply it over any other code changes.
+Commit this change so Git can reapply it over any other code changes. Doing
+this as your newly created user, you will need to configure Git at the same
+time:
+
+```bash
+git config --global user.name "RDA MSCWG"
+git config --global user.email "rdamsc@localhost"
+git add rdamsc/__init__.py
+git commit -m "Update production instance path"
+```
 
 Inside your virtual environment, you need the `activate_this.py` script so you
 can activate it with the system's Python installation. The latest copy is
@@ -165,11 +184,13 @@ in your Apache configuration (`/etc/apache2/apache2.conf`). Create the site
 directory:
 
 ```bash
+deactivate
+exit
 sudo mkdir /srv/rdamsc
 sudo chown rdamsc:www-data /srv/rdamsc
 ```
 
-Create a file `/srv/rdamsc/rdamsc.wsgi` with this content:
+As the `rdamsc` user, create a file `/srv/rdamsc/rdamsc.wsgi` with this content:
 
 ```python
 activate_this = '/opt/rdamsc/venv/bin/activate_this.py'
@@ -190,7 +211,9 @@ os.environ['https_proxy'] = 'https://proxyURL'
 ```
 
 Now create an Apache site (e.g. `/etc/apache2/sites-available/rdamsc.conf`) that
-points to this file:
+points to this file. If your system Python and WSGI Apache plugin can run the
+application use something like this (check the path for your virtual
+environment):
 
 ```apache
 WSGIPassAuthorization On
@@ -198,7 +221,7 @@ WSGIPassAuthorization On
 <VirtualHost *:80>
     ServerName rdamsc.example.com
 
-    WSGIDaemonProcess rdamsc user=rdamsc group=rdamsc threads=5
+    WSGIDaemonProcess rdamsc user=rdamsc group=rdamsc threads=5 python-home=/opt/rdamsc/venv
     WSGIScriptAlias / /srv/rdamsc/rdamsc.wsgi
 
     <Directory /srv/rdamsc>
@@ -210,12 +233,11 @@ WSGIPassAuthorization On
 ```
 
 If your system Python is not able to run the Catalog and you have to use the
-version in your virtual environment, you will need an extra couple of lines at
-the top (check the path for your environment):
+version in your virtual environment, you will need an extra line at the top to
+switch to the correct WSGI module:
 
 ```apache
 LoadModule wsgi_module "/opt/rdamsc/venv/path/to/mod_wsgi...so"
-WSGIPythonHome "/opt/rdamsc/venv"
 ```
 
 You may also want extra lines to configure logging or SSL.
@@ -239,7 +261,9 @@ following order:
 
  1. the default dictionary hard-coded into the `create_app` function;
  2. the file `instance/config.py`, unless a configuration dictionary is passed
-    to the `create_app` function, in which case that is used instead.
+    to the `create_app` function, in which case that is used instead. (The
+    `instance` folder may be overridden as well, as in the instructions for
+    production use above.)
  3. A file specified by the environment variable MSC_SETTINGS.
 
 Settings are applied in the order they are discovered, so later ones override
@@ -300,8 +324,11 @@ I have registered a set of these for use in the official instance at
 ### Database files
 
 The Catalog uses multiple NoSQL databases, which are saved to disk in the form
-of JSON files. You can either supply pre-populated versions of these files, or
-let the Catalog create them for you:
+of JSON files. You can either supply pre-populated versions of these files,
+(for example, using the occasional [backups of the live data]) or let the
+Catalog create them for you:
+
+[backups of the live data]: https://github.com/rd-alliance/metadata-catalog-data/tree/master/backup
 
 - **Main database** contains the tables for the schemes, tools, organisations,
   mappings, endorsements and the relationships between them.

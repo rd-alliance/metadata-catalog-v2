@@ -36,7 +36,6 @@ from wtforms import (
     FieldList, Form, FormField, HiddenField, SelectField, SelectMultipleField,
     StringField, TextAreaField, ValidationError, validators, widgets
 )
-from wtforms.compat import string_types, text_type
 from wtforms.utils import unset_value
 
 # Local
@@ -2888,17 +2887,17 @@ class Optional(object):
     consists solely of whitespace, it stops the validation chain and removes
     any previous errors (so it can be used anywhere in the chain).
     """
-    field_flags = ('optional', )
-
     def __init__(self, strip_whitespace=True):
         if strip_whitespace:
             self.string_check = lambda s: s.strip()
         else:
             self.string_check = lambda s: s
 
+        self.field_flags = {"optional": True}
+
     def __call__(self, form, field):
         if (not field.raw_data) or (
-                isinstance(field.raw_data[0], string_types) and
+                isinstance(field.raw_data[0], str) and
                 not self.string_check(field.raw_data[0])):
             field.errors[:] = []
             raise validators.StopValidation()
@@ -2908,8 +2907,6 @@ class RequiredIf(object):
     """A validator which makes a field required if another field is set and has
     a truthy value, and optional otherwise.
     """
-    field_flags = ('optional', )
-
     def __init__(self, other_field_list, message=None, strip_whitespace=True):
         self.other_field_list = other_field_list
         self.message = message
@@ -2917,6 +2914,8 @@ class RequiredIf(object):
             self.string_check = lambda s: s.strip()
         else:
             self.string_check = lambda s: s
+
+        self.field_flags = {"optional": True}
 
     def __call__(self, form, field):
         other_fields_empty = True
@@ -2930,7 +2929,7 @@ class RequiredIf(object):
         if other_fields_empty:
             # Optional
             if (not field.raw_data) or (
-                    isinstance(field.raw_data[0], string_types) and
+                    isinstance(field.raw_data[0], str) and
                     not self.string_check(field.raw_data[0])):
                 field.errors[:] = []
                 raise validators.StopValidation()
@@ -2983,7 +2982,7 @@ class CheckboxSelect(widgets.Select):
     def render_option(self, field, value, label, selected, **kwargs):
         if value is True:
             # Handle the special case of a 'True' value.
-            value = text_type(value)
+            value = str(value)
 
         choice_id = f'{field.id}-{value}'
         div_attrs = dict()

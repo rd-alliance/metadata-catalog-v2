@@ -987,7 +987,9 @@ def set_record(table, number=0):
     methods=['DELETE'])
 @multi_auth.login_required
 def annul_record(table, number=0):
-    '''Adds a record to the database and returns it.'''
+    '''Effectively deletes a record by removing all data from it.
+    It still remains in the database so it can be restored if the
+    deletion was in error.'''
     # Look up record to edit, or get new:
     record = Record.load(number, table)
 
