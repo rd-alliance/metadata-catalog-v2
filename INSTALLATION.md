@@ -439,13 +439,22 @@ WSGIPassAuthorization On
     export APACHE_ARGUMENTS='-D Maintenance'
     ```
 
- 2. Stop and start the server (restarting it won't work properly):
+ 2. Stop and start the server:
+
+    ```bash
+    sudo systemctl restart apache2
+    ```
+
+    or if not running systemd:
 
     ```bash
     sudo apachectl graceful-stop
     sudo apachectl start
     ```
 
+    (The reason for doing a stop and start here is that an `apachectl restart`
+    does not shut down the parent `apache` process. A fresh start is needed to
+    pick up the change in arguments.)
 
 ### Switching out of Maintenance Mode
 
@@ -457,6 +466,12 @@ WSGIPassAuthorization On
     ```
 
  2. Stop and start the server:
+
+    ```bash
+    sudo systemctl restart apache2
+    ```
+
+    or if not running systemd:
 
     ```bash
     sudo apachectl graceful-stop
