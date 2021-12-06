@@ -168,6 +168,13 @@ def test_create_view_records(client, auth, app, page, data_db):
     html = response.get_data(as_text=True)
     page.assert_contains("Successfully added version.", html)
 
+    # Test page title for editing first version:
+    response = client.get('/edit/m2/0', follow_redirects=True)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains("Edit unnumbered version")
+
     # Test redirection for bad version numbers:
     response = client.get('/edit/m2/12', follow_redirects=True)
     html = response.get_data(as_text=True)
@@ -187,11 +194,11 @@ def test_create_view_records(client, auth, app, page, data_db):
     page.assert_contains("Successfully added version.", html)
 
     # Test editing second version:
-    response = client.get('/edit/m2/1')
+    response = client.get('/edit/m2/1', follow_redirects=True)
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     page.read(html)
-    page.assert_contains("Edit version 2")
+    page.assert_contains("Edit version 2.2")
     m2v2 = data_db.get_formdata('m2', version=1)
     m2v2.update(page.get_all_hidden())
     response = client.post('/edit/m2/1', data=m2v2, follow_redirects=True)

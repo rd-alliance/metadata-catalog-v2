@@ -78,7 +78,6 @@ class DataDBActions(object):
             "dataTypes": ["msc:datatype1"],
             "versions": [
                 {
-                    "number": "1",
                     "title": "Scheme version title",
                     "note": "Version note without tags.",
                     "issued": "2020-01-01",
@@ -106,7 +105,7 @@ class DataDBActions(object):
                             "id": "10.1234/m2v1",
                             "scheme": "DOI"}]},
                 {
-                    "number": "2",
+                    "number": "2.2",
                     "note": "<p>Paragraph 1.</p><p>Paragraph 2.</p>",
                     "valid": {
                         "start": "2020-03-01",
