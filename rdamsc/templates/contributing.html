@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Contributing to the Catalog{% endblock %}
+{% block main %}
+<p>The Metadata Standards Catalog is community-maintained.
+  If you spot information that is incorrect or out-of-date, or can fill in a gap in the information here, please help improve the Catalog by contributing your changes.
+  There are only a few simple steps to follow:</p>
+<ol>
+  <li>
+    <p>If you have not already done so, read through our <a href="{{ url_for('terms_of_use') }}">Terms of use</a>.
+      A key point is that the information in the Catalog is made available under a <a href="https://creativecommons.org/publicdomain/zero/1.0/">Creative Commons Zero 1.0 Universal Public Domain Dedication</a>,
+      so by making a contribution you are waiving intellectual property rights over that contribution.</p>
+    </li>
+    <li>
+    <p>Assuming you are happy to proceed, remind yourself of the <a href="{{ url_for('scope') }}">scope of the Catalog</a>,
+      to make sure the information you want to contribute fits within it.</p>
+  </li>
+  <li>
+    <p><a href="{{ url_for('auth.login') }}">Sign in</a> to the Catalog using your Research Data Alliance website account, or one of the other methods provided.</p>
+    <p>The first time you do this, you will be asked to set up a Catalog account.
+      We only ask for a minimal amount of information: just what we need in order to operate the Catalog.</p>
+  </li>
+  <li>
+    <p>Once you have signed in, you will see extra buttons on Catalog pages allowing you to edit them.
+      If you need to add new records, you will find the links you need on the <a href="{{ url_for('auth.login') }}">homepage</a>.</p>
+  </li>
+</ol>
+<h2 id="API">Contributing via the API</h2>
+<p>You can use our <a href="https://app.swaggerhub.com/apis-docs/alex-ball/rda-metadata-standards-catalog/2.0.0">API</a> to access the records in the Catalog programatically, without credentials.</p>
+<p>In order to make changes using the API, you will need an API account; this is not the same as the account you would use to sign in to the site.
+  Please <a href="mailto:research-data@bath.ac.uk?subject=RDA+Metadata+Standards+Catalog+API">contact the maintainers</a> if you wish to apply for an API account.</p>
+<h2 id="code">Contributing to the codebase</h2>
+<p>The Catalog is Open Source (MIT/Expat licensed), so if you spot a problem with how the site is operating or would like to suggest a new feature, please let us know using our <a href="https://github.com/rd-alliance/metadata-catalog-v2/issues">Issue tracker</a>.
+  If you are willing and able to implement the fix or feature, you can contribute your changes in the usual way by editing the code on <a href="https://github.com/rd-alliance/metadata-catalog-v2/">GitHub</a> or a local clone of the repository, and opening a Pull request.
+</p>
+{% endblock %}

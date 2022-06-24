@@ -102,6 +102,11 @@ def create_app(test_config=None):
     def accessibility():
         return render_template('accessibility.html')
 
+    # Accessibility statement:
+    @app.route('/contributing')
+    def contributing():
+        return render_template('contributing.html')
+
     # Dynamic pages:
     from . import auth
     auth.oid.init_app(app)
