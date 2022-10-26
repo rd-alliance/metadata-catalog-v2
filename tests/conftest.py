@@ -5,12 +5,15 @@ import re
 import tempfile
 import time
 
+import email_validator
 from passlib.apps import custom_app_context as pwd_context
 import pytest
 from requests.auth import _basic_auth_str
 from werkzeug.datastructures import MultiDict
 
 from rdamsc import create_app
+
+email_validator.TEST_ENVIRONMENT = True
 
 
 class AuthActions(object):

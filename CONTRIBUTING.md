@@ -74,13 +74,13 @@ Having activated the virtual environment, use the following command to run all
 the functional tests:
 
 ```bash
-coverage run -m pytest
+venv/bin/coverage run -m pytest
 ```
 
 To generate the coverage report, run the following command:
 
 ```bash
-coverage html -d "test_coverage_report"
+venv/bin/coverage html -d "test_coverage_report"
 ```
 
 ## Upgrading dependencies

@@ -1,7 +1,6 @@
 import json
 from urllib.parse import urlencode
 
-
 def test_bad_provider(client):
     # Unsupported provider:
     response = client.get('/authorize/null')
@@ -26,7 +25,7 @@ def test_oauth_login(client, auth, app, page):
     assert appid == 'test-oauth-app-id'
     userid = "test$testuser"
     username = "Test User"
-    useremail = "test@localhost.local"
+    useremail = "test@localhost.test"
 
     # The following only appears on the home page when the user is logged in:
     auth_only = "<h2>Make changes</h2>"

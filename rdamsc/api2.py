@@ -26,6 +26,7 @@ from flask import (
 )
 from flask_httpauth import HTTPBasicAuth, HTTPTokenAuth, MultiAuth
 from tinydb.database import Document
+import werkzeug.exceptions
 
 # Local
 # -----
@@ -925,9 +926,11 @@ def reset_password():
         'username': user.get('userid'),
         'password_reset': False
     }
-    if request.json is None:
+    try:
+        data = request.json
+    except werkzeug.exceptions.BadRequest:
         abort(make_response((response, 400)))
-    new_password = request.json.get('new_password', '')
+    new_password = data.get('new_password', '')
     if len(new_password) < 8:
         abort(make_response((response, 400)))
     response['password_reset'] = user.hash_password(new_password)

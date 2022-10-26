@@ -115,7 +115,7 @@ class TestSignIn(OAuthSignIn):
             return (
                 self.provider_name + '$testuser',
                 "Test User",
-                "test@localhost.local")
+                "test@localhost.test")
         return (None, None, None)
 
 
