@@ -100,6 +100,20 @@ or code formatters, for example by replacing the `grep` argument:
 grep -vEe "^(-e|pkg_resources|pycodestyle)"
 ```
 
+If you are not sure what extras you have installed, delete and recreate the
+virtual environment, then reinstall the application:
+
+```bash
+pip install -e .
+```
+
+Once you have recreated the requirements file, reinstall any helper packages you
+need (e.g. `pycodestyle`), then install the testing apparatus:
+
+```bash
+pip install -e ".[dev]"
+```
+
 Run unit tests and ensure that all tests pass by doing one of the following:
 
 - updating the code;

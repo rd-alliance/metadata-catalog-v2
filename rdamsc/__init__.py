@@ -44,8 +44,8 @@ def create_app(test_config=None):
             app.instance_path, 'open-id'),
         DEBUG=False,
         TESTING=False,
-        JSON_AS_ASCII=False,
     )
+    app.json.ensure_ascii = False
 
     # Override these settings as appropriate:
     if test_config is None:

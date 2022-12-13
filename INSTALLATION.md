@@ -75,7 +75,14 @@ pip install --upgrade pip
 pip install wheel
 ```
 
-Install the Catalog and its dependencies to your virtual environment:
+Install the Catalog and its dependencies to your virtual environment. In a
+development context:
+
+```bash
+pip install -e ".[dev]"
+```
+
+In production, you don't need the unit testing apparatus:
 
 ```bash
 pip install -e .
@@ -93,16 +100,17 @@ Run the application like this to get development mode:
 
 ```bash
 # *nix
-export FLASK_APP=rdamsc; export FLASK_ENV=development; flask run
+export FLASK_APP=rdamsc; flask --debug run
 # Windows
 set FLASK_APP=rdamsc
-set FLASK_ENV=development
-flask run
+flask --debug run
 # Windows Powershell
 $env:FLASK_APP = "rdamsc"
-$env:FLASK_ENV = "development"
-flask run
+flask --debug run
 ```
+
+(You may need to give the path to the executable in the virtual environment,
+e.g. `venv/bin/flask`).
 
 You will get feedback on the command line about what URL to use to access the
 application.

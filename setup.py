@@ -9,7 +9,6 @@ setup(
     python_requires='>= 3.8',
     install_requires=[
         'authlib',
-        'coverage',
         'dulwich',
         'email_validator',
         'flask',
@@ -21,10 +20,15 @@ setup(
         'github-webhook',
         'oauth2client',
         'passlib',
-        'pytest',
         'rauth',
         'rdflib',
         'tinydb>=4',
         'tinyrecord>=0.2.0',
     ],
+    extras_require={
+        'dev': [
+            'coverage',
+            'pytest',
+        ],
+    },
 )
