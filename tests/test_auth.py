@@ -1,6 +1,7 @@
 import json
 from urllib.parse import urlencode
 
+
 def test_bad_provider(client):
     # Unsupported provider:
     response = client.get('/authorize/null')
