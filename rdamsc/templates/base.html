@@ -32,6 +32,14 @@
       </div>
     </nav>
   </header>
+  {#
+  <aside class="alert alert-warning alert-dismissible fade show" role="alert">
+    The Metadata Standards Catalog will be unavailable on [date/time] due to scheduled maintenance.
+    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </aside>
+  #}
   <main class="container">
   <h1>{% if self.title() %}{{ self.title() }}{% else %}Metadata Standards Catalog{% endif %}</h1>
   {% with messages = get_flashed_messages(with_categories=True, category_filter=['error', 'message', 'success', 'warning']) %}
