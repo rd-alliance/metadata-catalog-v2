@@ -32,14 +32,20 @@
       </div>
     </nav>
   </header>
-  {#
+  {% if maintenance_start %}
   <aside class="alert alert-warning alert-dismissible fade show" role="alert">
-    The Metadata Standards Catalog will be unavailable on [date/time] due to scheduled maintenance.
+    {% if maintenance_ongoing %}{% if maintenance_end %}
+    The Metadata Standards Catalog is undergoing scheduled maintenance {{ maintenance_end }} UTC.
+    {% else %}
+    The Metadata Standards Catalog is currently undergoing scheduled maintenance.
+    {% endif %}{% else %}
+    The Metadata Standards Catalog will be unavailable {{ maintenance_start }}{% if maintenance_end %} {{ maintenance_end }}{% endif %} UTC due to scheduled maintenance.
+    {% endif %}
     <button type="button" class="close" data-dismiss="alert" aria-label="Close">
       <span aria-hidden="true">&times;</span>
     </button>
   </aside>
-  #}
+  {% endif %}
   <main class="container">
   <h1>{% if self.title() %}{{ self.title() }}{% else %}Metadata Standards Catalog{% endif %}</h1>
   {% with messages = get_flashed_messages(with_categories=True, category_filter=['error', 'message', 'success', 'warning']) %}

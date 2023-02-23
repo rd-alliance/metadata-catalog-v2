@@ -62,6 +62,13 @@ def test_hello(app: Flask, client: FlaskClient, page: PageActions):
     html = response.get_data(as_text=True)
     page.assert_lacks("The Metadata Standards Catalog will be unavailable", html)
 
+    # Garbage start
+    app.config["MAINTENANCE_START"] = "Any old string"
+    response = client.get('/')
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.assert_lacks("The Metadata Standards Catalog will be unavailable", html)
+
     # Future start, no end
     app.config["MAINTENANCE_START"] = f"{nextyear}-04-01 09:00"
     del app.config["MAINTENANCE_END"]
@@ -82,6 +89,16 @@ def test_hello(app: Flask, client: FlaskClient, page: PageActions):
     page.assert_contains(
         "The Metadata Standards Catalog will be unavailable on 1 April "
         f"{nextyear} from 09:00 to 12:00 UTC",
+        html
+    )
+
+    app.config["MAINTENANCE_END"] = f"{nextyear}-04-02 12:00"
+    response = client.get('/')
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.assert_contains(
+        "The Metadata Standards Catalog will be unavailable from 1 April "
+        f"{nextyear} at 09:00 UTC until 2 April at 12:00 UTC",
         html
     )
 

@@ -4,13 +4,14 @@
 # ============
 # Standard
 # --------
+from datetime import datetime, timezone
 import os
 import subprocess
 
 # Non-standard
 # ------------
 # See https://flask.palletsprojects.com/en/2.0.x/
-from flask import Flask, render_template, redirect, url_for
+from flask import Flask, g, render_template, redirect, url_for
 # See https://bloomberg.github.io/python-github-webhook/
 from github_webhook import Webhook
 
@@ -166,5 +167,53 @@ def create_app(test_config=None):
             'fromURLSlug': from_url_slug,
             'hasDay': has_day,
             'isList': is_list}
+
+    @app.context_processor
+    def inject_maintenance():
+        vars = {
+            "maintenance_ongoing": False,
+            "maintenance_start": None,
+            "maintenance_end": None
+        }
+        now = datetime.now(timezone.utc)
+        if (m_start_iso := app.config.get("MAINTENANCE_START")):
+            try:
+                m_start = datetime.fromisoformat(m_start_iso).replace(
+                    tzinfo=timezone.utc
+                )
+                vars["maintenance_start"] = (
+                    f"on {m_start.day} {m_start.strftime('%B %Y from %H:%M')}"
+                )
+                if now > m_start:
+                    vars["maintenance_ongoing"] = True
+                if (m_end_iso := app.config.get("MAINTENANCE_END")):
+                    m_end = datetime.fromisoformat(m_end_iso).replace(
+                        tzinfo=timezone.utc
+                    )
+                    if now > m_end and vars["maintenance_ongoing"]:
+                        vars["maintenance_ongoing"] = False
+                        vars["maintenance_start"] = None
+                    elif m_end > m_start:
+                        if vars["maintenance_ongoing"]:
+                            vars["maintenance_end"] = (
+                                f"until {m_end.day} {m_end.strftime('%B %Y at %H:%M')}"
+                                if m_end.date() > now.date()
+                                else f"until {m_end.strftime('%H:%M')}"
+                            )
+                        elif m_end.date() > m_start.date():
+                            vars["maintenance_start"] = (
+                                f"from {m_start.day} {m_start.strftime('%B %Y at %H:%M')} UTC"
+                            )
+                            vars["maintenance_end"] = (
+                                f"until {m_end.day} {m_end.strftime('%B at %H:%M')}"
+                            )
+                        else:
+                            vars["maintenance_end"] = (
+                                "until " if vars["maintenance_ongoing"] else "to "
+                            )
+                            vars["maintenance_end"] = f"to {m_end.strftime('%H:%M')}"
+            except ValueError:
+                pass
+        return vars
 
     return app
