@@ -209,14 +209,18 @@ sudo mkdir /srv/rdamsc
 sudo chown rdamsc:www-data /srv/rdamsc
 ```
 
-As the `rdamsc` user, create a file `/srv/rdamsc/rdamsc.wsgi` with this content:
+The `srv` folder in this repository has a ready-made `rdamsc.wsgi` file you can
+copy to the directory you just created. Ensure that it is writeable by the
+`rdamsc` user. Alternatively, as the `rdamsc` user, create the file
+`/srv/rdamsc/rdamsc.wsgi` with this content:
 
 ```python
 from rdamsc import create_app
 application = create_app()
 ```
 
-If you are behind an HTTP proxy, you may need these lines as well:
+If you are behind an HTTP proxy, you may need to add (or uncomment) these lines
+as well, remembering to provide the actual proxy URLs:
 
 ```python
 import os
@@ -415,6 +419,9 @@ each one on its own line followed by `OK`:
 192.168.0.1 OK
 ```
 
+Examples of both these files are provided in the `srv` folder in this
+repository.
+
 In `/etc/apache2/envvars`, add a definition to `APACHE_ARGUMENTS`. This is
 normally commented out. If you are already using this for something, you'll
 probably want two lines (one with the definition and one without) and toggle
@@ -471,6 +478,43 @@ WSGIPassAuthorization On
 </VirtualHost>
 ```
 
+### Warning about future maintenance
+
+To add a warning message about an upcoming period of downtime, add the start
+date and time of the downtime to your instance configuration file:
+
+```python
+MAINTENANCE_START = "2020-02-02T20:20:20"
+```
+
+The value must be a valid ISO 8601 date that can be parsed by Python's
+[`datetime.fromisoformat()`][fromiso] method; note that more patterns are
+supported in Python 3.11+ than in 3.7–3.10 so check the documentation for the
+version of Python you are using. The date will be converted to UTC, thus it is
+a good idea to specify the timezone so this works correctly.
+
+[fromiso]: https://docs.python.org/3/library/datetime.html#datetime.datetime.fromisoformat
+
+It is also a good idea to set an end date and time as well:
+
+```python
+MAINTENANCE_END = "2020-02-02T22:20:20"
+```
+
+This will add some detail to the warning message and remove it once the
+specified time has passed.
+
+Force a reload of the application for these settings to take effect by doing
+*one* of the following:
+
+```bash
+sudo systemctl restart apache2
+sudo apachectl restart
+sudo -u rdamsc touch /srv/rdamsc/rdamsc.wsgi
+```
+
+These settings do not currently affect the behaviour of the Catalog beyond the
+warning message, but might do in future.
 
 ### Switching into Maintenance Mode
 
