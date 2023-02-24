@@ -3,43 +3,43 @@
   <p>The RDA Metadata Standards Catalog is a collaborative, open directory of
     metadata standards applicable to research data. It is offered to the
     international academic community to help address infrastructure challenges.</p>
-  <ul>
-    <li><a href="{{ url_for('scope') }}">Read more details about the scope of the Catalog</a></li>
-    <li><a href="{{ url_for('terms_of_use') }}">Read our terms of use</a></li>
-    <li><a href="{{ url_for('accessibility') }}">Read our accessibility statement</a></li>
-    <li><a href="{{ url_for('contributing') }}">Contribute to the Catalog</a></li>
-    <li><a href="https://app.swaggerhub.com/apis-docs/alex-ball/rda-metadata-standards-catalog/2.0.0">Explore our API</a></li>
+  <ul class="nav nav-group">
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('scope') }}">Read more details about the scope of the Catalog</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('terms_of_use') }}">Read our terms of use</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('accessibility') }}">Read our accessibility statement</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('contributing') }}">Contribute to the Catalog</a></li>
+    <li class="nav-item"><a class="nav-link" href="https://app.swaggerhub.com/apis-docs/alex-ball/rda-metadata-standards-catalog/2.0.0">Explore our API</a></li>
   </ul>
   <h2>Metadata standards, profiles and schemes</h2>
-  <ul>
-    <li><a href="{{ url_for('list.record_index', series='scheme') }}">Browse by scheme name</a></li>
-    <li><a href="{{ url_for('list.subject_index') }}">Browse by subject</a></li>
-    <li><a href="{{ url_for('search.scheme_search') }}">Search</a></li>
+  <ul class="nav nav-group">
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('list.record_index', series='scheme') }}">Browse by scheme name</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('list.subject_index') }}">Browse by subject</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('search.scheme_search') }}">Search</a></li>
   </ul>
   <h2>Metadata-related entities</h2>
-  <ul>
-    <li><p><a href="{{ url_for('list.record_index', series='mapping') }}">Browse mappings between schemes</a></p></li>
-    <li><p><a href="{{ url_for('list.record_index', series='tool') }}">Browse metadata-related tools</a></p></li>
-    <li><p><a href="{{ url_for('list.record_index', series='organization') }}">Browse organizations</a></p>
-      <ul>
-        <li><a href="{{ url_for('list.record_index', series='organization', role='funders') }}">Browse funders</a></li>
-        <li><a href="{{ url_for('list.record_index', series='organization', role='maintainers') }}">Browse organizations that maintain schemes</a></li>
-        <li><a href="{{ url_for('list.record_index', series='organization', role='users') }}">Browse known users of schemes</a></li>
-        <li><a href="{{ url_for('list.record_index', series='organization', role='originators') }}">Browse organizations that have endorsed schemes</a></li>
+  <ul class="nav nav-group">
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('list.record_index', series='mapping') }}">Browse mappings between schemes</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('list.record_index', series='tool') }}">Browse metadata-related tools</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('list.record_index', series='organization') }}">Browse organizations</a>
+      <ul class="nav nav-group">
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('list.record_index', series='organization', role='funders') }}">Browse funders</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('list.record_index', series='organization', role='maintainers') }}">Browse organizations that maintain schemes</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('list.record_index', series='organization', role='users') }}">Browse known users of schemes</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('list.record_index', series='organization', role='originators') }}">Browse organizations that have endorsed schemes</a></li>
       </ul></li>
-    <li><p><a href="{{ url_for('list.record_index', series='endorsement') }}">Browse endorsements</a></p></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('list.record_index', series='endorsement') }}">Browse endorsements</a></li>
   </ul>
   {% if current_user.is_authenticated %}
   <h2>Make changes</h2>
-  <ul>
-    <li><a href="{{ url_for('main.edit_record', table='m', number=0) }}">Add metadata scheme</a></li>
-    <li><a href="{{ url_for('main.edit_record', table='c', number=0) }}">Add mapping between schemes</a></li>
-    <li><a href="{{ url_for('main.edit_record', table='t', number=0) }}">Add metadata-related tool</a></li>
-    <li><a href="{{ url_for('main.edit_record', table='g', number=0) }}">Add organization</a></li>
-    <li><a href="{{ url_for('main.edit_record', table='e', number=0) }}">Add endorsement</a></li>
+  <ul class="nav nav-group">
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('main.edit_record', table='m', number=0) }}">Add metadata scheme</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('main.edit_record', table='c', number=0) }}">Add mapping between schemes</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('main.edit_record', table='t', number=0) }}">Add metadata-related tool</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('main.edit_record', table='g', number=0) }}">Add organization</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('main.edit_record', table='e', number=0) }}">Add endorsement</a></li>
   </ul>
-  <ul>
-    <li><a href="{{ url_for('main.edit_vocabterm', vocab='datatype', number=0) }}">Add data type</a></li>
+  <ul class="nav nav-group">
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('main.edit_vocabterm', vocab='datatype', number=0) }}">Add data type</a></li>
   </ul>
   {% endif %}
 {% endblock %}

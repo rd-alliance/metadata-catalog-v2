@@ -2,12 +2,12 @@
 {% block title %}{{ title }}{% endblock %}
 {% block main %}
 {% if tree %}
-  <ul class="index">
+  <ul class="nav nav-group">
 {% for item in tree recursive %}
-{{ '    ' * loop.depth }}<li>
-{{ '    ' * loop.depth }}  <p><a href="{{ item['url'] }}">{{ item['name'] }}</a></p>
+{{ '    ' * loop.depth }}<li class="nav-item">
+{{ '    ' * loop.depth }}  <a class="nav-link" href="{{ item['url'] }}">{{ item['name'] }}</a>
 {% if item['children'] %}
-{{ '    ' * loop.depth }}  <ul class="subindex">
+{{ '    ' * loop.depth }}  <ul class="nav nav-group">
 {{ loop(item['children']) -}}
 {{ '    ' * loop.depth }}  </ul>
 {% endif %}

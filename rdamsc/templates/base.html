@@ -20,7 +20,7 @@
           <span class="navbar-toggler-icon"></span>
       </button>
       <div id="navbar" class="collapse navbar-collapse">
-        <ul class="navbar-nav ml-auto">
+        <ul class="navbar-nav ms-auto">
           <li class="nav-item"><a class="nav-link" href="{{ url_for('search.scheme_search') }}">Search</a></li>
           {% if current_user.is_authenticated %}
           <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.edit_profile') }}">My profile</a></li>
@@ -41,20 +41,16 @@
     {% endif %}{% else %}
     The Metadata Standards Catalog will be unavailable {{ maintenance_start }}{% if maintenance_end %} {{ maintenance_end }}{% endif %} UTC due to scheduled maintenance.
     {% endif %}
-    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-      <span aria-hidden="true">&times;</span>
-    </button>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </aside>
   {% endif %}
   <main class="container">
-  <h1>{% if self.title() %}{{ self.title() }}{% else %}Metadata Standards Catalog{% endif %}</h1>
+  <h1 tabindex="-1">{% if self.title() %}{{ self.title() }}{% else %}Metadata Standards Catalog{% endif %}</h1>
   {% with messages = get_flashed_messages(with_categories=True, category_filter=['error', 'message', 'success', 'warning']) %}
   {% for category, message in messages %}
   <div class="alert alert-{% if category == 'error' %}danger{% elif category == 'success' %}success{% elif category == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show" role="alert">
     <p class="mb-0">{{ message|safe }}</p>
-    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-      <span aria-hidden="true">&times;</span>
-    </button>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
   {% endfor %}
   {% endwith %}

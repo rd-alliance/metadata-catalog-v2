@@ -157,7 +157,7 @@
         {% endif %}
         {% if 'namespaces' in version %}
         <p class="mb-2" ><strong>Predicate {% if version['namespaces']|length == 1 %}namespace:{% else %}namespaces:{% endif %}</strong></p>
-        <dl class="pl-3 pl-md-4">
+        <dl class="ps-3 ps-md-4">
         {% for namespace in version['namespaces'] %}
           <div class="d-md-flex">
             <dt>{{ namespace['prefix'] }}</dt>
