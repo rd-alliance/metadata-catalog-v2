@@ -19,12 +19,12 @@
     <form action="{{ url_for('auth.login') }}" method=post>
       {{ form.hidden_tag() }}
       <div class="row{{ state(form.openid) }}">
-        {{ form.openid.label(class="col-md-3 text-md-right col-form-label") }}
-        <div class="col-md-9 input-group">
-          {{ form.openid(placeholder="URL for your OpenID account", class="form-control") }}
-          <span class="input-group-append">
-            <button class="btn btn-success">Sign in</button>
-          </span>
+        {{ form.openid.label(class="col-md-3 text-md-end col-form-label") }}
+        <div class="col-md-9">
+          <div class="input-group">
+            {{ form.openid(placeholder="URL e.g. https://...", class="form-control") }}
+            <button class="btn btn-success" type="submit">Sign in</button>
+          </div>
         </div>
         <input type="hidden" name="next" value="{{ next }}">
       </div>

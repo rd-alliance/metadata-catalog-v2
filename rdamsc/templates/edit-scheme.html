@@ -6,7 +6,7 @@
     {{ form.hidden_tag() }}
     <fieldset>
     <div class="form-group{{ state(form.title) }}">
-      {{ form.title.label(class="control-label") }}
+      {{ form.title.label(class="form-label") }}
       {{ form.title(placeholder="Name of scheme", class="form-control") }}
       {{ errors(form.title) }}
       <ul class="form-text text-muted">
@@ -20,7 +20,7 @@
       </ul>
     </div>
     <div class="form-group{{ state(form.description) }}">
-      {{ form.description.label(class="control-label") }}
+      {{ form.description.label(class="form-label") }}
       {{ form.description(class="form-control") }}
       {{ errors(form.description) }}
       <ul class="form-text text-muted">
@@ -39,7 +39,7 @@
       </ul>
     </div>
     <div class="form-group">
-      {{ form.keywords.label(class="control-label") }}
+      {{ form.keywords.label(class="form-label") }}
       <datalist id="keyword-list">
         {% for item in subjects %}
         <option>{{ item }}</option>
@@ -57,7 +57,7 @@
       </ul>
     </div>
     <div class="form-group{{ state(form.dataTypes) }}">
-      {{ form.dataTypes.label(class="control-label") }}
+      {{ form.dataTypes.label(class="form-label") }}
       {{ form.dataTypes(class="form-control") }}
       {{ errors(form.dataTypes) }}
       <ul class="form-text text-muted">
@@ -73,20 +73,20 @@
         {% for f in form.locations %}
         <li>
           <div class="form-subgroup{{ state(f.url) }}">
-          {{ f.url.label(class="control-label") }}
+          {{ f.url.label(class="form-label") }}
           {{ f.url(placeholder="URL e.g. https://www...", class="form-control") }}
           {{ errors(f.url) }}
           </div>
           <div class="form-subgroup{{ state(f['type']) }}">
-          {{ f['type'].label(class="control-label") }}
-          {{ f['type'](class="form-control", style="width:auto;") }}
+          {{ f['type'].label(class="form-label") }}
+          {{ f['type'](class="form-control w-auto mw-100") }}
           {{ errors(f['type']) }}
           </div>
         </li>
         {% endfor %}
       </ol>
       <ul class="form-text text-muted">
-        <li>To give several locations, save after adding each one.</li>
+        <li>When providing several locations, if additional form fields do not appear automatically, save after adding each one.</li>
       </ul>
     </div>
     </fieldset>
@@ -97,12 +97,12 @@
         {% for f in form.namespaces %}
         <li>
           <div class="form-subgroup{{ state(f.prefix) }}">
-          {{ f.prefix.label(class="control-label") }}
-          {{ f.prefix(class="form-control", style="width:auto;") }}
+          {{ f.prefix.label(class="form-label") }}
+          {{ f.prefix(class="form-control w-auto mw-100") }}
           {{ errors(f.prefix) }}
           </div>
           <div class="form-subgroup{{ state(f.uri) }}">
-          {{ f.uri.label(class="control-label") }}
+          {{ f.uri.label(class="form-label") }}
           {{ f.uri(placeholder="URI e.g. https://www.../", class="form-control") }}
           {{ errors(f.uri) }}
           </div>
@@ -110,7 +110,7 @@
         {% endfor %}
       </ol>
       <ul class="form-text text-muted">
-        <li>To give several namespaces, save after adding each one.</li>
+        <li>When providing several namespaces, if additional form fields do not appear automatically, save after adding each one.</li>
         <li>Namespace URIs must begin with a protocol (e.g. https://) and end
           with a slash (/) or hash (#).</li>
       </ul>
@@ -123,13 +123,13 @@
       {% for f in form.identifiers %}
         <li>
           <div class="form-subgroup{{ state(f['id']) }}">
-            {{ f['id'].label(class="control-label") }}
+            {{ f['id'].label(class="form-label") }}
             {{ f['id'](placeholder="e.g. 10.001/1234", class="form-control") }}
             {{ errors(f['id']) }}
           </div>
           <div class="form-subgroup{{ state(f.scheme) }}">
-            {{ f.scheme.label(class="control-label") }}
-            {{ f.scheme(class="form-control", style="width:auto;") }}
+            {{ f.scheme.label(class="form-label") }}
+            {{ f.scheme(class="form-control w-auto mw-100") }}
             {{ errors(f.scheme) }}
           </div>
         </li>
@@ -138,55 +138,56 @@
       <ul class="form-text text-muted">
         <li>Provide an identifier, if known, for the scheme across all versions.
           To identify individual versions, provide details under the version instead.</li>
-        <li>Do not need repeat the internal Catalog identifier here.</li>
-        <li>To give several identifiers, save after adding each one.</li>
+        <li>Don't repeat the internal Catalog identifier here.</li>
+        <li>When providing several identifiers, if additional form fields do
+          not appear automatically, save after adding each one.</li>
       </ul>
     </div>
     </fieldset>
     <fieldset>
     <legend>Relationships to other records</legend>
     <div class="form-group{{ state(form.parent_schemes) }}">
-      {{ form.parent_schemes.label(class="control-label") }}
+      {{ form.parent_schemes.label(class="form-label") }}
       {{ form.parent_schemes(class="form-control") }}
       {{ errors(form.parent_schemes) }}
     </div>
     <div class="form-group{{ state(form.child_schemes) }}">
-      {{ form.child_schemes.label(class="control-label") }}
+      {{ form.child_schemes.label(class="form-label") }}
       {{ form.child_schemes(class="form-control") }}
       {{ errors(form.child_schemes) }}
     </div>
     <div class="form-group{{ state(form.input_to_mappings) }}">
-      {{ form.input_to_mappings.label(class="control-label") }}
+      {{ form.input_to_mappings.label(class="form-label") }}
       {{ form.input_to_mappings(class="form-control") }}
       {{ errors(form.input_to_mappings) }}
     </div>
     <div class="form-group{{ state(form.output_from_mappings) }}">
-      {{ form.output_from_mappings.label(class="control-label") }}
+      {{ form.output_from_mappings.label(class="form-label") }}
       {{ form.output_from_mappings(class="form-control") }}
       {{ errors(form.output_from_mappings) }}
     </div>
     <div class="form-group{{ state(form.maintainers) }}">
-      {{ form.maintainers.label(class="control-label") }}
+      {{ form.maintainers.label(class="form-label") }}
       {{ form.maintainers(class="form-control") }}
       {{ errors(form.maintainers) }}
     </div>
     <div class="form-group{{ state(form.funders) }}">
-      {{ form.funders.label(class="control-label") }}
+      {{ form.funders.label(class="form-label") }}
       {{ form.funders(class="form-control") }}
       {{ errors(form.funders) }}
     </div>
     <div class="form-group{{ state(form.users) }}">
-      {{ form.users.label(class="control-label") }}
+      {{ form.users.label(class="form-label") }}
       {{ form.users(class="form-control") }}
       {{ errors(form.users) }}
     </div>
     <div class="form-group{{ state(form.tools) }}">
-      {{ form.tools.label(class="control-label") }}
+      {{ form.tools.label(class="form-label") }}
       {{ form.tools(class="form-control") }}
       {{ errors(form.tools) }}
     </div>
     <div class="form-group{{ state(form.endorsements) }}">
-      {{ form.endorsements.label(class="control-label") }}
+      {{ form.endorsements.label(class="form-label") }}
       {{ form.endorsements(class="form-control") }}
       {{ errors(form.endorsements) }}
     </div>

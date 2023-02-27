@@ -7,7 +7,7 @@
   {% if 'types' in record %}
   <div class="types">
     <dl class="row justify-content-end">
-      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right">Organization type</dt>
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-end">Organization type</dt>
       {% for type in record['types'] %}
       <dd class="col-sm-7 col-md-8 col-lg-9">{{ type }}</dd>
       {% endfor %}
@@ -100,17 +100,17 @@
   <div class="identifiers">
     <h2>Identifiers</h2>
     <dl class="row">
-      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right">Internal MSC ID</dt>
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-end">Internal MSC ID</dt>
       <dd class="col-sm-7 col-md-8 col-lg-9"><a href="{{ url_for('main.display', table='g', number=record.doc_id) }}">msc:g{{ record.doc_id }}</a></dd>
     {% for identifier in record['identifiers'] %}
       {% if identifier['scheme'] == 'DOI' %}
-      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right">DOI</dt>
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-end">DOI</dt>
       <dd class="col-sm-7 col-md-8 col-lg-9"><a href="https://doi.org/{{ identifier['id'] }}">{{ identifier['id'] }}</a></dd>
       {% elif identifier['scheme'] %}
-      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right">{{ identifier['scheme'] }}</dt>
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-end">{{ identifier['scheme'] }}</dt>
       <dd class="col-sm-7 col-md-8 col-lg-9">{{ identifier['id'] }}</dd>
       {% else %}
-      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right">Other identifier</dt>
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-end">Other identifier</dt>
       <dd class="col-sm-7 col-md-8 col-lg-9">{{ identifier['id'] }}</dd>
       {% endif %}
     {% endfor %}
@@ -118,9 +118,9 @@
   </div>
   {% if current_user.is_authenticated %}
   <aside>
-    <p>
-      <a href="{{ url_for('main.edit_record', table='g', number=record.doc_id) }}" class="btn btn-outline-success">Edit this record</a>
-    </p>
+    <ul class="list-inline">
+      <li class="list-inline-item"><a href="{{ url_for('main.edit_record', table='g', number=record.doc_id) }}" class="btn btn-outline-success">Edit this record</a></li>
+    </ul>
   </aside>
   {% endif %}
 {% endblock %}

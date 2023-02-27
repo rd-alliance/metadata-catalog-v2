@@ -5,7 +5,7 @@
   <form action="{{ url_for('main.edit_record', table='g', number=doc_id) }}" method="post"  accept-charset="utf-8" class="form-block">
     {{ form.hidden_tag() }}
     <div class="form-group{{ state(form.name) }}">
-      {{ form.name.label(class="control-label") }}
+      {{ form.name.label(class="form-label") }}
       {{ form.name(placeholder="Name of organization", class="form-control") }}
       {{ errors(form.name) }}
       <ul class="form-text text-muted">
@@ -13,7 +13,7 @@
       </ul>
     </div>
     <div class="form-group{{ state(form.description) }}">
-      {{ form.description.label(class="control-label") }}
+      {{ form.description.label(class="form-label") }}
       {{ form.description(class="form-control") }}
       {{ errors(form.description) }}
       <ul class="form-text text-muted">
@@ -24,8 +24,8 @@
       </ul>
     </div>
     <div class="form-group{{ state(form.types) }}">
-      {{ form.types.label(class="control-label") }}
-      {{ form.types(class="form-control", style="width:auto;") }}
+      {{ form.types.label(class="form-label") }}
+      {{ form.types(class="form-control w-auto mw-100") }}
       {{ errors(form.types) }}
     </div>
     <fieldset>
@@ -35,13 +35,13 @@
       {% for f in form.locations %}
         <li>
           <div class="form-subgroup{{ state(f.url) }}">
-          {{ f.url.label(class="control-label") }}
+          {{ f.url.label(class="form-label") }}
           {{ f.url(placeholder="URL e.g. https://www...", class="form-control") }}
           {{ errors(f.url) }}
           </div>
           <div class="form-subgroup{{ state(f['type']) }}">
-          {{ f['type'].label(class="control-label") }}
-          {{ f['type'](class="form-control", style="width:auto;") }}
+          {{ f['type'].label(class="form-label") }}
+          {{ f['type'](class="form-control w-auto mw-100") }}
           {{ errors(f['type']) }}
           </div>
         </li>
@@ -59,13 +59,13 @@
       {% for f in form.identifiers %}
         <li>
           <div class="form-subgroup{{ state(f['id']) }}">
-            {{ f['id'].label(class="control-label") }}
+            {{ f['id'].label(class="form-label") }}
             {{ f['id'](placeholder="e.g. 10.001/1234", class="form-control") }}
             {{ errors(f['id']) }}
           </div>
           <div class="form-subgroup{{ state(f.scheme) }}">
-            {{ f.scheme.label(class="control-label") }}
-            {{ f.scheme(class="form-control", style="width:auto;") }}
+            {{ f.scheme.label(class="form-label") }}
+            {{ f.scheme(class="form-control w-auto mw-100") }}
             {{ errors(f.scheme) }}
           </div>
         </li>
@@ -73,49 +73,51 @@
       </ol>
       <ul class="form-text text-muted">
         <li>Provide an identifier (e.g. FundRef DOI), if known, for this organization.</li>
-        <li>You do not need to repeat the internal Catalog identifier here.</li>
+        <li>Don't repeat the internal Catalog identifier here.</li>
+        <li>When providing several identifiers, if additional form fields do
+          not appear automatically, save after adding each one.</li>
       </ul>
     </div>
     </fieldset>
     <fieldset>
     <legend>Relationships to other records</legend>
     <div class="form-group{{ state(form.maintained_schemes) }}"">
-      {{ form.maintained_schemes.label(class="control-label") }}
+      {{ form.maintained_schemes.label(class="form-label") }}
       {{ form.maintained_schemes(class="form-control") }}
       {{ errors(form.maintained_schemes) }}
     </div>
     <div class="form-group{{ state(form.maintained_tools) }}"">
-      {{ form.maintained_tools.label(class="control-label") }}
+      {{ form.maintained_tools.label(class="form-label") }}
       {{ form.maintained_tools(class="form-control") }}
       {{ errors(form.maintained_tools) }}
     </div>
     <div class="form-group{{ state(form.maintained_mappings) }}"">
-      {{ form.maintained_mappings.label(class="control-label") }}
+      {{ form.maintained_mappings.label(class="form-label") }}
       {{ form.maintained_mappings(class="form-control") }}
       {{ errors(form.maintained_mappings) }}
     </div>
     <div class="form-group{{ state(form.funded_schemes) }}"">
-      {{ form.funded_schemes.label(class="control-label") }}
+      {{ form.funded_schemes.label(class="form-label") }}
       {{ form.funded_schemes(class="form-control") }}
       {{ errors(form.funded_schemes) }}
     </div>
     <div class="form-group{{ state(form.funded_tools) }}"">
-      {{ form.funded_tools.label(class="control-label") }}
+      {{ form.funded_tools.label(class="form-label") }}
       {{ form.funded_tools(class="form-control") }}
       {{ errors(form.funded_tools) }}
     </div>
     <div class="form-group{{ state(form.funded_mappings) }}"">
-      {{ form.funded_mappings.label(class="control-label") }}
+      {{ form.funded_mappings.label(class="form-label") }}
       {{ form.funded_mappings(class="form-control") }}
       {{ errors(form.funded_mappings) }}
     </div>
     <div class="form-group{{ state(form.used_schemes) }}"">
-      {{ form.used_schemes.label(class="control-label") }}
+      {{ form.used_schemes.label(class="form-label") }}
       {{ form.used_schemes(class="form-control") }}
       {{ errors(form.used_schemes) }}
     </div>
     <div class="form-group{{ state(form.endorsements) }}"">
-      {{ form.endorsements.label(class="control-label") }}
+      {{ form.endorsements.label(class="form-label") }}
       {{ form.endorsements(class="form-control") }}
       {{ errors(form.endorsements) }}
     </div>

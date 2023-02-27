@@ -6,7 +6,7 @@
     {{ form.hidden_tag() }}
     <fieldset>
     <div class="form-group{{ state(form.id) }}">
-      {{ form.id.label(class="control-label") }}
+      {{ form.id.label(class="form-label") }}
       {% if doc_id == 0 %}
       {{ form.id(placeholder="Value", class="form-control") }}
       {% else %}
@@ -19,7 +19,7 @@
       </ul>
     </div>
     <div class="form-group{{ state(form.label) }}">
-      {{ form.label.label(class="control-label") }}
+      {{ form.label.label(class="form-label") }}
       {{ form.label(placeholder="Link type", class="form-control") }}
       {{ errors(form.label) }}
       <ul class="form-text text-muted">
@@ -27,8 +27,8 @@
       </ul>
     </div>
     <div class="form-group{{ state(form.applies) }}">
-      {{ form.applies.label(class="control-label") }}
-{{ form.applies(divclass="custom-control custom-switch", class="custom-control-input", labelclass="custom-control-label", disabling=overlaps) }}
+      {{ form.applies.label(class="form-label") }}
+{{ form.applies(divclass="custom-control custom-switch", class="custom-control-input", labelclass="custom-form-label", disabling=overlaps) }}
       {{ errors(form.applies) }}
       <ul class="form-text text-muted">
         <li>The types of record for which this identifier scheme is valid.</li>

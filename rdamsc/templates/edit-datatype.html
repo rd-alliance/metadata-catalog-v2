@@ -6,7 +6,7 @@
     {{ form.hidden_tag() }}
     <fieldset>
     <div class="form-group{{ state(form.label) }}">
-      {{ form.label.label(class="control-label") }}
+      {{ form.label.label(class="form-label") }}
       {{ form.label(placeholder="Type of data", class="form-control") }}
       {{ errors(form.label) }}
       <ul class="form-text text-muted">
@@ -14,7 +14,7 @@
       </ul>
     </div>
     <div class="form-group{{ state(form.id) }}">
-      {{ form.id.label(class="control-label") }}
+      {{ form.id.label(class="form-label") }}
       {{ form.id(placeholder="https://...", class="form-control") }}
       {{ errors(form.id) }}
       <ul class="form-text text-muted">

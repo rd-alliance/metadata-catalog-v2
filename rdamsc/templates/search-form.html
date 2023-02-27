@@ -14,8 +14,8 @@
     -->
     {{ form.hidden_tag() }}
     <p>Search for schemes that match any of the following criteria:</p>
-    <div class="form-group row">
-      {{ form.title.label(class="col-md-4 col-lg-3 col-form-label text-md-right") }}
+    <div class="mb-3 row">
+      {{ form.title.label(class="col-md-4 col-lg-3 col-form-label text-md-end") }}
       <div class="col-md-8 col-lg-9">
         <datalist id="titles">
           {% for item in titles %}
@@ -25,8 +25,8 @@
         {{ form.title(placeholder="Name of scheme", list="titles", class="form-control") }}
       </div>
     </div>
-    <div class="form-group row">
-      {{ form.keywords.label(class="col-md-4 col-lg-3 col-form-label text-md-right") }}
+    <div class="mb-3 row">
+      {{ form.keywords.label(class="col-md-4 col-lg-3 col-form-label text-md-end") }}
       <datalist id="keyword-list">
         {% for item in subjects %}
         <option>{{ item }}</option>
@@ -41,8 +41,8 @@
         {% endfor %}
       </div>
     </div>
-    <div class="form-group row">
-      {{ form.identifier.label(class="col-md-4 col-lg-3 col-form-label text-md-right") }}
+    <div class="mb-3 row">
+      {{ form.identifier.label(class="col-md-4 col-lg-3 col-form-label text-md-end") }}
       <div class="col-md-8 col-lg-9">
         <datalist id="identifiers">
           {% for item in ids %}
@@ -53,8 +53,8 @@
       </div>
     </div>
     {% if funders %}
-    <div class="form-group row">
-      {{ form.funder.label(class="col-md-4 col-lg-3 col-form-label text-md-right") }}
+    <div class="mb-3 row">
+      {{ form.funder.label(class="col-md-4 col-lg-3 col-form-label text-md-end") }}
       <div class="col-md-8 col-lg-9">
         <datalist id="funders">
           {% for item in funders %}
@@ -66,8 +66,8 @@
     </div>
     {% endif %}
     {% if dataTypes %}
-    <div class="form-group row">
-      {{ form.dataType.label(class="col-md-4 col-lg-3 col-form-label text-md-right") }}
+    <div class="mb-3 row">
+      {{ form.dataType.label(class="col-md-4 col-lg-3 col-form-label text-md-end") }}
       <div class="col-md-8 col-lg-9">
         <datalist id="dataTypes">
           {% for item in dataTypes %}
@@ -78,7 +78,7 @@
       </div>
     </div>
     {% endif %}
-    <div class="form-group row">
+    <div class="mb-3 row">
       <div class="offset-md-4 offset-lg-3 col-md-8 col-lg-9">
         <button class="btn btn-primary">Submit</button>
       </div>

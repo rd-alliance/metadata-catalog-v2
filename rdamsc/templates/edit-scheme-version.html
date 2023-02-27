@@ -6,17 +6,15 @@
     {{ form.hidden_tag() }}
     <fieldset>
     <div class="form-group{{ state(form.number) }}">
-      {{ form.number.label(class="control-label") }}
-      <div class="form-inline">
-        {{ form.number(class="form-control", style="width:auto;") }}
-      </div>
+      {{ form.number.label(class="form-label") }}
+      {{ form.number(class="form-control w-auto mw-100") }}
       {{ errors(form.number) }}
       <ul class="form-text text-muted">
         <li>Do not preface the version number with "version" or "v".</li>
       </ul>
     </div>
     <div class="form-group">
-      {{ form.title.label(class="control-label") }}
+      {{ form.title.label(class="form-label") }}
       {{ form.title(placeholder="Name of scheme", class="form-control") }}
       <ul class="form-text text-muted">
         <li>Only provide a title here if the version has a different title from
@@ -31,15 +29,15 @@
       </ul>
     </div>
     <div class="form-group">
-      {{ form.note.label(class="control-label") }}
+      {{ form.note.label(class="form-label") }}
       {{ form.note(class="form-control") }}
       <ul class="form-text text-muted">
         <li>If this version requires some explanation, give it here.</li>
       </ul>
     </div>
     <div class="form-group{{ state(form.issued) }}">
-      {{ form.issued.label(class="control-label") }}
-      {{ form.issued(class="form-control", style="width:auto;") }}
+      {{ form.issued.label(class="form-label") }}
+      {{ form.issued(class="form-control w-auto mw-100") }}
       {{ errors(form.issued) }}
       <ul class="form-text text-muted">
         <li>Give the date as yyyy, or yyyy-mm, or yyyy-mm-dd.</li>
@@ -47,8 +45,8 @@
       </ul>
     </div>
     <div class="form-group{{ state(form.available) }}">
-      {{ form.available.label(class="control-label") }}
-      {{ form.available(class="form-control", style="width:auto;") }}
+      {{ form.available.label(class="form-label") }}
+      {{ form.available(class="form-control w-auto mw-100") }}
       {{ errors(form.available) }}
       <ul class="form-text text-muted">
         <li>Give the date as yyyy, or yyyy-mm, or yyyy-mm-dd.</li>
@@ -58,11 +56,24 @@
       </ul>
     </div>
     <div class="form-group">
-      {{ form.valid.label(class="control-label") }}
-      <div class="form-inline">
-        <span class="{{ state(form.valid.start) }}">{{ form.valid.start.label(class="control-label") }}{{ form.valid.start(class="form-control") }}</span>
-        <span class="{{ state(form.valid.end) }}">{{ form.valid.end.label(class="control-label") }}
-        {{ form.valid.end(class="form-control") }}</span>
+      {{ form.valid.label(class="form-label") }}
+      <div class="row">
+        <div class="col-12 col-sm-6 col-md-auto">
+          <div class="row{{ state(form.valid.start) }}">
+            {{ form.valid.start.label(class="col-12 col-sm-3 col-md-auto col-form-label") }}
+            <div class="col-12 col-xs-auto col-sm-9 col-md-auto">
+              {{ form.valid.start(class="form-control", aria_label=form.valid.label.text+" "+form.valid.start.label.text) }}
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-auto">
+          <div class="row{{ state(form.valid.end) }}">
+            {{ form.valid.end.label(class="col-12 col-sm-3 col-md-auto col-form-label") }}
+            <div class="col-12 col-xs-auto col-sm-9 col-md-auto">
+              {{ form.valid.end(class="form-control", aria_label=form.valid.label.text+" "+form.valid.end.label.text) }}
+            </div>
+          </div>
+        </div>
       </div>
       {{ errors(form.valid.start) }}
       {{ errors(form.valid.end) }}
@@ -80,20 +91,20 @@
         {% for f in form.locations %}
         <li>
           <div class="form-subgroup{{ state(f.url) }}">
-          {{ f.url.label(class="control-label") }}
+          {{ f.url.label(class="form-label") }}
           {{ f.url(placeholder="URL e.g. https://www...", class="form-control") }}
           {{ errors(f.url) }}
           </div>
           <div class="form-subgroup{{ state(f['type']) }}">
-          {{ f['type'].label(class="control-label") }}
-          {{ f['type'](class="form-control", style="width:auto;") }}
+          {{ f['type'].label(class="form-label") }}
+          {{ f['type'](class="form-control w-auto mw-100") }}
           {{ errors(f['type']) }}
           </div>
         </li>
         {% endfor %}
       </ol>
       <ul class="form-text text-muted">
-        <li>To give several locations, save after adding each one.</li>
+        <li>When providing several locations, if additional form fields do not appear automatically, save after adding each one.</li>
       </ul>
     </div>
     </fieldset>
@@ -104,12 +115,12 @@
       {% for f in form.samples %}
         <li>
           <div class="form-subgroup{{ state(f.title) }}">
-          {{ f.title.label(class="control-label") }}
+          {{ f.title.label(class="form-label") }}
           {{ f.title(class="form-control") }}
           {{ errors(f.title) }}
           </div>
           <div class="form-subgroup{{ state(f.url) }}">
-          {{ f.url.label(class="control-label") }}
+          {{ f.url.label(class="form-label") }}
           {{ f.url(placeholder="URL e.g. https://www...", class="form-control") }}
           {{ errors(f.url) }}
           </div>
@@ -117,7 +128,7 @@
       {% endfor %}
       </ol>
       <ul class="form-text text-muted">
-        <li>To give several samples, save after adding each one.</li>
+        <li>When providing several samples, if additional form fields do not appear automatically, save after adding each one.</li>
       </ul>
     </div>
     </fieldset>
@@ -128,12 +139,12 @@
         {% for f in form.namespaces %}
         <li>
           <div class="form-subgroup{{ state(f.prefix) }}">
-          {{ f.prefix.label(class="control-label") }}
-          {{ f.prefix(class="form-control", style="width:auto;") }}
+          {{ f.prefix.label(class="form-label") }}
+          {{ f.prefix(class="form-control w-auto mw-100") }}
           {{ errors(f.prefix) }}
           </div>
           <div class="form-subgroup{{ state(f.uri) }}">
-          {{ f.uri.label(class="control-label") }}
+          {{ f.uri.label(class="form-label") }}
           {{ f.uri(placeholder="URI e.g. https://www.../", class="form-control") }}
           {{ errors(f.uri) }}
           </div>
@@ -141,7 +152,7 @@
         {% endfor %}
       </ol>
       <ul class="form-text text-muted">
-        <li>To give several namespaces, save after adding each one.</li>
+        <li>When providing several namespaces, if additional form fields do not appear automatically, save after adding each one.</li>
         <li>Namespace URIs must begin with a protocol (e.g. https://) and end
           with a slash (/) or hash (#).</li>
       </ul>
@@ -154,13 +165,13 @@
       {% for f in form.identifiers %}
         <li>
           <div class="form-subgroup{{ state(f['id']) }}">
-            {{ f['id'].label(class="control-label") }}
+            {{ f['id'].label(class="form-label") }}
             {{ f['id'](placeholder="e.g. 10.001/1234", class="form-control") }}
             {{ errors(f['id']) }}
           </div>
           <div class="form-subgroup{{ state(f.scheme) }}">
-            {{ f.scheme.label(class="control-label") }}
-            {{ f.scheme(class="form-control", style="width:auto;") }}
+            {{ f.scheme.label(class="form-label") }}
+            {{ f.scheme(class="form-control w-auto mw-100") }}
             {{ errors(f.scheme) }}
           </div>
         </li>
@@ -169,8 +180,9 @@
       <ul class="form-text text-muted">
         <li>Provide an identifier, if known, for this particular version of the
           scheme.</li>
-        <li>You do not need to repeat the internal Catalog identifier here.</li>
-        <li>To give several identifiers, save after adding each one.</li>
+        <li>Don't repeat the internal Catalog identifier here.</li>
+        <li>When providing several identifiers, if additional form fields do
+          not appear automatically, save after adding each one.</li>
       </ul>
     </div>
     </fieldset>

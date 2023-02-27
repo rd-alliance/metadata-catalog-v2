@@ -6,12 +6,12 @@
     {{ form.hidden_tag() }}
     <fieldset>
     <div class="form-group{{ state(form.title) }}">
-      {{ form.title.label(class="control-label") }}
+      {{ form.title.label(class="form-label") }}
       {{ form.title(placeholder="Name of tool", class="form-control") }}
       {{ errors(form.title) }}
     </div>
     <div class="form-group{{ state(form.description) }}">
-      {{ form.description.label(class="control-label") }}
+      {{ form.description.label(class="form-label") }}
       {{ form.description(class="form-control") }}
       {{ errors(form.description) }}
       <ul class="form-text text-muted">
@@ -20,7 +20,7 @@
       </ul>
     </div>
     <div class="form-group{{ state(form.types) }}">
-    {{ form.types.label(class="control-label") }}
+    {{ form.types.label(class="form-label") }}
     {{ form.types(class="form-control") }}
     {{ errors(form.types) }}
     </div>
@@ -32,13 +32,13 @@
       {% for f in form.locations %}
         <li>
           <div class="form-subgroup{{ state(f.url) }}">
-          {{ f.url.label(class="control-label") }}
+          {{ f.url.label(class="form-label") }}
           {{ f.url(placeholder="URL e.g. https://www...", class="form-control") }}
           {{ errors(f.url) }}
           </div>
           <div class="form-subgroup{{ state(f['type']) }}">
-          {{ f['type'].label(class="control-label") }}
-          {{ f['type'](class="form-control", style="width:auto;") }}
+          {{ f['type'].label(class="form-label") }}
+          {{ f['type'](class="form-control w-auto mw-100") }}
           {{ errors(f['type']) }}
           </div>
         </li>
@@ -53,18 +53,25 @@
       {% for f in form.identifiers %}
         <li>
           <div class="form-subgroup{{ state(f['id']) }}">
-            {{ f['id'].label(class="control-label") }}
+            {{ f['id'].label(class="form-label") }}
             {{ f['id'](placeholder="e.g. 10.001/1234", class="form-control") }}
             {{ errors(f['id']) }}
           </div>
           <div class="form-subgroup{{ state(f.scheme) }}">
-            {{ f.scheme.label(class="control-label") }}
-            {{ f.scheme(class="form-control", style="width:auto;") }}
+            {{ f.scheme.label(class="form-label") }}
+            {{ f.scheme(class="form-control w-auto mw-100") }}
             {{ errors(f.scheme) }}
           </div>
         </li>
       {% endfor %}
       </ol>
+      <ul class="form-text text-muted">
+        <li>Provide an identifier, if known, for the tool across all versions.
+          To identify individual versions, provide details under the version instead.</li>
+        <li>Don't repeat the internal Catalog identifier here.</li>
+        <li>When providing several identifiers, if additional form fields do
+          not appear automatically, save after adding each one.</li>
+      </ul>
     </div>
     </fieldset>
     <fieldset>
@@ -74,17 +81,17 @@
       {% for f in form.creators %}
         <li>
           <div class="form-subgroup{{ state(f.givenName) }}">
-            {{ f.givenName.label(class="control-label") }}
+            {{ f.givenName.label(class="form-label") }}
             {{ f.givenName(class="form-control") }}
             {{ errors(f.givenName) }}
           </div>
           <div class="form-subgroup{{ state(f.familyName) }}">
-            {{ f.familyName.label(class="control-label") }}
+            {{ f.familyName.label(class="form-label") }}
             {{ f.familyName(class="form-control") }}
             {{ errors(f.familyName) }}
           </div>
           <div class="form-subgroup{{ state(f.fullName) }}">
-            {{ f.fullName.label(class="control-label") }}
+            {{ f.fullName.label(class="form-label") }}
             {{ f.fullName(class="form-control") }}
             {{ errors(f.fullName) }}
           </div>
@@ -102,7 +109,7 @@
     <fieldset>
     <legend>Relationships to other records</legend>
     <div class="form-group{{ state(form.supported_schemes) }}">
-      {{ form.supported_schemes.label(class="control-label") }}
+      {{ form.supported_schemes.label(class="form-label") }}
       {{ form.supported_schemes(class="form-control") }}
       {{ errors(form.supported_schemes) }}
       <ul class="form-text text-muted">
@@ -111,12 +118,12 @@
       </ul>
     </div>
     <div class="form-group{{ state(form.maintainers) }}">
-      {{ form.maintainers.label(class="control-label") }}
+      {{ form.maintainers.label(class="form-label") }}
       {{ form.maintainers(class="form-control") }}
       {{ errors(form.maintainers) }}
     </div>
     <div class="form-group{{ state(form.funders) }}">
-      {{ form.funders.label(class="control-label") }}
+      {{ form.funders.label(class="form-label") }}
       {{ form.funders(class="form-control") }}
       {{ errors(form.funders) }}
     </div>

@@ -7,7 +7,7 @@
   {% if 'types' in record %}
   <div class="types">
     <dl class="row justify-content-end">
-      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right">Tool type</dt>
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-end">Tool type</dt>
       {% for type in record['types'] %}
       <dd class="col-sm-7 col-md-8 col-lg-9">{{ type }}</dd>
       {% endfor %}
@@ -71,17 +71,17 @@
   <div class="identifiers">
     <h2>Identifiers</h2>
     <dl class="row">
-      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right">Internal MSC ID</dt>
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-end">Internal MSC ID</dt>
       <dd class="col-sm-7 col-md-8 col-lg-9"><a href="{{ url_for('main.display', table='t', number=record.doc_id) }}">msc:t{{ record.doc_id }}</a></dd>
     {% for identifier in record['identifiers'] %}
       {% if identifier['scheme'] == 'DOI' %}
-      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right">DOI</dt>
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-end">DOI</dt>
       <dd class="col-sm-7 col-md-8 col-lg-9"><a href="https://doi.org/{{ identifier['id'] }}">{{ identifier['id'] }}</a></dd>
       {% elif identifier['scheme'] %}
-      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right">{{ identifier['scheme'] }}</dt>
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-end">{{ identifier['scheme'] }}</dt>
       <dd class="col-sm-7 col-md-8 col-lg-9">{{ identifier['id'] }}</dd>
       {% else %}
-      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right">Other identifier</dt>
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-end">Other identifier</dt>
       <dd class="col-sm-7 col-md-8 col-lg-9">{{ identifier['id'] }}</dd>
       {% endif %}
     {% endfor %}
@@ -92,7 +92,7 @@
     <h2>Version history</h2>
     <dl class="row">
     {% for version in versions %}
-      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-right" id="v{{ version['number'] }}">{{ version['date'] }}</dt>
+      <dt class="col-sm-5 col-md-4 col-lg-3 text-sm-end" id="v{{ version['number'] }}">{{ version['date'] }}</dt>
       <dd class="col-sm-7 col-md-8 col-lg-9">
         <p>{% if 'number' in version %}version {{ version['number'] }}{% else %}(unnumbered version){% endif %}
           {%- if 'title' in version %} &ndash; {{ version['title'] }}{% endif %}</p>
@@ -131,7 +131,7 @@
           {% endif %}
         {% endfor %}
         {% if current_user.is_authenticated %}
-        <li class="list-inline-item"><a class="btn btn-outline-primary" href="{{ url_for('main.edit_version', table='t', number=record.doc_id, index=version['index']) }}">Edit version</a></li>
+        <li class="list-inline-item"><a class="btn btn-sm btn-outline-primary" href="{{ url_for('main.edit_version', table='t', number=record.doc_id, index=version['index']) }}">Edit version</a></li>
         {% endif %}
         </ul>
         {% endif %}
@@ -153,14 +153,14 @@
   {% endif %}
   {% if current_user.is_authenticated %}
   <aside>
-    <p>
-      <a href="{{ url_for('main.edit_record', table='t', number=record.doc_id) }}" class="btn btn-outline-success">Edit this record</a>
+    <ul class="list-inline">
+      <li class="list-inline-item"><a href="{{ url_for('main.edit_record', table='t', number=record.doc_id) }}" class="btn btn-outline-success">Edit this record</a></li>
       {% if versions %}
-      <a href="{{ url_for('main.edit_version', table='t', number=record.doc_id) }}" class="btn btn-outline-primary">Add another version</a>
+      <li class="list-inline-item"><a href="{{ url_for('main.edit_version', table='t', number=record.doc_id) }}" class="btn btn-outline-primary">Add another version</a></li>
       {% else %}
-      <a href="{{ url_for('main.edit_version', table='t', number=record.doc_id) }}" class="btn btn-outline-primary">Add version information</a>
+      <li class="list-inline-item"><a href="{{ url_for('main.edit_version', table='t', number=record.doc_id) }}" class="btn btn-outline-primary">Add version information</a></li>
       {% endif %}
-    </p>
+    </ul>
   </aside>
   {% endif %}
 {% endblock %}

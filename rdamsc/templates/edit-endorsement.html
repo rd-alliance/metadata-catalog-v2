@@ -6,14 +6,14 @@
     {{ form.hidden_tag() }}
     <fieldset>
     <div class="form-group">
-      {{ form.title.label(class="control-label") }}
+      {{ form.title.label(class="form-label") }}
       {{ form.title(placeholder="Title of document", class="form-control") }}
       <ul class="form-text text-muted">
         <li>Give the title in sentence case.</li>
       </ul>
     </div>
     <div class="form-group{{ state(form.description) }}">
-      {{ form.description.label(class="control-label") }}
+      {{ form.description.label(class="form-label") }}
       {{ form.description(class="form-control") }}
       {{ errors(form.description) }}
       <ul class="form-text text-muted">
@@ -30,17 +30,17 @@
       {% for f in form.creators %}
         <li>
           <div class="form-subgroup{{ state(f.givenName) }}">
-            {{ f.givenName.label(class="control-label") }}
+            {{ f.givenName.label(class="form-label") }}
             {{ f.givenName(class="form-control") }}
             {{ errors(f.givenName) }}
           </div>
           <div class="form-subgroup{{ state(f.familyName) }}">
-            {{ f.familyName.label(class="control-label") }}
+            {{ f.familyName.label(class="form-label") }}
             {{ f.familyName(class="form-control") }}
             {{ errors(f.familyName) }}
           </div>
           <div class="form-subgroup{{ state(f.fullName) }}">
-            {{ f.fullName.label(class="control-label") }}
+            {{ f.fullName.label(class="form-label") }}
             {{ f.fullName(class="form-control") }}
             {{ errors(f.fullName) }}
           </div>
@@ -60,7 +60,7 @@
     <fieldset>
     <legend>Publication information</legend>
     <div class="form-group{{ state(form.publication) }}">
-      {{ form.publication.label(class="control-label") }}
+      {{ form.publication.label(class="form-label") }}
       {{ form.publication(class="form-control") }}
       {{ errors(form.publication) }}
       <ul class="form-text text-muted">
@@ -71,8 +71,8 @@
       </ul>
     </div>
     <div class="form-group{{ state(form.issued) }}">
-      {{ form.issued.label(class="control-label") }}
-      {{ form.issued(class="form-control", style="width:auto;") }}
+      {{ form.issued.label(class="form-label") }}
+      {{ form.issued(class="form-control w-auto mw-100") }}
       {{ errors(form.issued) }}
       <ul class="form-text text-muted">
         <li>Give the date as yyyy, or yyyy-mm, or yyyy-mm-dd.</li>
@@ -83,11 +83,24 @@
       </ul>
     </div>
     <div class="form-group">
-      {{ form.valid.label(class="control-label") }}
-      <div class="form-inline">
-        <span class="{{ state(form.valid.start) }}">{{ form.valid.start.label(class="control-label") }}{{ form.valid.start(class="form-control") }}</span>
-        <span class="{{ state(form.valid.end) }}">{{ form.valid.end.label(class="control-label") }}
-        {{ form.valid.end(class="form-control") }}</span>
+      {{ form.valid.label(class="form-label") }}
+      <div class="row">
+        <div class="col-12 col-sm-6 col-md-auto">
+          <div class="row{{ state(form.valid.start) }}">
+            {{ form.valid.start.label(class="col-12 col-sm-3 col-md-auto col-form-label") }}
+            <div class="col-12 col-xs-auto col-sm-9 col-md-auto">
+              {{ form.valid.start(class="form-control", aria_label=form.valid.label.text+" "+form.valid.start.label.text) }}
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-auto">
+          <div class="row{{ state(form.valid.end) }}">
+            {{ form.valid.end.label(class="col-12 col-sm-3 col-md-auto col-form-label") }}
+            <div class="col-12 col-xs-auto col-sm-9 col-md-auto">
+              {{ form.valid.end(class="form-control", aria_label=form.valid.label.text+" "+form.valid.end.label.text) }}
+            </div>
+          </div>
+        </div>
       </div>
       {{ errors(form.valid.start) }}
       {{ errors(form.valid.end) }}
@@ -105,7 +118,7 @@
       {% for f in form.locations %}
         <li>
           <div class="form-subgroup{{ state(f.url) }}">
-          {{ f.url.label(class="control-label") }}
+          {{ f.url.label(class="form-label") }}
           {{ f.url(placeholder="URL e.g. https://www...", class="form-control") }}
           {{ errors(f.url) }}
           {{ errors(f['type']) }}
@@ -122,29 +135,35 @@
       {% for f in form.identifiers %}
         <li>
           <div class="form-subgroup{{ state(f['id']) }}">
-            {{ f['id'].label(class="control-label") }}
+            {{ f['id'].label(class="form-label") }}
             {{ f['id'](placeholder="e.g. 10.001/1234", class="form-control") }}
             {{ errors(f['id']) }}
           </div>
           <div class="form-subgroup{{ state(f.scheme) }}">
-            {{ f.scheme.label(class="control-label") }}
-            {{ f.scheme(class="form-control", style="width:auto;") }}
+            {{ f.scheme.label(class="form-label") }}
+            {{ f.scheme(class="form-control w-auto mw-100") }}
             {{ errors(f.scheme) }}
           </div>
         </li>
       {% endfor %}
       </ol>
+      <ul class="form-text text-muted">
+        <li>Provide an identifier, if known, for this endorsement.</li>
+        <li>Don't repeat the internal Catalog identifier here.</li>
+        <li>When providing several identifiers, if additional form fields do
+          not appear automatically, save after adding each one.</li>
+      </ul>
     </div>
     </fieldset>
     <fieldset>
     <legend>Relationships to other records</legend>
     <div class="form-group{{ state(form.endorsed_schemes) }}">
-      {{ form.endorsed_schemes.label(class="control-label") }}
+      {{ form.endorsed_schemes.label(class="form-label") }}
       {{ form.endorsed_schemes(class="form-control") }}
       {{ errors(form.endorsed_schemes) }}
     </div>
     <div class="form-group{{ state(form.originators) }}">
-      {{ form.originators.label(class="control-label") }}
+      {{ form.originators.label(class="form-label") }}
       {{ form.originators(class="form-control") }}
       {{ errors(form.originators) }}
       <ul class="form-text text-muted">
@@ -152,6 +171,10 @@
           organizations; do not record such endorsements here.</li>
       </ul>
     </div>
+    <p class="form-text text-muted">
+      If the record you need isn't listed, save this one and create the other
+      record: you will be able to add the relationship from the other record.
+    </p>
     </fieldset>
     <div class="form-group">
       <button class="btn btn-success">Save changes</button>
