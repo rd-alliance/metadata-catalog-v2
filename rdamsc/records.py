@@ -2997,6 +2997,7 @@ class CheckboxSelect(widgets.Select):
         else:
             attrs['type'] = 'radio'
         disabling = kwargs.pop('disabling', list())
+        indent_size = kwargs.pop('indent', 0)
         attrs.update(dict(kwargs, id=choice_id, name=field.name, value=value))
 
         # If a term is both disabled and checked, this means there is an error
@@ -3005,12 +3006,13 @@ class CheckboxSelect(widgets.Select):
             attrs['disabled'] = True
         elif selected:
             attrs['checked'] = True
+        indent = " " * indent_size
         return Markup(
-            f'        <div {widgets.html_params(**div_attrs)}>\n'
-            f'          <input {widgets.html_params(**attrs)}>\n'
-            f'          <label {widgets.html_params(**label_attrs)}>'
+            f'{indent}<div {widgets.html_params(**div_attrs)}>\n'
+            f'{indent}  <input {widgets.html_params(**attrs)}>\n'
+            f'{indent}  <label {widgets.html_params(**label_attrs)}>'
             f'{escape(label)}</label>\n'
-            f'        </div>')
+            f'{indent}</div>')
 
 
 # Custom fields

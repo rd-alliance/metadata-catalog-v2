@@ -126,13 +126,13 @@
       record: you will be able to add the relationship from the other record.
     </p>
     </fieldset>
-    <div class="form-group">
-      <button class="btn btn-success">Save changes</button>
+    <ul class="list-inline">
+      <li class="list-inline-item"><button class="btn btn-success">Save changes</button></li>
       {% if doc_id == 0 %}
-      <a href="{{ url_for('hello') }}" class="btn btn-outline-secondary">Cancel</a>
+      <li class="list-inline-item"><a href="{{ url_for('hello') }}" class="btn btn-outline-secondary" tabindex="0">Cancel</a></li>
       {% else %}
-      <a href="{{ url_for('main.display', table='g', number=doc_id) }}" class="btn btn-outline-secondary">Cancel &amp; view record</a>
+      <li class="list-inline-item"><a href="{{ url_for('main.display', table='g', number=doc_id) }}" class="btn btn-outline-secondary" tabindex="0">Cancel &amp; view record</a></li>
       {% endif %}
-    </div>
+    </ul>
   </form>
 {% endblock %}

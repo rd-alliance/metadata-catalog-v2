@@ -51,3 +51,17 @@ $( ".form-group" ).focusout(function (event) {
     $( this ).find( ".form-text" ).hide(400);
   }
 });
+
+/*
+Accessibility for alerts
+
+1. When the announcement bar is dismissed, focus on <main>.
+2. When an alert in the #alerts <div> is dismissed, pass
+   focus back up to the #alerts <div>.
+*/
+$( "aside.alert" ).on("closed.bs.alert", function(){
+  $( "main" ).first().attr("tabindex", -1).focus();
+});
+$( "#alerts" ).children().on("closed.bs.alert", function(){
+  $( "#alerts" ).attr("tabindex", -1).focus();
+});
