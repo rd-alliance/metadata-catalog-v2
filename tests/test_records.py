@@ -554,8 +554,8 @@ def test_create_terms(client, auth, app, page, data_db):
     page.read(html)
     page.assert_contains("Edit link type document")
     page.assert_contains(
-        '<input class="custom-control-input" disabled id="applies-scheme"'
-        ' name="applies" type="checkbox" value="scheme">')
+        '<input class="form-check-input" disabled id="applies-scheme"'
+        ' name="applies" role="switch" type="checkbox" value="scheme">')
 
     # Test overlapping terms when editing a term
     loc4json = (
