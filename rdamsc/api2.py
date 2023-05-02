@@ -927,7 +927,7 @@ def reset_password():
         'password_reset': False
     }
     try:
-        data = request.json
+        data = request.get_json()
     except werkzeug.exceptions.BadRequest as e:
         abort(make_response((response, e.code)))
     except werkzeug.exceptions.UnsupportedMediaType as e:
@@ -962,7 +962,7 @@ def set_record(table, number=0):
         return redirect(url_for('api2.set_record', table=table, number=None))
 
     # Get input:
-    data = request.get_json(force=True)
+    data = request.get_json()
 
     # Handle any errors:
     errors = record.save_api_input(data)
@@ -1030,7 +1030,7 @@ def set_relation(table, number):
         abort(404)
 
     # Get input:
-    data = request.get_json(force=True)
+    data = request.get_json()
 
     # Handle any errors:
     errors, result = record.save_rel_record(data)
@@ -1060,7 +1060,7 @@ def patch_relation(table, number):
         abort(404)
 
     # Get input:
-    data = request.get_json(force=True)
+    data = request.get_json()
 
     # Handle any errors:
     errors, result = record.save_rel_patch(data)
@@ -1090,7 +1090,7 @@ def patch_inv_relation(table, number):
         abort(404)
 
     # Get input:
-    data = request.get_json(force=True)
+    data = request.get_json()
 
     # Handle any errors:
     errors, result = record.save_invrel_patch(data)
