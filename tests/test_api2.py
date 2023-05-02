@@ -1007,7 +1007,7 @@ def test_auth_api2(client, app, user_db):
         headers={"Authorization": credentials},
         data={"new_password": new_password},
         follow_redirects=True)
-    assert response.status_code == 400
+    assert response.status_code == 415
     test_data = response.get_json()
     assert test_data.get('password_reset') is False
 

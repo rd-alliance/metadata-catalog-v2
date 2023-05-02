@@ -928,8 +928,10 @@ def reset_password():
     }
     try:
         data = request.json
-    except werkzeug.exceptions.BadRequest:
-        abort(make_response((response, 400)))
+    except werkzeug.exceptions.BadRequest as e:
+        abort(make_response((response, e.code)))
+    except werkzeug.exceptions.UnsupportedMediaType as e:
+        abort(make_response((response, e.code)))
     new_password = data.get('new_password', '')
     if len(new_password) < 8:
         abort(make_response((response, 400)))

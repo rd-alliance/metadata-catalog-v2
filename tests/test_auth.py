@@ -35,14 +35,17 @@ def test_oauth_login(client, auth, app, page):
 
     response = client.get('/authorize/test')
     assert response.status_code == 302
-    url = ('https://localhost/login/oauth/authorize?' + urlencode({
-        'scope': scope, 'redirect_uri': callback, 'client_id': appid}))
+    url = 'https://localhost/login/oauth/authorize?' + urlencode(
+        {'scope': scope, 'redirect_uri': callback, 'client_id': appid}
+    )
     assert response.headers['Location'] == url
 
     response = client.get('/callback/test')
     assert response.status_code == 302
-    url = ('/create-profile?' + urlencode({
-        'next': '/', 'name': username, 'email': useremail}))
+    # safe characters should match werkzeug.urls.iri_to_uri()
+    url = '/create-profile?' + urlencode(
+        {'next': '/', 'name': username, 'email': useremail}, safe="%!$&'()*+,/:;=?@"
+    )
     redirection = response.headers['Location']
     assert redirection.endswith(url)
 
