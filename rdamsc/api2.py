@@ -38,7 +38,7 @@ from .records import (
     sortval,
 )
 from .users import ApiUser
-from .vocab import Thesaurus
+from .vocab import Thesaurus, get_thesaurus
 
 bp = Blueprint('api2', __name__)
 basic_auth = HTTPBasicAuth()
@@ -485,12 +485,33 @@ def extract_values(record: Mapping, fieldpath: deque) -> List:
     record['genus']]. If the fieldpath is empty, gets all ‘leaf’
     values in the record.
 
-    If the record does not have a value at the fieldpath address,
-    raises KeyError. This allows passes_filter() to return immediately.
+    If fieldpath is not empty and the record does not have a value at
+    that address, raises KeyError. This allows passes_filter() to return
+    immediately.
+
+    A fieldpath of ‘thesaurus’ triggers special behaviour, returning
+    the last element in the URI of (a) each value in
+    record['keywords'], (b) each of that value's broader terms, and (c)
+    each of that value's narrower terms.
     '''
     values = list()
     if fieldpath:
         field = fieldpath.popleft()
+        if field == "thesaurus":
+            thes = get_thesaurus()
+            uris = set()
+            record_uris = record["keywords"]
+            if not record_uris:
+                return values
+            for term in record_uris:
+                if term in uris:
+                    continue
+                uris.update(thes.get_branch(term))
+            for uri in uris:
+                # full URI parsing not needed:
+                path_bits = uri.split("/")
+                values.append(path_bits[-1])
+            return values
         value = record[field]
         if isinstance(value, dict):
             return extract_values(value, fieldpath)
@@ -535,9 +556,14 @@ def passes_filter(
     exact: bool = False,
 ) -> bool:
     '''Determines whether the record passes the filter (True) or
-    is filtered out (False).
+    is filtered out (False). See `parse_query` for the format of
+    the filter argument.
 
-    - str: match means filter value equals or occurs in field value
+    - str: match means filter value equals or occurs in field value.
+      In the thesaurus pseudo-field, matching is done on the whole of
+      the ‘leaf’ of the term URI (not substrings); match means the value
+      is either one of field values or an ancestor/descendent of one
+      of field values.
     - Pattern: match means pattern occurs somewhere in field value
     - int, float, etc.: match means filter value == field value
     - int range: match means min <= field value <= max
@@ -567,6 +593,8 @@ def passes_filter(
     # We get a list of values to test, such that if any one of them
     # matches filter[1], the record passes the given filter.
     fieldpath = deque(filter[0].split(".")) if filter[0] else deque()
+    if fieldpath and fieldpath[0] == "thesaurus":
+        exact = True
     try:
         values_to_test = extract_values(record, fieldpath)
     except KeyError:

@@ -592,6 +592,57 @@ def test_main_search(client, data_db):
     result = response.get_json()
     assert result['error']['message'] == "Bad q parameter: Unmatched parentheses."
 
+    # Thesaurus search - match broader term
+    query = '/api2/m?q=thesaurus:concept158'
+    items = [
+        data_db.get_apidata("m1", with_embedded=False),
+        data_db.get_apidata("m2", with_embedded=False),
+    ]
+    response = client.get(query, follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    ideal = mimic_output(items, query)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
+    # Thesaurus search - match narrower term
+    query = '/api2/m?q=thesaurus:concept8703'
+    items = [
+        data_db.get_apidata("m1", with_embedded=False),
+        data_db.get_apidata("m2", with_embedded=False),
+    ]
+    response = client.get(query, follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    ideal = mimic_output(items, query)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
+    # Thesaurus search - ignore partial matches
+    query = '/api2/m?q=thesaurus:concept40'
+    items = list()
+    response = client.get(query, follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    ideal = mimic_output(items, query)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
+    # Thesaurus search - gracefully handle unknown concept
+    query = '/api2/m?q=thesaurus:concept99999'
+    items = list()
+    response = client.get(query, follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    ideal = mimic_output(items, query)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
+    # Thesaurus search - gracefully handle wrong record type
+    query = '/api2/g?q=thesaurus:concept8703'
+    items = list()
+    response = client.get(query, follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    ideal = mimic_output(items, query)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
     # On rel endpoint
     query = '/api2/rel?q=funders:"msc:g1"'
     items = [
