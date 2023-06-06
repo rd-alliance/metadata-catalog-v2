@@ -17,4 +17,4 @@ locally as [openapi.yaml] and may be explored interactively on [SwaggerHub].
 [Installation Guide]: INSTALLATION.md
 [Guide for Contributors]: CONTRIBUTING.md
 [openapi.yaml]: openapi.yaml
-[SwaggerHub]: https://app.swaggerhub.com/apis-docs/alex-ball/rda-metadata-standards-catalog/2.0.0
+[SwaggerHub]: https://app.swaggerhub.com/apis-docs/alex-ball/rda-metadata-standards-catalog/2.1.0

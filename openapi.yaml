@@ -3,13 +3,13 @@ info:
   title: Metadata Standards Catalog
   description: "The RDA [Metadata Standards Catalog](https://rdamsc.bath.ac.uk/) is a collaborative, open directory of metadata standards applicable to research data. It is offered to the international academic community to help address infrastructure challenges."
   termsOfService: https://rdamsc.bath.ac.uk/terms-of-use
-  version: 2.0.0
+  version: 2.1.0
 externalDocs:
   description: Browse the source code
-  url: https://www.github.com/rd-alliance/metadata-catalog-dev
+  url: https://www.github.com/rd-alliance/metadata-catalog-v2
 servers:
 - description: SwaggerHub API Auto Mocking
-  url: https://virtserver.swaggerhub.com/alex-ball/rda-metadata-standards-catalog/2.0.0
+  url: https://virtserver.swaggerhub.com/alex-ball/rda-metadata-standards-catalog/2.1.0
 - description: Live server
   url: https://rdamsc.bath.ac.uk
 tags:
@@ -45,6 +45,12 @@ paths:
       tags:
       - m
       summary: "List all metadata schemes"
+      parameters:
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: "Include only records that match the specified criterion, which should be written in Lucene query parser syntax. Supported: quoted phrases, fields (using dots for nested fields, e.g. ‘versions.number’), wildcards, inclusive date ranges, NOT, OR, AND, grouping, field grouping, backslash escapes. Use the ‘thesaurus’ pseudofield to limit to schemes related (directly or indirectly) to a given concept, e.g. ‘thesaurus:concept514’."
       responses:
         200:
           description: Success
@@ -167,6 +173,12 @@ paths:
       tags:
       - g
       summary: "List all organizations"
+      parameters:
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: "Include only records that match the specified criterion, which should be written in Lucene query parser syntax. Supported: quoted phrases, fields (using dots for nested fields, e.g. ‘versions.number’), wildcards, inclusive date ranges, NOT, OR, AND, grouping, field grouping, backslash escapes."
       responses:
         200:
           description: Success
@@ -289,6 +301,12 @@ paths:
       tags:
       - t
       summary: "List all tools"
+      parameters:
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: "Include only records that match the specified criterion, which should be written in Lucene query parser syntax. Supported: quoted phrases, fields (using dots for nested fields, e.g. ‘versions.number’), wildcards, inclusive date ranges, NOT, OR, AND, grouping, field grouping, backslash escapes."
       responses:
         200:
           description: Success
@@ -411,6 +429,12 @@ paths:
       tags:
       - c
       summary: "List all mappings"
+      parameters:
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: "Include only records that match the specified criterion, which should be written in Lucene query parser syntax. Supported: quoted phrases, fields (using dots for nested fields, e.g. ‘versions.number’), wildcards, inclusive date ranges, NOT, OR, AND, grouping, field grouping, backslash escapes."
       responses:
         200:
           description: Success
@@ -533,6 +557,12 @@ paths:
       tags:
       - e
       summary: "List all endorsements"
+      parameters:
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: "Include only records that match the specified criterion, which should be written in Lucene query parser syntax. Supported: quoted phrases, fields (using dots for nested fields, e.g. ‘versions.number’), wildcards, inclusive date ranges, NOT, OR, AND, grouping, field grouping, backslash escapes."
       responses:
         200:
           description: Success
@@ -655,6 +685,12 @@ paths:
       tags:
       - rel
       summary: "List all entity relation records"
+      parameters:
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: "Include only records that match the specified criterion, which should be written in Lucene query parser syntax. Supported: quoted phrases, fields (using dots for nested fields, e.g. ‘versions.number’), wildcards, inclusive date ranges, NOT, OR, AND, grouping, field grouping, backslash escapes. Use the ‘thesaurus’ pseudofield to limit to schemes related (directly or indirectly) to a given concept, e.g. ‘thesaurus:concept514’."
       responses:
         200:
           description: Success
@@ -831,6 +867,12 @@ paths:
       tags:
       - invrel
       summary: "List virtual records of inverse entity relations"
+      parameters:
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: "Include only records that match the specified criterion, which should be written in Lucene query parser syntax. Supported: quoted phrases, fields (using dots for nested fields, e.g. ‘versions.number’), wildcards, inclusive date ranges, NOT, OR, AND, grouping, field grouping, backslash escapes. Use the ‘thesaurus’ pseudofield to limit to schemes related (directly or indirectly) to a given concept, e.g. ‘thesaurus:concept514’."
       responses:
         200:
           description: Success
