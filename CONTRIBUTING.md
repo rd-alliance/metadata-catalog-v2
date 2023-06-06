@@ -90,21 +90,28 @@ In the virtual environment, you can upgrade the requirements file as follows.
 ```bash
 sed -i 's/[~=]=/>=/' requirements.txt
 pip install -U -r requirements.txt
-pip freeze | sed 's/==/~=/' | grep -vEe "^(-e|pkg_resources)" > requirements.txt
+pip freeze | sed 's/==/~=/' | grep -vEe "^-e" > requirements.txt
 ```
 
-Remove any lines that are unique to your virtual environment, such as linters
-or code formatters, for example by replacing the `grep` argument:
+The `requirements.txt` file should only contain the dependencies of a production
+installation, so remove any lines that pertain to development or are otherwise
+unique to your virtual environment, such as linters or code formatters. If you
+have a good idea of what these are, you can strip them out by modifying the
+argument to the `grep` command above, for example:
 
 ```bash
 grep -vEe "^(-e|pkg_resources|pycodestyle)"
 ```
 
-If you are not sure what extras you have installed, delete and recreate the
-virtual environment, then reinstall the application:
+It is usually best, though, to delete and recreate the virtual environment,
+then reinstall the application:
 
 ```bash
+rm -r venv
+python3 -m venv venv
+. venv/bin/activate
 pip install -e .
+pip freeze | sed 's/==/~=/' | grep -vEe "^-e" > requirements.txt
 ```
 
 Once you have recreated the requirements file, reinstall any helper packages you
