@@ -4,8 +4,10 @@
 # --------
 import os
 from typing import (
+    Dict,
     List,
     Mapping,
+    Sequence,
     Union,
 )
 
@@ -36,6 +38,7 @@ class Thesaurus(object):
         self.trees = db.table('thesaurus_trees')
         self.uri = 'http://rdamsc.bath.ac.uk/thesaurus'
         self.label_en = "RDA MSC Thesaurus"
+        self._child_cache: Dict[str, List[str]] = dict()
         if len(self.terms) == 0:
             # Initialise from supplied data
             self.g = Graph()
@@ -173,15 +176,50 @@ class Thesaurus(object):
             tree.sort(key=lambda k: k['uri'])
         return tree
 
-    def _child_uris(self, tree: Mapping[str, Union[URIRef, str, List]]):
+    def _child_uris(self, tree: Mapping[str, Union[URIRef, str, List]]) -> List[str]:
+        '''Given a tree (URI, label, list of trees), return a list of URIs of
+        all child terms.'''
         uris = list()
-        uris.append(tree['uri'])
         for child in tree.get('children', list()):
-            uris.extend(self._child_uris(child))
+            uris.append(child['uri'])
+            uris.extend(
+                self._child_cache.setdefault(child['uri'], self._child_uris(child))
+            )
+        return uris
+
+    def _lookup_child_uris(self, route: Sequence[str]) -> List[str]:
+        '''Given a sequence of URIs (a term, followed by each progressively
+        broader ancestor), return a list of URIs of all child terms.'''
+        uris = list()
+
+        # Get domain tree
+        domain_uri = route.pop()
+        tree = self.trees.get(Query().uri == domain_uri)
+        if not tree:  # pragma: no cover
+            return uris
+
+        # Traverse down to current term
+        while route:
+            children = tree.get('children', list())
+            if not children:  # pragma: no cover
+                return uris
+            child_uri = route.pop()
+            for child in children:
+                if child['uri'] == child_uri:
+                    tree = child
+                    break
+
+        # Tree now starts from current entry
+        for child in tree.get('children', list()):
+            uris.append(child['uri'])
+            uris.extend(
+                self._child_cache.setdefault(child['uri'], self._child_uris(child))
+            )
+
         return uris
 
     def get_branch(self, term: str,
-                   broader: bool = True, narrower: bool = True):
+                   broader: bool = True, narrower: bool = True) -> List[str]:
         '''Given a term's label or URI, returns the term's URI along with the
         URI of each ancestor and descendent term. Returns an empty list if term
         not recognised.
@@ -207,24 +245,9 @@ class Thesaurus(object):
             # Get list of child entries
             # 1. URIs from current up to top level
             route = uris[::-1]
-            # 2. Get domain tree
-            domain_uri = route.pop()
-            tree = self.trees.get(Query().uri == domain_uri)
-            if not tree:  # pragma: no cover
-                return uris
-            # 3. Traverse down to current term
-            while route:
-                children = tree.get('children', list())
-                if not children:  # pragma: no cover
-                    return uris
-                child_uri = route.pop()
-                for child in children:
-                    if child['uri'] == child_uri:
-                        tree = child
-                        break
-            # 4. Tree now starts from current entry
-            for child in tree.get('children', list()):
-                uris.extend(self._child_uris(child))
+            uris.extend(
+                self._child_cache.setdefault(route[0], self._lookup_child_uris(route))
+            )
 
         return uris
 
