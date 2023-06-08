@@ -564,6 +564,16 @@ def test_main_search(client, data_db):
     ideal = mimic_output(items, query)
     assert json.dumps(ideal, sort_keys=True) == actual
 
+    query = '/api2/m?q=versions.title:("Scheme version title")'
+    items = [
+        data_db.get_apidata("m2", with_embedded=False),
+    ]
+    response = client.get(query, follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    ideal = mimic_output(items, query)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
     # Wildcard search in one field
     query = '/api2/m?q=versions.title:"Scheme * title"'
     items = [
@@ -665,7 +675,9 @@ def test_main_search(client, data_db):
     response = client.get(query, follow_redirects=True)
     assert response.status_code == 400
     result = response.get_json()
-    assert result['error']['message'] == "Bad q parameter: Too long."
+    assert result['error']['message'] == (
+        "Bad q parameter: Too long (maximum query length is 256 characters)."
+    )
 
     # On invrel endpoint
     query = '/api2/invrel?q=funded\\ schemes:"msc:m1"'
