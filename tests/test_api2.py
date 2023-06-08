@@ -610,6 +610,16 @@ def test_main_search(client, data_db):
     ideal = mimic_output(items, query)
     assert json.dumps(ideal, sort_keys=True) == actual
 
+    query = '/api2/m?q=versions.title%3D"Scheme * title"'
+    items = [
+        data_db.get_apidata("m2", with_embedded=False),
+    ]
+    response = client.get(query, follow_redirects=True)
+    assert response.status_code == 200
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    ideal = mimic_output(items, query)
+    assert json.dumps(ideal, sort_keys=True) == actual
+
     # Range search in one field
     query = '/api2/m?q=versions.valid:[2021-01 TO 2023-01]'
     items = [
