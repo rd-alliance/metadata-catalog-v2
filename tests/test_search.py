@@ -75,7 +75,7 @@ def test_scheme_search(client, page, data_db):
     html = response.get_data(as_text=True)
     page.read(html)
     page.assert_contains(
-        f"Found 2 schemes related to {' and '.join(kws)}.")
+        f"Found 3 schemes related to {' and '.join(kws)}.")
 
     # Test keyword ancestor
     query = hidden.copy()
@@ -87,7 +87,7 @@ def test_scheme_search(client, page, data_db):
     html = response.get_data(as_text=True)
     page.read(html)
     page.assert_contains(
-        f"Found 2 schemes related to {' and '.join(kws)}.")
+        f"Found 3 schemes related to {' and '.join(kws)}.")
 
     # Test keyword descendent
     query = hidden.copy()
@@ -103,7 +103,7 @@ def test_scheme_search(client, page, data_db):
 
     # Test unrepresented keyword
     query = hidden.copy()
-    kws = ["Ecological crisis"]
+    kws = ["Biosphere"]
     for i, kw in enumerate(kws):
         query.update({f"keywords-{i}": kw})
     response = client.post('/search', data=query, follow_redirects=True)
@@ -173,7 +173,7 @@ def test_subject_search(client, page, data_db):
     page.read(html)
     page.assert_contains(
         "<h1>Biological diversity</h1>")
-    page.assert_contains("Found 2 schemes.")
+    page.assert_contains("Found 3 schemes.")
 
     # Test keyword ancestor
     response = client.get('/subject/Science')
@@ -182,7 +182,7 @@ def test_subject_search(client, page, data_db):
     page.read(html)
     page.assert_contains(
         "<h1>Science</h1>")
-    page.assert_contains("Found 2 schemes.")
+    page.assert_contains("Found 3 schemes.")
 
     # Test keyword descendent
     response = client.get('/subject/Geodynamics')
@@ -194,12 +194,12 @@ def test_subject_search(client, page, data_db):
     page.assert_contains("Found 2 schemes.")
 
     # Test unrepresented keyword
-    response = client.get('/subject/Ecological crisis')
+    response = client.get('/subject/Biosphere')
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     page.read(html)
     page.assert_contains(
-        "<h1>Ecological crisis</h1>")
+        "<h1>Biosphere</h1>")
     page.assert_contains(
         "No schemes have been associated with this subject area.")
 

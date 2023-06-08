@@ -205,13 +205,15 @@ class Qp(Enum):
     """Query parser state."""
 
     WORD = auto()
-    """Expecting a new simple search term or field, as a sole element,
+    """Expecting a new search condition, as a sole element,
     the first element of an AND or OR operation, or a second or later
     element of an OR operation."""
+    EQWORD = auto()
+    """Expecting a new search condition, which must be an exact match."""
     NOTWORD = auto()
-    """Expecting a new simple search term or field, to be negated."""
+    """Expecting a new search condition, to be negated."""
     ANDWORD = auto()
-    """Expecting a new simple search term or field, as a second or later
+    """Expecting a new search condition, as a second or later
     element of an AND operation."""
     RANGE = auto()
     """Expecting the first element of a range operation."""
@@ -223,6 +225,15 @@ class Qp(Enum):
     """Collecting search terms as a phrase within a range operation."""
     ESC = auto()
     """Expecting a character that should not be interpreted specially."""
+
+
+class Lg(str, Enum):
+    """Boolean operator or query condition flag."""
+
+    AND = "AND"
+    EXACTLY = "EXACTLY"
+    NOT = "NOT"
+    OR = "OR"
 
 
 def parse_query(filter: str):
@@ -243,6 +254,12 @@ def parse_query(filter: str):
     - title:"Noun"
     - title:"Noun phrase"
 
+    Literal search in one field:
+
+    - title=Noun
+    - title="Noun"
+    - title="Noun phrase"
+
     Boolean (all caps)
 
     - OR (default for adjacent terms)
@@ -252,7 +269,7 @@ def parse_query(filter: str):
     Grouping
 
     - (Noun Verb), (Noun OR Verb)
-    - title:(Noun Verb) = (title:Noun OR title:Verb)
+    - title:(Noun Verb) means (title:Noun OR title:Verb)
 
     Wildcard searching
 
@@ -262,6 +279,7 @@ def parse_query(filter: str):
     Inclusive date ranges:
 
     - date:[2002-01-01 TO 2003-01-01]
+    - date=[2002-01-01 TO 2003-01-01]
 
     Above special characters can be escaped with backslash.
 
@@ -277,6 +295,7 @@ def parse_query(filter: str):
     match across all available fields. These innermost values can
     be embedded in lists providing Boolean operations:
 
+    - ["EXACTLY", CONDITION]
     - ["NOT", CONDITION]
     - ["OR", CONDITION, CONDITION, ...]
     - ["AND", CONDITION, CONDITION, ...]
@@ -286,9 +305,9 @@ def parse_query(filter: str):
         raise ValueError("Too long (maximum query length is 256 characters).")
 
     # Tokens will be pushed to the list at the current level of complexity
-    # (starting at 0). When a level is complete, the list at that level (or the
-    # sole element of that list) is appended to the list in the level below. The
-    # return value is either the list at level 0 or its sole element:
+    # (starting at 0). When a higher level is complete, the list at that level
+    # (or the sole element of that list) is appended to the list at the level
+    # below. The return value is either the list at level 0 or its sole element:
     working = defaultdict(list)
     working[0] = list()
 
@@ -301,16 +320,14 @@ def parse_query(filter: str):
 
     # Repeated code
     def push_item(item):
+        if state[-1] in [Qp.EQWORD]:
+            item = [Lg.EXACTLY, item]
+            state.pop()
         if state[-1] == Qp.WORD and len(working[level - 1]) == 1:
-            working[level - 1].insert(0, "OR")
+            working[level - 1].insert(0, Lg.OR)
         elif state[-1] in [Qp.ANDWORD, Qp.NOTWORD]:
             state.pop()
             state.append(Qp.WORD)
-        elif len(working[level - 1]) > 1:
-            if working[level - 1][0] != "OR":
-                raise ValueError(
-                    "Boolean expression missing parentheses."
-                )
         working[level - 1].append(item)
 
     def check_type(word: str) -> Union[Pattern, str]:
@@ -329,7 +346,7 @@ def parse_query(filter: str):
         return word.replace("\x91", "*").replace("\x92", "?")
 
     # Level of processing:
-    state = [Qp.WORD]
+    state: List[Qp] = [Qp.WORD]
     tokens = list(filter)
     for token in tokens:
         if state[-1] == Qp.ESC:
@@ -341,32 +358,28 @@ def parse_query(filter: str):
             continue
 
         if token == '"':
-            if state[-1] in [Qp.WORD, Qp.ANDWORD, Qp.NOTWORD]:
-                state.append(Qp.QUOTE)
-                continue
+            if state[-1] in [Qp.QUOTE, Qp.RQUOTE]:
+                state.pop()
             elif state[-1] in [Qp.RANGE, Qp.TORANGE]:
                 state.append(Qp.RQUOTE)
-                continue
-            elif state[-1] in [Qp.QUOTE, Qp.RQUOTE]:
-                state.pop()
-                continue
+            else:
+                state.append(Qp.QUOTE)
+            continue
 
-        if token == "[" and state[-1] in [Qp.WORD, Qp.ANDWORD, Qp.NOTWORD]:
+        if token == "[" and state[-1] in [Qp.WORD, Qp.ANDWORD, Qp.NOTWORD, Qp.EQWORD]:
+            if state[-1] == Qp.EQWORD:
+                state.pop()
             level += 1
             state.append(Qp.RANGE)
             continue
         if token == "]":
             if state[-1] == Qp.TORANGE:
-                # if level < 2:
-                #     raise ValueError("Unmatched square brackets.")
                 if working[level]:
                     word = "".join(working[level])
                     working[level] = list()
                     working[level - 1].append(word)
                 level -= 1
                 state.pop()
-                if len(working[level]) != 2:
-                    raise ValueError("Invalid range specification.")
                 item = tuple(working[level])
                 working[level] = list()
                 push_item((field, item))
@@ -375,14 +388,16 @@ def parse_query(filter: str):
                 continue
             elif state[-1] == Qp.RANGE:
                 raise ValueError("Invalid range specification.")
-            elif state[-1] in [Qp.WORD, Qp.ANDWORD, Qp.NOTWORD]:
+            elif state[-1] == Qp.RQUOTE:
+                raise ValueError("Unmatched quote marks.")
+            elif state[-1] != Qp.QUOTE:
                 raise ValueError("Unmatched square brackets.")
 
-        if token == "(" and state[-1] in [Qp.WORD, Qp.ANDWORD, Qp.NOTWORD]:
+        if token == "(" and state[-1] in [Qp.WORD, Qp.ANDWORD, Qp.NOTWORD, Qp.EQWORD]:
             level += 1
             state.append(Qp.WORD)
             continue
-        if token == ")" and state[-1] in [Qp.WORD, Qp.ANDWORD, Qp.NOTWORD]:
+        if token == ")" and state[-1] in [Qp.WORD, Qp.ANDWORD, Qp.NOTWORD, Qp.EQWORD]:
             if level < 2:
                 raise ValueError("Unmatched parentheses.")
             if working[level]:
@@ -413,13 +428,25 @@ def parse_query(filter: str):
             field_level = level
             continue
 
+        if (
+            token == "="
+            and state[-1] in [Qp.WORD, Qp.ANDWORD, Qp.NOTWORD]
+            and working[level]
+        ):
+            word = unwild("".join(working[level]))
+            working[level] = list()
+            field = word
+            field_level = level
+            state.append(Qp.EQWORD)
+            continue
+
         if token == " ":
-            if state[-1] in [Qp.WORD, Qp.ANDWORD, Qp.NOTWORD]:
+            if state[-1] in [Qp.WORD, Qp.ANDWORD, Qp.NOTWORD, Qp.EQWORD]:
                 if working[level]:
                     word = "".join(working[level])
                     working[level] = list()
-                    if word in ["OR", "AND"]:
-                        if word == "AND":
+                    if word in [Lg.OR, Lg.AND]:
+                        if word == Lg.AND:
                             state.pop()
                             state.append(Qp.ANDWORD)
                         if len(working[level - 1]) == 0:
@@ -434,7 +461,7 @@ def parse_query(filter: str):
                                     "Boolean expression missing parentheses."
                                 )
                         continue
-                    elif word == "NOT":
+                    elif word == Lg.NOT:
                         state.pop()
                         state.append(Qp.NOTWORD)
                         if len(working[level - 1]):
@@ -462,12 +489,11 @@ def parse_query(filter: str):
                     working[level - 1].append(word)
                 continue
             elif state[-1] == Qp.TORANGE:
-                if working[level]:
-                    word = "".join(working[level])
-                    working[level] = list()
-                    if len(working[level - 1]) != 1:
-                        raise ValueError("Invalid range specification.")
-                    working[level - 1].append(word)
+                word = "".join(working[level])
+                working[level] = list()
+                if len(working[level - 1]) != 1:
+                    raise ValueError("Invalid range specification.")
+                working[level - 1].append(word)
                 continue
 
         if state[-1] not in [Qp.RANGE, Qp.TORANGE]:
@@ -483,9 +509,9 @@ def parse_query(filter: str):
             raise ValueError("Unmatched square brackets.")
         else:
             raise ValueError("Unmatched parentheses.")
-    if state[-1] in [Qp.WORD, Qp.ANDWORD, Qp.NOTWORD] and working[level]:
+    if state[-1] in [Qp.WORD, Qp.ANDWORD, Qp.NOTWORD, Qp.EQWORD] and working[level]:
         word = check_type("".join(working[level]))
-        if word in ["OR", "AND", "NOT"]:
+        if word in [Lg.OR, Lg.AND, Lg.NOT]:
             raise ValueError("Incomplete Boolean expression.")
         working[level] = list()
         push_item((field, word))
@@ -523,8 +549,6 @@ def extract_values(record: Mapping, fieldpath: deque) -> List:
             thes = get_thesaurus()
             uris = set()
             record_uris = record["keywords"]
-            if not record_uris:
-                return values
             for term in record_uris:
                 if term in uris:
                     continue
@@ -595,25 +619,28 @@ def passes_filter(
       2000-01-01 <= 2000 <= 2000-12 works as intended.
     '''
     if isinstance(filter, list):
-        if filter[0] == "NOT":
+        if filter[0] == Lg.NOT:
             return not passes_filter(record, filter[1])
-        if filter[0] == "AND":
+        if filter[0] == Lg.AND:
             for f in filter[1:]:
                 if not passes_filter(record, f):
                     return False
             return True
-        if filter[0] == "OR":
+        if filter[0] == Lg.OR:
             for f in filter[1:]:
                 if passes_filter(record, f):
                     return True
             return False
+        if filter[0] == Lg.EXACTLY:
+            return passes_filter(record, filter[1], exact=True)
         raise ValueError("Unknown Boolean operation.")  # pragma: no cover
 
     if not isinstance(filter, tuple):  # pragma: no cover
         raise ValueError("Filter must be List or Tuple.")
 
     # We get a list of values to test, such that if any one of them
-    # matches filter[1], the record passes the given filter.
+    # matches filter[1], the record passes the given filter. NB.
+    # fieldpath is emptied by extract_values().
     fieldpath = deque(filter[0].split(".")) if filter[0] else deque()
     if fieldpath and fieldpath[0] == "thesaurus":
         exact = True
@@ -635,7 +662,7 @@ def passes_filter(
     if isinstance(filter[1], Pattern):
         for v in [d for d in values_to_test if isinstance(d, str)]:
             if exact:
-                if filter[1].match(v):
+                if filter[1].fullmatch(v):
                     return True
             else:
                 if filter[1].search(v):
@@ -1004,11 +1031,9 @@ def set_record(table, number=0):
     '''Adds a record to the database and returns it.'''
     # Look up record to edit, or get new:
     record = Record.load(number, table)
-    print(f"Looking up record {table}{number}...")
 
     # If number is wrong, we reinforce the point by redirecting:
     if record.doc_id != number:
-        print(f"Expecting {number}, got {record.doc_id}.")
         return redirect(url_for('api2.set_record', table=table, number=None))
 
     # Get input:

@@ -131,7 +131,10 @@ class DataDBActions(object):
         self.m4 = {
             "title": "Test scheme 4",
             "slug": "test-scheme-4",
-            "description": "This is also only here to test paging."}
+            "description": "This is also only here to test paging.",
+            "keywords": [
+                "http://vocabularies.unesco.org/thesaurus/concept4011",
+                "http://vocabularies.unesco.org/thesaurus/concept8703"]}
         self.t1 = {
             "title": "Test tool 1",
             "slug": "test-tool-1",

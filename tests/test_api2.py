@@ -449,7 +449,23 @@ def test_parse_query():
         "title:((Noun Verb) AND Adverb)": [
             "AND", ["OR", ("title", "Noun"), ("title", "Verb")], ("title", "Adverb")
         ],
+        # Exact literal strings in one field
+        "title=Noun": ["EXACTLY", ("title", "Noun")],
+        "title=Noun Verb": ["OR", ["EXACTLY", ("title", "Noun")], (None, "Verb")],
+        'title="Noun AND Phrase"': ["EXACTLY", ("title", "Noun AND Phrase")],
+        '"Noun title=Phrase"': (None, "Noun title=Phrase"),
+        '\\"Noun title=Phrase\\"': ["OR", (None, '"Noun'), ["EXACTLY", ("title", 'Phrase"')]],
+        "ti?le=Noun": ["EXACTLY", ("ti?le", "Noun")],
+        # Exact field scopes
+        'title=("Noun" "Verb")': ["EXACTLY", ["OR", ("title", "Noun"), ("title", "Verb")]],
+        "title=(Noun Verb) Adverb": [
+            "OR", ["EXACTLY", ["OR", ("title", "Noun"), ("title", "Verb")]], (None, "Adverb")
+        ],
+        "title=((Noun Verb) AND Adverb)": [
+            "EXACTLY", ["AND", ["OR", ("title", "Noun"), ("title", "Verb")], ("title", "Adverb")]
+        ],
         # Boolean string combinations
+        "(Noun)": (None, "Noun"),
         "NOT Noun": ["NOT", (None, "Noun")],
         "Noun OR Verb": ["OR", (None, "Noun"), (None, "Verb")],
         "Noun OR Verb OR Adverb": [
@@ -476,8 +492,14 @@ def test_parse_query():
         ],
         # Ranges
         "date:[2000 TO 2020]": ("date", ("2000", "2020")),
+        "date=[2000 TO 2020]": ("date", ("2000", "2020")),
         "date: [ 2000 TO 2020 ]": ("date", ("2000", "2020")),
+        "date= [ 2000 TO 2020 ]": ("date", ("2000", "2020")),
         'date: ["2000" TO "2020"]': ("date", ("2000", "2020")),
+        'date= ["2000" TO "2020"]': ("date", ("2000", "2020")),
+        "date=([2000 TO 2020] OR 2022)": [
+            "EXACTLY", ["OR", ("date", ("2000", "2020")), ("date", "2022")]
+        ],
         "title:Noun date:[2000 TO 2020]": [
             "OR", ("title", "Noun"), ("date", ("2000", "2020"))
         ],
@@ -493,9 +515,14 @@ def test_parse_query():
         "(Incomplete parentheses",
         "Incomplete parentheses)",
         "[Incomplete_range",
+        "[Incomplete_range TO",
         "[Bad range specification]",
         "[not_a_range]",
         "Incomplete range]",
+        '[Unmatched TO qu"otes]',
+        "field:([Incomplete_range)"
+        "field:(Incomplete_range])"
+        "[Start TO Middle TO End]",
         "[Odd TO the Ends ]",
         "Incomplete escape \\",
         "Incomplete OR",
@@ -554,17 +581,15 @@ def test_main_search(client, data_db):
     ideal = mimic_output(items, query)
     assert json.dumps(ideal, sort_keys=True) == actual
 
-    query = '/api2/m?q="Scheme version title"'
-    items = [
-        data_db.get_apidata("m2", with_embedded=False),
-    ]
+    query = '/api2/m?q=identifiers%3D10.1234/m'
+    items = []
     response = client.get(query, follow_redirects=True)
     assert response.status_code == 200
     actual = json.dumps(response.get_json(), sort_keys=True)
     ideal = mimic_output(items, query)
     assert json.dumps(ideal, sort_keys=True) == actual
 
-    query = '/api2/m?q=versions.title:("Scheme version title")'
+    query = '/api2/m?q="Scheme version title"'
     items = [
         data_db.get_apidata("m2", with_embedded=False),
     ]
@@ -603,7 +628,7 @@ def test_main_search(client, data_db):
     assert result['error']['message'] == "Bad q parameter: Unmatched parentheses."
 
     # Thesaurus search - match broader term
-    query = '/api2/m?q=thesaurus:concept158'
+    query = '/api2/m?q=thesaurus%3Dconcept158'
     items = [
         data_db.get_apidata("m1", with_embedded=False),
         data_db.get_apidata("m2", with_embedded=False),
@@ -619,6 +644,7 @@ def test_main_search(client, data_db):
     items = [
         data_db.get_apidata("m1", with_embedded=False),
         data_db.get_apidata("m2", with_embedded=False),
+        data_db.get_apidata("m4", with_embedded=False),
     ]
     response = client.get(query, follow_redirects=True)
     assert response.status_code == 200
@@ -645,7 +671,7 @@ def test_main_search(client, data_db):
     assert json.dumps(ideal, sort_keys=True) == actual
 
     # Thesaurus search - gracefully handle wrong record type
-    query = '/api2/g?q=thesaurus:concept8703'
+    query = '/api2/g?q=thesaurus%3Dconcept8703'
     items = list()
     response = client.get(query, follow_redirects=True)
     assert response.status_code == 200
@@ -928,12 +954,12 @@ def test_thesaurus(client, data_db):
     assert response.status_code == 200
     test_data = response.get_json()
     assert test_data.get("apiVersion") == api_version
-    assert test_data.get("data").get("currentItemCount") == 2
-    assert len(test_data.get("data").get("items")) == 2
+    assert test_data.get("data").get("currentItemCount") == 3
+    assert len(test_data.get("data").get("items")) == 3
     assert test_data.get("data").get("itemsPerPage") == 10
     assert test_data.get("data").get("pageIndex") == 1
     assert test_data.get("data").get("startIndex") == 1
-    assert test_data.get("data").get("totalItems") == 2
+    assert test_data.get("data").get("totalItems") == 3
     assert test_data.get("data").get("totalPages") == 1
     assert test_data.get("data").get("items")[0] == {
         "@context": {
