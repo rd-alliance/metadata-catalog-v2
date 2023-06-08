@@ -1881,6 +1881,12 @@ def test_main_write(client, auth_api, data_db):
         follow_redirects=True)
     assert response.status_code == 404
 
+    response = client.delete(
+        '/api2/m4',
+        headers={"Authorization": credentials},
+        follow_redirects=True)
+    assert response.status_code == 404
+
     # But it should be possible to restore a deleted record via the API:
     record = data_db.get_apidata('m4')
     credentials = f"Bearer {auth_api.get_token()}"

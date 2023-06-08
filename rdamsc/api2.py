@@ -1074,7 +1074,7 @@ def annul_record(table, number=0):
     record = Record.load(number, table)
 
     # Abort if table or number was wrong:
-    if record is None or record.doc_id != number:
+    if (not record) or record.doc_id != number:
         abort(404)
 
     # Handle any errors:
