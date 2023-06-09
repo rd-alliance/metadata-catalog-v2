@@ -432,6 +432,11 @@ def test_parse_query():
         # Wildcards
         "Noun?": (None, re.compile(r"Noun.?")),
         "*verb": (None, re.compile(r".*verb")),
+        "***verb": (None, re.compile(r".*verb")),
+        "?**verb": (None, re.compile(r".*verb")),
+        "*?*verb": (None, re.compile(r".*verb")),
+        "**?verb": (None, re.compile(r".*verb")),
+        "?*?verb": (None, re.compile(r".*verb")),
         # - spaces are escaped as protection against re.VERBOSE
         '"Noun? *verb"': (None, re.compile(r"Noun.?\ .*verb")),
         # Literal string in one field

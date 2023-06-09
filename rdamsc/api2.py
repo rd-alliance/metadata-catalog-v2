@@ -338,7 +338,7 @@ def parse_query(filter: str):
         if ("\x91" not in word and "\x92" not in word):
             return word
         safe_word = re.escape(word)
-        safe_word = safe_word.replace("\x91", ".*")
+        safe_word = re.sub("\x92*\x91[\x91\x92]*", ".*", safe_word)
         safe_word = safe_word.replace("\x92", ".?")
         return re.compile(safe_word)
 
