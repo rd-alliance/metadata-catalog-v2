@@ -131,3 +131,13 @@ Once all tests pass successfully, commit any changes to the requirements file.
 If you needed to update code, the live server must be put into maintenance mode
 before the change is pushed to the live branch so that the installed
 requirements can be updated immediately afterwards.
+
+### Dependency notes
+
+There are a couple of dependencies that are blocking updates:
+
+- Flask-WTF v1.1.1 depends on Flask < 2.4 (wtforms/flask-wtf#561)
+- Flask-Login v0.6.2 depends on Werkzeug < 2.4 (maxcountryman/flask-login#744)
+
+When these issues have been resolved, the version limits on Flask and Werkzeug
+can be removed.
