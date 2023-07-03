@@ -27,6 +27,7 @@ from tinyrecord import transaction
 # Local
 # -----
 from .db_utils import JSONStorageWithGit
+from .utils import url_for_subject
 
 UNO = Namespace('http://vocabularies.unesco.org/ontology#')
 
@@ -394,7 +395,8 @@ class Thesaurus(object):
             filter = list(kw_branches_used)
 
         for entry in master:
-            url = url_for('search.subject', subject=entry['label'])
+            # For cosmetic reasons, escape slashes in labels:
+            url = url_for_subject(entry['label'])
             if str(entry['uri']) in filter:
                 node = {'url': url, 'name': entry['label']}
                 all_children = entry.get('children')

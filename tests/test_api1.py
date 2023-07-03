@@ -120,7 +120,7 @@ def test_tree_get(client, data_db):
             "url": "/subject/Information%20sciences",
             "children": [{
                 "name": "Information/library standards",
-                "url": "/subject/Information/library%20standards"
+                "url": "/subject/Information%2Flibrary%20standards"
             }]
         }]
     }]

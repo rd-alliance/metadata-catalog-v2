@@ -6,6 +6,7 @@ import re
 from typing import Callable, List
 import unicodedata
 import urllib.parse
+from flask import url_for
 
 # Non-standard
 # ------------
@@ -37,24 +38,35 @@ class Pluralizer:
 
 # Utilities used in templates
 # ===========================
-def to_url_slug(string):
+def to_url_slug(string: str) -> str:
     """Transforms string into URL-safe slug."""
     slug = urllib.parse.quote_plus(string)
     return slug
 
 
-def from_url_slug(slug):
+def from_url_slug(slug: str) -> str:
     """Transforms URL-safe slug back into regular string."""
     string = urllib.parse.unquote_plus(slug)
     return string
 
 
-def has_day(isodate: str):
+def url_for_subject(subject: str) -> str:
+    """Wrapper around flask.url_for that additionally escapes slashes in
+    the subject name. The escaping has no effect on the routing in Flask,
+    but is a visual clue that the slash is not intended as a path segment
+    separator.
+    """
+    return url_for(
+        'search.subject', subject=subject.replace('/', '%2F')
+    ).replace('%252F', '%2F')
+
+
+def has_day(isodate: str) -> bool:
     """Returns true if ISO date has a day component."""
     return isodate.count('-') == 2
 
 
-def is_list(obj: object):
+def is_list(obj: object) -> bool:
     """Returns true if object is a list. Principle use is to determine if a
     field has undergone validation: unvalidated field.errors is a tuple,
     validated field.errors is a list."""

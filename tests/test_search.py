@@ -176,7 +176,7 @@ def test_subject_search(client, page, data_db):
     page.assert_contains("Found 3 schemes.")
 
     # Test subject that includes a slash
-    response = client.get('/subject/Information/library standards')
+    response = client.get('/subject/Information%2Flibrary standards')
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     page.read(html)

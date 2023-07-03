@@ -18,7 +18,7 @@ from wtforms import (
 # Local
 # -----
 from .records import Datatype, Group, Relation, Scheme, mscid_prefix
-from .utils import Pluralizer, clean_error_list, wild_to_regex
+from .utils import Pluralizer, clean_error_list, url_for_subject, wild_to_regex
 from .vocab import get_thesaurus
 
 bp = Blueprint('search', __name__)
@@ -260,7 +260,7 @@ def subject(subject):
     else:
         flash('No schemes have been associated with this subject area.'
               ' Would you like to see some <a href="{}">generic schemes</a>?'
-              .format(url_for('search.subject', subject='Multidisciplinary')),
+              .format(url_for_subject('Multidisciplinary')),
               'error')
     return render_template(
         'search-results.html', title=subject, results=results)
