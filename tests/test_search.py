@@ -175,6 +175,15 @@ def test_subject_search(client, page, data_db):
         "<h1>Biological diversity</h1>")
     page.assert_contains("Found 3 schemes.")
 
+    # Test subject that includes a slash
+    response = client.get('/subject/Information/library standards')
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains(
+        "<h1>Information/library standards</h1>")
+    page.assert_contains("Found 1 scheme.")
+
     # Test keyword ancestor
     response = client.get('/subject/Science')
     assert response.status_code == 200

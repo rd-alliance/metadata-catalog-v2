@@ -110,7 +110,20 @@ def test_tree_get(client, data_db):
                     "url": "/subject/Ecological%20balance",
                     "children": [{
                         "name": "Biological diversity",
-                        "url": "/subject/Biological%20diversity"}]}]}]}]}]
+                        "url": "/subject/Biological%20diversity"}]}]}]
+        }],
+    }, {
+        "name": "Information and communication",
+        "url": "/subject/Information%20and%20communication",
+        "children": [{
+            "name": "Information sciences",
+            "url": "/subject/Information%20sciences",
+            "children": [{
+                "name": "Information/library standards",
+                "url": "/subject/Information/library%20standards"
+            }]
+        }]
+    }]
     ideal = json.dumps(ideal_data, sort_keys=True)
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert ideal == actual

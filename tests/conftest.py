@@ -134,7 +134,8 @@ class DataDBActions(object):
             "description": "This is also only here to test paging.",
             "keywords": [
                 "http://vocabularies.unesco.org/thesaurus/concept4011",
-                "http://vocabularies.unesco.org/thesaurus/concept8703"]}
+                "http://vocabularies.unesco.org/thesaurus/concept8703",
+                "http://vocabularies.unesco.org/thesaurus/concept457"]}
         self.t1 = {
             "title": "Test tool 1",
             "slug": "test-tool-1",
@@ -420,6 +421,8 @@ class DataDBActions(object):
         kw_map = {
             'http://rdamsc.bath.ac.uk/thesaurus/subdomain235':
                 "Earth sciences",
+            'http://vocabularies.unesco.org/thesaurus/concept457':
+                "Information/library standards",
             'http://vocabularies.unesco.org/thesaurus/concept4011':
                 "Biological diversity"}
 

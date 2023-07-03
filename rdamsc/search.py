@@ -238,7 +238,7 @@ def scheme_search():
         dataTypes=type_list)
 
 
-@bp.route('/subject/<subject>')
+@bp.route('/subject/<path:subject>')
 def subject(subject):
     '''Show search results for a given subject. Implicitly searches for
     ancestor and descendent terms as well.'''

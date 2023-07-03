@@ -969,12 +969,12 @@ def test_thesaurus(client, data_db):
     assert response.status_code == 200
     test_data = response.get_json()
     assert test_data.get("apiVersion") == api_version
-    assert test_data.get("data").get("currentItemCount") == 3
-    assert len(test_data.get("data").get("items")) == 3
+    assert test_data.get("data").get("currentItemCount") == 4
+    assert len(test_data.get("data").get("items")) == 4
     assert test_data.get("data").get("itemsPerPage") == 10
     assert test_data.get("data").get("pageIndex") == 1
     assert test_data.get("data").get("startIndex") == 1
-    assert test_data.get("data").get("totalItems") == 3
+    assert test_data.get("data").get("totalItems") == 4
     assert test_data.get("data").get("totalPages") == 1
     assert test_data.get("data").get("items")[0] == {
         "@context": {
