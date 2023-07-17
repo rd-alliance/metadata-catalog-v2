@@ -88,7 +88,7 @@ def clean_error_list(field: Field) -> t.List[str]:
     return list(seen_errors)
 
 
-def to_file_slug(string: str, callback: t.Callable[[Query], t.List]) -> str:
+def to_file_slug(string: str, callback: t.Callable[[Query], list]) -> str:
     """Transforms string into slug for use when decomposing the database to
     individual files.
     """

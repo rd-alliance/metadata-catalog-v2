@@ -4,29 +4,25 @@
 # --------
 import json
 import os
+import typing as t
 
 # Non-standard
 # ------------
-# See https://www.dulwich.io/
 from dulwich.repo import Repo
 from dulwich.errors import NotGitRepository
 import dulwich.porcelain as git
-# See https://flask.palletsprojects.com/en/2.0.x/
 from flask import g
-# See https://flask-login.readthedocs.io/
 from flask_login import current_user
-# See http://tinydb.readthedocs.io/
 from tinydb.storages import Storage, touch
 
-mscwg_email = 'mscwg@rda-groups.org'
+mscwg_email = "mscwg@rda-groups.org"
 
 
 class JSONStorageWithGit(Storage):
-    """Store the data in a JSON file and log the change in a Git repo.
-    """
+    """Stores the data in a JSON file and logs the change in a Git repo."""
 
-    def __init__(self, path, create_dirs=False, encoding='utf8', **kwargs):
-        """Create a new instance.
+    def __init__(self, path: str, create_dirs=False, encoding="utf8", **kwargs):
+        """Creates a new instance.
         Also creates the storage file, if it doesn't exist.
 
         Arguments:
@@ -37,7 +33,7 @@ class JSONStorageWithGit(Storage):
         # Create file if not exists
         touch(path, create_dirs=create_dirs)
         self.kwargs = kwargs
-        self._handle = open(path, 'r+', encoding=encoding)
+        self._handle = open(path, "r+", encoding=encoding)
         # Ensure Git is configured properly
         git_repo = os.path.dirname(path)
         try:
@@ -49,13 +45,13 @@ class JSONStorageWithGit(Storage):
         self.name = os.path.splitext(basename)[0]
 
     @property
-    def _refname(self):
-        return b'refs/heads/master'
+    def _refname(self) -> bytes:
+        return b"refs/heads/master"
 
     def close(self):
         self._handle.close()
 
-    def read(self):
+    def read(self) -> t.Optional[t.Dict[str, t.Dict[str, t.Any]]]:
         # Get the file size
         self._handle.seek(0, os.SEEK_END)
         size = self._handle.tell()
@@ -67,7 +63,7 @@ class JSONStorageWithGit(Storage):
             self._handle.seek(0)
             return json.load(self._handle)
 
-    def write(self, data):
+    def write(self, data: t.Dict[str, t.Dict[str, t.Any]]):
         # Write the json file
         self._handle.seek(0)
         serialized = json.dumps(data, **self.kwargs)
@@ -81,8 +77,10 @@ class JSONStorageWithGit(Storage):
 
         # Avoid empty commits
         if not added:
-            print("WARNING JSONStorageWithGit.write: Failed to stage changes to {}."
-                  .format(self.filename))
+            print(
+                "WARNING JSONStorageWithGit.write: "
+                f"Failed to stage changes to {self.filename}."
+            )
             if ignored:
                 print("WARNING: Operation blocked by gitignore pattern.")
             return
@@ -93,24 +91,22 @@ class JSONStorageWithGit(Storage):
             return
 
         # Prepare commit information
-        committer = 'MSCWG <{}>'.format(mscwg_email).encode('utf8')
+        committer = "MSCWG <{}>".format(mscwg_email).encode("utf8")
         user = None
         if g:
             # This will either catch an API user or return None
-            user = g.get('user', None)
+            user = g.get("user", None)
         if current_user and current_user.is_authenticated:
             # If human user is logged in, use their record instead
             user = current_user
         if user:
-            author = ('{} <{}>'.format(
-                user['name'], user['email']).encode('utf8'))
-            message = ('Update to {} from {}\n\nUser ID:\n{}'.format(
-                self.name, user['name'], user['userid'])
-                .encode('utf8'))
+            author = "{} <{}>".format(user["name"], user["email"]).encode("utf8")
+            message = "Update to {} from {}\n\nUser ID:\n{}".format(
+                self.name, user["name"], user["userid"]
+            ).encode("utf8")
         else:
             author = committer
-            message = ('Update to {}'.format(self.name).encode('utf8'))
+            message = "Update to {}".format(self.name).encode("utf8")
 
         # Execute commit
-        git.commit(self.repo, message=message, author=author,
-                   committer=committer)
+        git.commit(self.repo, message=message, author=author, committer=committer)
