@@ -89,8 +89,10 @@ def clean_error_list(field: Field) -> t.List[str]:
 
 
 def to_file_slug(string: str, callback: t.Callable[[Query], list]) -> str:
-    """Transforms string into slug for use when decomposing the database to
-    individual files.
+    """Transforms string into a new slug for use when decomposing the
+    database to individual files. The callback should be the search
+    method of a TinyDB table, and will be used to ensure that the
+    returned slug does not already exist in that table.
     """
     # Put to lower case, turn spaces to hyphens
     slug = string.strip().lower().replace(" ", "-")
