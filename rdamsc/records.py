@@ -1840,7 +1840,10 @@ class Scheme(Record):
             'useful': True},
         'description': {
             'type': 'html',
-            'useful': True},
+            'useful': True },
+        'citation_docs': {
+            'type': 'html',
+            'useful': True },
         'keywords': {
             'type': 'thesaurus',
             'useful': True},
@@ -2344,6 +2347,9 @@ class Group(Record):
             'useful': True},
         'description': {
             'type': 'html'},
+        'citation_docs': {
+            'type': 'html',
+            'useful': True },
         'types': {
             'type': 'types'},
         'locations': {
@@ -3115,6 +3121,7 @@ class SampleForm(Form):
 class SchemeForm(FlaskForm):
     title = StringField('Name of metadata scheme')
     description = TextHTMLField('Description')
+    citation_docs = TextHTMLField('Citation Documentation')
     keywords = FieldList(
         StringField('Subject area', validators=[Optional()]),
         'Subject areas', min_entries=1)
@@ -3260,6 +3267,7 @@ class CrosswalkVersionForm(FlaskForm):
 class GroupForm(FlaskForm):
     name = StringField('Name of organization')
     description = TextHTMLField('Description')
+    citation_docs = TextHTMLField('Citation Documentation')
     types = SelectMultipleField(
         'Type of organization')
     locations = FieldList(
