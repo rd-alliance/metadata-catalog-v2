@@ -243,6 +243,9 @@ def subject(subject):
     '''Show search results for a given subject. Implicitly searches for
     ancestor and descendent terms as well.'''
 
+    # In case this didn't get done by the server:
+    subject = subject.replace("%2F", "/")
+
     # Get search terms to use
     th = get_thesaurus()
     uris = th.get_branch(subject)
