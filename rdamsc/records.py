@@ -81,9 +81,8 @@ disallowed_tagblocks = [
     "style",
 ]
 MainTableID = t.Literal["m", "g", "t", "c", "e"]
-TableID = t.Literal[
-    "m", "g", "t", "c", "e", "datatype", "location", "type", "id_scheme"
-]
+TermTableID = t.Literal["datatype", "location", "type", "id_scheme"]
+TableID = t.Union[MainTableID, TermTableID]
 
 
 # Database wrapper classes
@@ -3704,9 +3703,9 @@ def strip_tags(string: str) -> str:
 
 # Routes
 # ======
-@bp.route("/edit/<string(length=1):table><int:number>", methods=["GET", "POST"])
+@bp.route("/edit/<any(m, g, t, c, e):table><int:number>", methods=["GET", "POST"])
 @login_required
-def edit_record(table: str, number: int):
+def edit_record(table: MainTableID, number: int):
     """Editing form for a record."""
     # Look up record to edit, or get new:
     record = Record.load(number, table)
@@ -3795,11 +3794,11 @@ def edit_record(table: str, number: int):
 
 
 @bp.route(
-    "/edit/<string(length=1):table><int:number>/<int:index>", methods=["GET", "POST"]
+    "/edit/<any(m, g, t, c, e):table><int:number>/<int:index>", methods=["GET", "POST"]
 )
-@bp.route("/edit/<string(length=1):table><int:number>/add", methods=["GET", "POST"])
+@bp.route("/edit/<any(m, g, t, c, e):table><int:number>/add", methods=["GET", "POST"])
 @login_required
-def edit_version(table: str, number: int, index: int = None):
+def edit_version(table: MainTableID, number: int, index: int = None):
     """Editing form for a version subrecord."""
     # Look up record to edit, or get new:
     record = Record.load(number, table)
@@ -3906,7 +3905,7 @@ def edit_version(table: str, number: int, index: int = None):
 )
 @login_required
 def edit_vocabterm(
-    vocab: t.Literal["datatype", "location", "type", "id_scheme"], number: int
+    vocab: TermTableID, number: int
 ):
     """Editing form for a VocabTerm."""
     # Look up record to edit, or get new:
@@ -3983,9 +3982,9 @@ def edit_vocabterm(
     )
 
 
-@bp.route("/msc/<string(length=1):table><int:number>")
-@bp.route("/msc/<string(length=1):table><int:number>/<field>")
-def display(table: str, number: int, field: str = None):
+@bp.route("/msc/<any(m, g, t, c, e):table><int:number>")
+@bp.route("/msc/<any(m, g, t, c, e):table><int:number>/<field>")
+def display(table: MainTableID, number: int, field: str = None):
     """Displays the page for a record."""
     # Look up record to edit, or get new:
     record = Record.load(number, table)

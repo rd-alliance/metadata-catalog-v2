@@ -46,7 +46,7 @@ class User(Document):
         return get_user_db()
 
     @classmethod
-    def load_by_userid(cls, userid: str) -> "User":
+    def load_by_userid(cls, userid: str):
         """Returns an instance of the class, either blank or the existing
         record with the given userid.
         """
@@ -121,7 +121,7 @@ class ApiUser(User):
     table = "api_users"
 
     @classmethod
-    def load_by_token(cls, token, expiration=600) -> "ApiUser":
+    def load_by_token(cls, token, expiration=600):
         """If the token is valid, loads and returns the API user with the
         doc_id encoded by the token. Otherwise returns a blank instance.
         """

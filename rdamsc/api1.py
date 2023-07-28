@@ -10,15 +10,14 @@ from flask import (
     abort,
     Blueprint,
     jsonify,
-    request,
     url_for,
 )
 from flask_cors import cross_origin
-from tinydb.database import Document
 
 # Local
 # -----
 from .records import (
+    MainTableID,
     Relation,
     Record,
     Scheme,
@@ -32,7 +31,7 @@ api_version = "1.0.0"
 
 # Handy functions
 # ===============
-def as_response_item(record: t.Mapping, route: str):
+def as_response_item(record: Record, route: str):
     """Wraps item data in a response object, tailored for `route`."""
     # Embellish record
     data = embellish_record(record, route=route)
@@ -40,7 +39,7 @@ def as_response_item(record: t.Mapping, route: str):
     return data
 
 
-def as_response_page(records: t.List[t.Mapping], link: str, route: str):
+def as_response_page(records: t.List[Record], link: str, route: str):
     """Wraps list of MSCIDs in a response object."""
 
     items = list()
@@ -74,7 +73,7 @@ def as_response_page(records: t.List[t.Mapping], link: str, route: str):
     return response
 
 
-def embellish_record(record: Document, route: str = ".get_record"):
+def embellish_record(record: Record, route: str = ".get_record"):
     """Adds convenience fields and related entities to a record."""
 
     # Form MSC ID
@@ -146,7 +145,7 @@ def embellish_record(record: Document, route: str = ".get_record"):
 # Routes
 # ======
 @bp.route("/<any(m, g, t, c, e):table>", methods=["GET"])
-def get_records(table: t.Literal["m", "g", "t", "c", "e"]):
+def get_records(table: MainTableID):
     """Returns all records from the given table in abbreviated form:
     ```
     {table: [{id: int, slug: str}]}
@@ -166,7 +165,7 @@ def get_records(table: t.Literal["m", "g", "t", "c", "e"]):
 
 
 @bp.route("/<any(m, g, t, c, e):table>" "<int:number>", methods=["GET"])
-def get_record(table: t.Literal["m", "g", "t", "c", "e"], number: int):
+def get_record(table: MainTableID, number: int):
     """Returns given record."""
     record = Record.load(number, table)
 

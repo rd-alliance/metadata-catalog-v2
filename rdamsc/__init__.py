@@ -20,7 +20,7 @@ from .records import VocabTerm
 from .utils import *
 
 
-def create_app(test_config: t.Mapping[str, t.Any] = None):
+def create_app(test_config: t.Mapping[str, t.Any] = None) -> Flask:
     """Factory for initialising the Flask application."""
 
     # Create the app:
