@@ -3,7 +3,7 @@
 # Standard
 # --------
 import time
-from typing import Mapping
+import typing as t
 
 # Non-standard
 # ------------
@@ -15,10 +15,13 @@ from authlib.jose.errors import (
     ExpiredTokenError,
     InvalidClaimError,
 )
+
 # See https://flask.palletsprojects.com/en/2.0.x/
 from flask import current_app, g
+
 # See https://passlib.readthedocs.io/
 from passlib.apps import custom_app_context as pwd_context
+
 # See http://tinydb.readthedocs.io/
 from tinydb import TinyDB, Query
 from tinydb.database import Document
@@ -31,21 +34,22 @@ from .db_utils import JSONStorageWithGit
 
 
 class User(Document):
-    '''This provides implementations for the methods that Flask-Login
+    """This provides implementations for the methods that Flask-Login
     expects user objects to have.
-    '''
+    """
+
     __hash__ = Document.__hash__
-    table = '_default'
+    table = "_default"
 
     @classmethod
-    def get_db(cls):
+    def get_db(cls) -> TinyDB:
         return get_user_db()
 
     @classmethod
-    def load_by_userid(cls, userid: str):
-        '''Returns an instance of the class, either blank or the existing
+    def load_by_userid(cls, userid: str) -> "User":
+        """Returns an instance of the class, either blank or the existing
         record with the given userid.
-        '''
+        """
 
         db = cls.get_db()
         tb = db.table(cls.table)
@@ -56,41 +60,42 @@ class User(Document):
         return cls(value=dict(), doc_id=0)
 
     @property
-    def is_active(self):
-        if self.doc_id == 0 or self.get('blocked'):
+    def is_active(self) -> bool:
+        if self.doc_id == 0 or self.get("blocked"):
             return False
         return True
 
     @property
-    def is_authenticated(self):
+    def is_authenticated(self) -> bool:
         return True
 
     @property
-    def is_anonymous(self):
+    def is_anonymous(self) -> bool:
         return False
 
-    def __eq__(self, other):  # pragma: no cover
-        '''
+    def __eq__(self, other) -> bool:  # pragma: no cover
+        """
         Checks the equality of two `UserMixin` objects using `get_id`.
-        '''
+        """
         if isinstance(other, User):
             return self.get_id() == other.get_id()
         return NotImplemented
 
-    def __ne__(self, other):  # pragma: no cover
-        '''
+    def __ne__(self, other) -> bool:  # pragma: no cover
+        """
         Checks the inequality of two `UserMixin` objects using `get_id`.
-        '''
+        """
         equal = self.__eq__(other)
         if equal is NotImplemented:
             return NotImplemented
         return not equal
 
-    def _save(self, mapping: Mapping):
-        '''Adds the mapping as a new record, or updates an existing record with
+    def _save(self, mapping: t.Mapping) -> str:
+        """Adds the mapping as a new record, or updates an existing record with
         the mapping. Note that a key will only be removed from an existing
         record if given a value of None. Missing keys will not be affected.
-        '''
+        TODO: check for and return error message on known error.
+        """
 
         # Update or insert record as appropriate
         db = self.get_db()
@@ -103,24 +108,25 @@ class User(Document):
         else:
             self.doc_id = tb.insert(mapping)
 
-        return ''
+        return ""
 
-    def get_id(self):
+    def get_id(self) -> str:
+        """Returns User serial number ID as a string."""
         return str(self.doc_id)
 
 
 class ApiUser(User):
-    '''For objects representing an application using the API.
-    '''
-    table = 'api_users'
+    """For objects representing an application using the API."""
+
+    table = "api_users"
 
     @classmethod
-    def load_by_token(cls, token, expiration=600):
-        '''If the token is valid, loads and returns the API user with the
+    def load_by_token(cls, token, expiration=600) -> "ApiUser":
+        """If the token is valid, loads and returns the API user with the
         doc_id encoded by the token. Otherwise returns a blank instance.
-        '''
+        """
         try:
-            claims = jwt.decode(token, current_app.config['SECRET_KEY'])
+            claims = jwt.decode(token, current_app.config["SECRET_KEY"])
             claims.validate_exp(time.time(), 1)
         except DecodeError:
             # invalid token
@@ -134,7 +140,7 @@ class ApiUser(User):
         except ExpiredTokenError:
             # valid token, but expired
             return cls(value=dict(), doc_id=0)
-        doc_id = int(claims.get('id', 0))
+        doc_id = int(claims.get("id", 0))
         if not doc_id:
             return cls(value=dict(), doc_id=0)
 
@@ -146,39 +152,54 @@ class ApiUser(User):
             return cls(value=doc, doc_id=doc.doc_id)
         return cls(value=dict(), doc_id=0)
 
-    def hash_password(self, password):
+    def hash_password(self, password: t.Union[str, bytes]) -> bool:
+        """Saves hash of password to record, returning True on success
+        and False on error.
+        """
         new_hash = pwd_context.hash(password)
-        error = self._save({'password_hash': new_hash})
+        error = self._save({"password_hash": new_hash})
         if error:  # pragma: no cover
             print(f"ApiUser: could not save hash: {error}.")
             return False
         return True
 
-    def verify_password(self, password):
+    def verify_password(self, password: t.Union[str, bytes]) -> bool:
+        """Verifies that password matches currently stored hash. If so,
+        updates the hash to a stronger one if necessary and returns
+        True. Otherwise returns False.
+        """
         is_verified, new_hash = pwd_context.verify_and_update(
-            password, self.get('password_hash'))
+            password, self.get("password_hash")
+        )
         if new_hash:
-            error = self._save({'password_hash': new_hash})
+            error = self._save({"password_hash": new_hash})
             if error:  # pragma: no cover
                 print(f"ApiUser: could not save hash: {error}.")
                 return False
         return is_verified
 
-    def generate_auth_token(self, expiration=600):
+    def generate_auth_token(self, expiration: t.SupportsFloat = 600) -> bytes:
+        """Returns a time-limited, encoded authorization token for this
+        user.
+        """
         s = jwt.encode(
-            {'alg': 'HS256'},
-            {'id': self.doc_id, 'exp': time.time() + expiration},
-            current_app.config['SECRET_KEY']
+            {"alg": "HS256"},
+            {"id": self.doc_id, "exp": time.time() + expiration},
+            current_app.config["SECRET_KEY"],
         )
         return s
 
 
-def get_user_db():
-    if 'user_db' not in g:
+def get_user_db() -> TinyDB:
+    """Returns the user database as a TinyDB object. The object is
+    cached so further calls return the same one.
+    """
+    if "user_db" not in g:
         g.user_db = TinyDB(
-            current_app.config['USER_DATABASE_PATH'],
+            current_app.config["USER_DATABASE_PATH"],
             storage=JSONStorageWithGit,
             indent=2,
-            ensure_ascii=False)
+            ensure_ascii=False,
+        )
 
     return g.user_db
