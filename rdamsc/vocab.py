@@ -20,6 +20,7 @@ from tinyrecord import transaction
 from .db_utils import JSONStorageWithGit
 from .utils import url_for_subject
 
+ThesaurusLevel = t.Literal["domain", "subdomain", "concept"]
 T = t.TypeVar("T")
 UNO = Namespace("http://vocabularies.unesco.org/ontology#")
 

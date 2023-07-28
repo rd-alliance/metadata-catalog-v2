@@ -80,6 +80,10 @@ disallowed_tagblocks = [
     "script",
     "style",
 ]
+MainTableID = t.Literal["m", "g", "t", "c", "e"]
+TableID = t.Literal[
+    "m", "g", "t", "c", "e", "datatype", "location", "type", "id_scheme"
+]
 
 
 # Database wrapper classes
@@ -125,7 +129,7 @@ class Relation(object):
         return type(self)._inversions
 
     def __init__(self):
-        db = get_data_db()
+        db: TinyDB = get_data_db()
         self.tb = db.table("rel")
         self.series_map = dict()
         for subcls in Record.__subclasses__():
