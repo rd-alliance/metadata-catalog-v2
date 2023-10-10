@@ -3,15 +3,15 @@
 # Standard
 # --------
 import re
-from typing import Callable, List
+import typing as t
 import unicodedata
 import urllib.parse
-from flask import url_for
 
 # Non-standard
 # ------------
-# See http://tinydb.readthedocs.io/
+from flask import url_for
 from tinydb import Query
+from wtforms import Field
 
 
 # General data handling
@@ -25,10 +25,11 @@ class Pluralizer:
 
     From http://stackoverflow.com/a/27642538
     """
-    def __init__(self, value):
+
+    def __init__(self, value: int):
         self.value = value
 
-    def __format__(self, formatter):
+    def __format__(self, formatter: str) -> str:
         formatter = formatter.replace("N", str(self.value))
         start, _, suffixes = formatter.partition("/")
         singular, _, plural = suffixes.rpartition("/")
@@ -56,14 +57,14 @@ def url_for_subject(subject: str) -> str:
     but is a visual clue that the slash is not intended as a path segment
     separator.
     """
-    return url_for(
-        'search.subject', subject=subject.replace('/', '%2F')
-    ).replace('%252F', '%2F')
+    return url_for("search.subject", subject=subject.replace("/", "%2F")).replace(
+        "%252F", "%2F"
+    )
 
 
 def has_day(isodate: str) -> bool:
     """Returns true if ISO date has a day component."""
-    return isodate.count('-') == 2
+    return isodate.count("-") == 2
 
 
 def is_list(obj: object) -> bool:
@@ -75,7 +76,8 @@ def is_list(obj: object) -> bool:
 
 # Utilities used in data
 # ======================
-def clean_error_list(field):
+def clean_error_list(field: Field) -> t.List[str]:
+    """Extracts all errors from a Field as a flat list."""
     seen_errors = set()
     for error in field.errors:
         if isinstance(error, list):
@@ -86,27 +88,29 @@ def clean_error_list(field):
     return list(seen_errors)
 
 
-def to_file_slug(string: str, callback: Callable[[Query], List]):
-    """Transforms string into slug for use when decomposing the database to
-    individual files.
+def to_file_slug(string: str, callback: t.Callable[[Query], list]) -> str:
+    """Transforms string into a new slug for use when decomposing the
+    database to individual files. The callback should be the search
+    method of a TinyDB table, and will be used to ensure that the
+    returned slug does not already exist in that table.
     """
     # Put to lower case, turn spaces to hyphens
-    slug = string.strip().lower().replace(' ', '-')
+    slug = string.strip().lower().replace(" ", "-")
     # Fixes for problem entries
-    slug = unicodedata.normalize('NFD', slug)
-    slug = slug.encode('ascii', 'ignore')
-    slug = slug.decode('utf-8')
+    slug = unicodedata.normalize("NFD", slug)
+    slug = slug.encode("ascii", "ignore")
+    slug = slug.decode("utf-8")
     # Strip out non-alphanumeric ASCII characters
-    slug = re.sub(r'[^-A-Za-z0-9_]+', '', slug)
+    slug = re.sub(r"[^-A-Za-z0-9_]+", "", slug)
     # Remove duplicate hyphens
-    slug = re.sub(r'-+', '-', slug)
+    slug = re.sub(r"-+", "-", slug)
     # Truncate
     slug = slug[:71]
 
     # Ensure uniqueness within table
-    i = ''
+    i = ""
     while callback(Query().slug == (slug + str(i))):
-        if i == '':
+        if i == "":
             i = 1
         else:
             i += 1
@@ -114,9 +118,9 @@ def to_file_slug(string: str, callback: Callable[[Query], List]):
         return slug
 
 
-def wild_to_regex(string):
-    """Transforms wildcard searches into regular expressions."""
+def wild_to_regex(string: str) -> str:
+    """Transforms wildcard syntax into regular expression syntax."""
     regex = re.escape(string)
-    regex = regex.replace(r'\*', '.*')
-    regex = regex.replace(r'\?', '.')
+    regex = regex.replace(r"\*", ".*")
+    regex = regex.replace(r"\?", ".")
     return regex

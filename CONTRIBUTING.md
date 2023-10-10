@@ -107,6 +107,9 @@ It is usually best, though, to delete and recreate the virtual environment,
 then reinstall the application:
 
 ```bash
+# Only if currently in the virtual environment:
+deactivate
+# In all cases:
 rm -r venv
 python3 -m venv venv
 . venv/bin/activate

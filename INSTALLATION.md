@@ -445,6 +445,8 @@ WSGIPassAuthorization On
     WSGIDaemonProcess rdamsc user=rdamsc group=rdamsc threads=5 python-home=/opt/rdamsc/venv
     WSGIScriptAlias / /srv/rdamsc/rdamsc.wsgi
 
+    AllowEncodedSlashes NoDecode
+
     <Directory /srv/rdamsc>
         WSGIProcessGroup rdamsc
         WSGIApplicationGroup %{GLOBAL}

@@ -6,13 +6,7 @@ from collections import deque, defaultdict
 from enum import Enum, auto
 import math
 import re
-from typing import (
-    List,
-    Mapping,
-    Pattern,
-    Tuple,
-    Union,
-)
+import typing as t
 
 # Non-standard
 # ------------
@@ -32,35 +26,38 @@ import werkzeug.exceptions
 # Local
 # -----
 from .records import (
+    MainTableID,
     Relation,
     Record,
     Scheme,
+    TableID,
     mscid_prefix,
     sortval,
 )
 from .users import ApiUser
-from .vocab import Thesaurus, get_thesaurus
+from .vocab import Thesaurus, ThesaurusLevel, get_thesaurus
 
-bp = Blueprint('api2', __name__)
+bp = Blueprint("api2", __name__)
 basic_auth = HTTPBasicAuth()
-token_auth = HTTPTokenAuth('Bearer')
+token_auth = HTTPTokenAuth("Bearer")
 multi_auth = MultiAuth(basic_auth, token_auth)
 api_version = "2.1.0"
+_M = t.TypeVar("_M", bound=t.Mapping)
 
 
 # Handy functions
 # ===============
-def embellish_record(record: Document, with_embedded=False):
-    '''Add convenience fields and related entities to a record.'''
+def embellish_record(record: Record, with_embedded: bool = False) -> Record:
+    """Add convenience fields and related entities to a record."""
 
     # Form MSC ID
     mscid = record.mscid
 
     # Add convenience fields
-    record['mscid'] = mscid
-    record['uri'] = url_for(
-        '.get_record', table=record.table, number=record.doc_id,
-        _external=True)
+    record["mscid"] = mscid
+    record["uri"] = url_for(
+        ".get_record", table=record.table, number=record.doc_id, _external=True
+    )
 
     # Is this a controlled term?
     if len(record.table) > 1:
@@ -70,83 +67,89 @@ def embellish_record(record: Document, with_embedded=False):
     related_entities = record.get_related_entities()
     if related_entities:
         seen_mscids = dict()
-        record['relatedEntities'] = list()
+        record["relatedEntities"] = list()
         for related_entity in related_entities:
             if with_embedded:
-                related_entity['data'] = seen_mscids.get(related_entity['id'])
-                if related_entity['data'] is None:
-                    entity = Record.load_by_mscid(related_entity['id'])
+                related_entity["data"] = seen_mscids.get(related_entity["id"])
+                if related_entity["data"] is None:
+                    entity = Record.load_by_mscid(related_entity["id"])
                     full_entity = embellish_record(entity)
-                    related_entity['data'] = full_entity
+                    related_entity["data"] = full_entity
                     seen_mscids[entity.mscid] = full_entity
-            record['relatedEntities'].append(related_entity)
+            record["relatedEntities"].append(related_entity)
 
     return record
 
 
-def embellish_record_fully(record: Document):
-    '''Convenience wrapper around embellish_record ensuring related entities
+def embellish_record_fully(record: Record) -> Record:
+    """Convenience wrapper around embellish_record ensuring related entities
     are embedded.
-    '''
+    """
     return embellish_record(record, with_embedded=True)
 
 
-def embellish_relation(record: Mapping, route='.get_relation'):
-    '''Embellishes a relationship or inverse relationship record.'''
-    mscid = record['@id']
+def embellish_relation(document: Document, route: str = ".get_relation") -> Document:
+    """Embellishes a relationship or inverse relationship record."""
+    mscid = document["@id"]
     n = len(mscid_prefix)
-    table = mscid[n:n + 1]
-    number = mscid[n + 1:]
-    record['uri'] = url_for(
-        route, table=table, number=number, _external=True)
-    return record
+    table = mscid[n : n + 1]
+    number = mscid[n + 1 :]
+    document["uri"] = url_for(route, table=table, number=number, _external=True)
+    return document
 
 
-def embellish_inv_relation(record: Mapping):
-    '''Embellishes a relationship or inverse relationship record.'''
-    return embellish_relation(record, route='.get_inv_relation')
+def embellish_inv_relation(document: Document) -> Document:
+    """Embellishes a relationship or inverse relationship record."""
+    return embellish_relation(document, route=".get_inv_relation")
 
 
-def convert_thesaurus(record: Mapping):
-    '''Converts an internal thesaurus entry into a SKOS Concept.'''
+def convert_thesaurus(document: Document) -> t.Dict[str, t.Any]:
+    """Converts an internal thesaurus entry into a SKOS Concept."""
     th = Thesaurus()
-    return th.get_concept(record.get('uri').split('/')[-1])
+    return th.get_concept(document.get("uri").split("/")[-1])
 
 
-def do_not_embellish(record: Mapping):
-    '''Dummy function, no-op.'''
-    return record
+def do_not_embellish(mapping: _M) -> _M:
+    """Dummy function, no-op."""
+    return mapping
 
 
-def as_response_item(record: Mapping, callback=embellish_record):
-    '''Embellishes a record using the callback function, then wraps it in a
+def as_response_item(
+    mapping: t.Mapping, callback: t.Callable[[_M], _M] = embellish_record
+) -> t.Dict[str, t.Any]:
+    """Embellishes a record using the callback function, then wraps it in a
     response object.
-    '''
+    """
 
     # Embellish record
-    data = callback(record)
+    data = callback(mapping)
 
     response = {
-        'apiVersion': api_version,
-        'data': data,
+        "apiVersion": api_version,
+        "data": data,
     }
     return response
 
 
-def as_response_page(records: List[Mapping], link: str,
-                     page_size=10, start: int = None, page: int = None,
-                     callback=embellish_record):
-    '''Wraps list of records in a response object representing a page of
+def as_response_page(
+    mappings: t.List[_M],
+    link: str,
+    page_size=10,
+    start: int = None,
+    page: int = None,
+    callback: t.Callable[[_M], _M] = embellish_record,
+) -> t.Dict[str, t.Any]:
+    """Wraps list of records in a response object representing a page of
     `page_size` items, starting with item number `start` or page number `page`
     (both counting from 1) The base URL for adjacent requests should be given
     as `link`. Individual records are embellished with the callback function
     before being added to the list of returned records; this should take the
     record as its positional argument.
-    '''
-    total_pages = math.ceil(len(records) / page_size)
+    """
+    total_pages = math.ceil(len(mappings) / page_size)
     if start is not None:
         start_index = start
-        if start_index > len(records) or start_index < 1:
+        if start_index > len(mappings) or start_index < 1:
             abort(404)
         page_index = math.floor(start_index / page_size) + 1
     elif page is not None:
@@ -159,45 +162,50 @@ def as_response_page(records: List[Mapping], link: str,
         page_index = 1
 
     items = list()
-    for record in records[start_index - 1:start_index + page_size - 1]:
-        items.append(callback(record))
+    for mapping in mappings[start_index - 1 : start_index + page_size - 1]:
+        items.append(callback(mapping))
 
     response = {
-        'apiVersion': api_version,
-        'data': {
-            'itemsPerPage': page_size,
-            'currentItemCount': len(items),
-            'startIndex': start_index,
-            'totalItems': len(records),
-            'pageIndex': page_index,
-            'totalPages': total_pages,
-        }
+        "apiVersion": api_version,
+        "data": {
+            "itemsPerPage": page_size,
+            "currentItemCount": len(items),
+            "startIndex": start_index,
+            "totalItems": len(mappings),
+            "pageIndex": page_index,
+            "totalPages": total_pages,
+        },
     }
 
     if (start_index - 1) % page_size > 0:
-        response['data']['totalPages'] += 1
+        response["data"]["totalPages"] += 1
 
     if page and not start:
-        if page_index < response['data']['totalPages']:
-            response['data']['nextLink'] = (
-                f"{link}?page={page + 1}&pageSize={page_size}")
+        if page_index < response["data"]["totalPages"]:
+            response["data"][
+                "nextLink"
+            ] = f"{link}?page={page + 1}&pageSize={page_size}"
         if page_index > 1:
-            response['data']['previousLink'] = (
-                f"{link}?page={page - 1}&pageSize={page_size}")
+            response["data"][
+                "previousLink"
+            ] = f"{link}?page={page - 1}&pageSize={page_size}"
     else:
-        if start_index + page_size <= len(records):
-            response['data']['nextLink'] = (
-                f"{link}?start={start_index + page_size}&pageSize={page_size}")
+        if start_index + page_size <= len(mappings):
+            response["data"][
+                "nextLink"
+            ] = f"{link}?start={start_index + page_size}&pageSize={page_size}"
         if start_index > 1:
             prev_start = start_index - page_size
             if prev_start < 1:
-                response['data']['previousLink'] = (
-                    f"{link}?start=1&pageSize={start_index - 1}")
+                response["data"][
+                    "previousLink"
+                ] = f"{link}?start=1&pageSize={start_index - 1}"
             else:
-                response['data']['previousLink'] = (
-                    f"{link}?start={prev_start}&pageSize={page_size}")
+                response["data"][
+                    "previousLink"
+                ] = f"{link}?start={prev_start}&pageSize={page_size}"
 
-    response['data']['items'] = items
+    response["data"]["items"] = items
     return response
 
 
@@ -236,8 +244,8 @@ class Lg(str, Enum):
     OR = "OR"
 
 
-def parse_query(filter: str):
-    '''Normalises query string into a form suitable for passing to the
+def parse_query(filter: str) -> t.Union[tuple, list]:
+    """Normalises query string into a form suitable for passing to the
     `passes_filter()` function. Raises ValueError if parsing fails.
 
     INPUT SYNTAX
@@ -299,7 +307,7 @@ def parse_query(filter: str):
     - ["NOT", CONDITION]
     - ["OR", CONDITION, CONDITION, ...]
     - ["AND", CONDITION, CONDITION, ...]
-    '''
+    """
     # Sanity check
     if len(filter) > 256:
         raise ValueError("Too long (maximum query length is 256 characters).")
@@ -330,12 +338,12 @@ def parse_query(filter: str):
             state.append(Qp.WORD)
         working[level - 1].append(item)
 
-    def check_type(word: str) -> Union[Pattern, str]:
-        '''If wildcards are present, converts to a regex. Otherwise
+    def check_type(word: str) -> t.Union[t.Pattern, str]:
+        """If wildcards are present, converts to a regex. Otherwise
         returns the string unaltered. Database currently contains
         only strings, otherwise coercion to int (say) would happen
-        here. The re.escape() from Python 3.7+ is required.'''
-        if ("\x91" not in word and "\x92" not in word):
+        here. The re.escape() from Python 3.7+ is required."""
+        if "\x91" not in word and "\x92" not in word:
             return word
         safe_word = re.escape(word)
         safe_word = re.sub("\x92*\x91[\x91\x92]*", ".*", safe_word)
@@ -346,7 +354,7 @@ def parse_query(filter: str):
         return word.replace("\x91", "*").replace("\x92", "?")
 
     # Level of processing:
-    state: List[Qp] = [Qp.WORD]
+    state: t.List[Qp] = [Qp.WORD]
     tokens = list(filter)
     for token in tokens:
         if state[-1] == Qp.ESC:
@@ -450,9 +458,7 @@ def parse_query(filter: str):
                             state.pop()
                             state.append(Qp.ANDWORD)
                         if len(working[level - 1]) == 0:
-                            raise ValueError(
-                                "Boolean expression missing first value."
-                            )
+                            raise ValueError("Boolean expression missing first value.")
                         elif len(working[level - 1]) == 1:
                             working[level - 1].insert(0, word)
                         else:
@@ -465,9 +471,7 @@ def parse_query(filter: str):
                         state.pop()
                         state.append(Qp.NOTWORD)
                         if len(working[level - 1]):
-                            raise ValueError(
-                                "Boolean expression missing parentheses."
-                            )
+                            raise ValueError("Boolean expression missing parentheses.")
                         working[level - 1].append(word)
                         continue
 
@@ -526,8 +530,8 @@ def parse_query(filter: str):
     return working[0]
 
 
-def extract_values(record: Mapping, fieldpath: deque) -> List:
-    '''Gets all values within a record at the given fieldpath address.
+def extract_values(mapping: t.Mapping, fieldpath: deque) -> list:
+    """Gets all values within a record at the given fieldpath address.
     For example, for a fieldpath of ['genus', 'species'], gets the
     value at record['genus']['species'] or [v['species'] for v in
     record['genus']]. If the fieldpath is empty, gets all ‘leaf’
@@ -541,14 +545,14 @@ def extract_values(record: Mapping, fieldpath: deque) -> List:
     the last element in the URI of (a) each value in
     record['keywords'], (b) each of that value's broader terms, and (c)
     each of that value's narrower terms.
-    '''
+    """
     values = list()
     if fieldpath:
         field = fieldpath.popleft()
         if field == "thesaurus":
             thes = get_thesaurus()
             uris = set()
-            record_uris = record["keywords"]
+            record_uris = mapping["keywords"]
             for term in record_uris:
                 if term in uris:
                     continue
@@ -558,7 +562,7 @@ def extract_values(record: Mapping, fieldpath: deque) -> List:
                 path_bits = uri.split("/")
                 values.append(path_bits[-1])
             return values
-        value = record[field]
+        value = mapping[field]
         if isinstance(value, dict):
             return extract_values(value, fieldpath)
         if isinstance(value, list):
@@ -580,7 +584,7 @@ def extract_values(record: Mapping, fieldpath: deque) -> List:
             raise KeyError("Literal value has no further keys.")
         return [value]
 
-    for field, value in record.items():
+    for field, value in mapping.items():
         if isinstance(value, dict):
             values.extend(extract_values(value, fieldpath))
         elif isinstance(value, list):
@@ -597,11 +601,11 @@ def extract_values(record: Mapping, fieldpath: deque) -> List:
 
 
 def passes_filter(
-    record: Record,
-    filter: Union[List, Tuple],
+    mapping: t.Mapping,
+    filter: t.Union[list, tuple],
     exact: bool = False,
 ) -> bool:
-    '''Determines whether the record passes the filter (True) or
+    """Determines whether the record passes the filter (True) or
     is filtered out (False). See `parse_query` for the format of
     the filter argument.
 
@@ -617,22 +621,22 @@ def passes_filter(
       as they both possess, and field value <= max for as many characters
       as they both possess. This is optimised for ISO date strings, so
       2000-01-01 <= 2000 <= 2000-12 works as intended.
-    '''
+    """
     if isinstance(filter, list):
         if filter[0] == Lg.NOT:
-            return not passes_filter(record, filter[1])
+            return not passes_filter(mapping, filter[1])
         if filter[0] == Lg.AND:
             for f in filter[1:]:
-                if not passes_filter(record, f):
+                if not passes_filter(mapping, f):
                     return False
             return True
         if filter[0] == Lg.OR:
             for f in filter[1:]:
-                if passes_filter(record, f):
+                if passes_filter(mapping, f):
                     return True
             return False
         if filter[0] == Lg.EXACTLY:
-            return passes_filter(record, filter[1], exact=True)
+            return passes_filter(mapping, filter[1], exact=True)
         raise ValueError("Unknown Boolean operation.")  # pragma: no cover
 
     if not isinstance(filter, tuple):  # pragma: no cover
@@ -645,7 +649,7 @@ def passes_filter(
     if fieldpath and fieldpath[0] == "thesaurus":
         exact = True
     try:
-        values_to_test = extract_values(record, fieldpath)
+        values_to_test = extract_values(mapping, fieldpath)
     except KeyError:
         return False
 
@@ -659,7 +663,7 @@ def passes_filter(
                     return True
         return False
 
-    if isinstance(filter[1], Pattern):
+    if isinstance(filter[1], t.Pattern):
         for v in [d for d in values_to_test if isinstance(d, str)]:
             if exact:
                 if filter[1].fullmatch(v):
@@ -701,7 +705,8 @@ def passes_filter(
 
 
 @basic_auth.verify_password
-def verify_password(username, password):
+def verify_password(username: str, password: str) -> t.Optional[ApiUser]:
+    """Verifies ApiUser by password."""
     user = ApiUser.load_by_userid(username)
     if user.is_active and user.verify_password(password):
         return user
@@ -709,7 +714,8 @@ def verify_password(username, password):
 
 
 @token_auth.verify_token
-def verify_token(token):
+def verify_token(token) -> t.Optional[ApiUser]:
+    """Verifies ApiUser by token."""
     user = ApiUser.load_by_token(token)
     if user.doc_id:
         return user
@@ -719,10 +725,10 @@ def verify_token(token):
 # Routes
 # ======
 @bp.route(
-    '/<any(m, g, t, c, e, datatype, location, type, id_scheme):table>',
-    methods=['GET'])
-def get_records(table):
-    '''Return a page of records from the given table.'''
+    "/<any(m, g, t, c, e, datatype, location, type, id_scheme):table>", methods=["GET"]
+)
+def get_records(table: TableID):
+    """Returns a page of records from the given table."""
     # TODO: Note we currently do a new search each time and discard items
     # outside the page's item range. It would be better to implement a cache
     # token so the search results could be saved for, say, an hour and
@@ -733,16 +739,16 @@ def get_records(table):
     records = [k for k in record_cls.all() if k]
 
     # Get filter parameter
-    filter = request.values.get('q')
+    filter = request.values.get("q")
     if filter:
         try:
             parsed_filter = parse_query(filter)
         except ValueError as e:
             response = {
-                'apiVersion': api_version,
-                'error': {
-                    'message': f"Bad q parameter: {e}",
-                }
+                "apiVersion": api_version,
+                "error": {
+                    "message": f"Bad q parameter: {e}",
+                },
             }
             return jsonify(response), 400
 
@@ -750,26 +756,32 @@ def get_records(table):
         records = filtered
 
     # Get paging parameters
-    start_raw = request.values.get('start')
+    start_raw = request.values.get("start")
     start = int(start_raw) if start_raw else None
 
-    page_raw = request.values.get('page')
+    page_raw = request.values.get("page")
     page = int(page_raw) if page_raw else None
 
-    page_size = int(request.values.get('pageSize', 10))
+    page_size = int(request.values.get("pageSize", 10))
 
     # Return result
-    return jsonify(as_response_page(
-        records, url_for('.get_records', table=table, _external=True),
-        page_size=page_size, start=start, page=page))
+    return jsonify(
+        as_response_page(
+            records,
+            url_for(".get_records", table=table, _external=True),
+            page_size=page_size,
+            start=start,
+            page=page,
+        )
+    )
 
 
 @bp.route(
-    '/<any(m, g, t, c, e, datatype, location, type, id_scheme):table>'
-    '<int:number>',
-    methods=['GET'])
-def get_record(table, number):
-    '''Return given record.'''
+    "/<any(m, g, t, c, e, datatype, location, type, id_scheme):table><int:number>",
+    methods=["GET"],
+)
+def get_record(table: TableID, number: int):
+    """Returns given record."""
     record = Record.load(number, table)
 
     # Abort if series or number was wrong:
@@ -780,55 +792,61 @@ def get_record(table, number):
     return jsonify(as_response_item(record, callback=embellish_record_fully))
 
 
-@bp.route('/rel', methods=['GET'])
+@bp.route("/rel", methods=["GET"])
 def get_relations():
-    '''Return a page of records from the relations table.'''
+    """Returns a page of records from the relations table."""
     # TODO: Note we currently do a new search each time and discard items
     # outside the page's item range. It would be better to implement a cache
     # token so the search results could be saved for, say, an hour and
     # traversed robustly using the token.
     rel = Relation()
     rel_records = rel.tb.all()
-    rel_records.sort(key=lambda k: sortval(k.get('@id')))
+    rel_records.sort(key=lambda k: sortval(k.get("@id")))
 
     # Get filter parameter
-    filter = request.values.get('q')
+    filter = request.values.get("q")
     if filter:
         try:
             parsed_filter = parse_query(filter)
         except ValueError as e:
             response = {
-                'apiVersion': api_version,
-                'error': {
-                    'message': f"Bad q parameter: {e}",
-                }
+                "apiVersion": api_version,
+                "error": {
+                    "message": f"Bad q parameter: {e}",
+                },
             }
             return jsonify(response), 400
 
         filtered = [
-            k for k in rel_records
-            if passes_filter(k, parsed_filter, exact=True)
+            k for k in rel_records if passes_filter(k, parsed_filter, exact=True)
         ]
         rel_records = filtered
 
     # Get paging parameters:
-    start_raw = request.values.get('start')
+    start_raw = request.values.get("start")
     start = int(start_raw) if start_raw else None
 
-    page_raw = request.values.get('page')
+    page_raw = request.values.get("page")
     page = int(page_raw) if page_raw else None
 
-    page_size = int(request.values.get('pageSize', 10))
+    page_size = int(request.values.get("pageSize", 10))
 
     # Return result
-    return jsonify(as_response_page(
-        rel_records, url_for('.get_relations'), page_size=page_size,
-        start=start, page=page, callback=embellish_relation))
+    return jsonify(
+        as_response_page(
+            rel_records,
+            url_for(".get_relations"),
+            page_size=page_size,
+            start=start,
+            page=page,
+            callback=embellish_relation,
+        )
+    )
 
 
-@bp.route('/rel/<string(length=1):table><int:number>', methods=['GET'])
-def get_relation(table, number):
-    '''Return forward relations for the given record.'''
+@bp.route("/rel/<any(m, g, t, c, e):table><int:number>", methods=["GET"])
+def get_relation(table: MainTableID, number: int):
+    """Returns forward relations for the given record."""
     # Abort if series or number was wrong:
     base_record = Record.load(number, table)
     if (not base_record) or base_record.doc_id == 0:
@@ -836,17 +854,16 @@ def get_relation(table, number):
 
     rel = Relation()
     mscid = f"{mscid_prefix}{table}{number}"
-    rel_record = {'@id': mscid}
+    rel_record = {"@id": mscid}
     rel_record.update(rel.related(mscid, direction=rel.FORWARD))
 
     # Return result
     return jsonify(as_response_item(rel_record, callback=embellish_relation))
 
 
-@bp.route('/invrel', methods=['GET'])
+@bp.route("/invrel", methods=["GET"])
 def get_inv_relations():
-    '''Return a page of records generated from inverting the relations table.
-    '''
+    """Returns a page of records generated from inverting the relations table."""
     # TODO: Note we currently do a new search each time and discard items
     # outside the page's item range. It would be better to implement a cache
     # token so the search results could be saved for, say, an hour and
@@ -857,48 +874,54 @@ def get_inv_relations():
     rel_records = list()
 
     for mscid in mscids:
-        rel_record = {'@id': mscid}
+        rel_record = {"@id": mscid}
         rel_record.update(rel.related(mscid, direction=rel.INVERSE))
         rel_records.append(rel_record)
 
     # Get filter parameter
-    filter = request.values.get('q')
+    filter = request.values.get("q")
     if filter:
         try:
             parsed_filter = parse_query(filter)
         except ValueError as e:
             response = {
-                'apiVersion': api_version,
-                'error': {
-                    'message': f"Bad q parameter: {e}",
-                }
+                "apiVersion": api_version,
+                "error": {
+                    "message": f"Bad q parameter: {e}",
+                },
             }
             return jsonify(response), 400
 
         filtered = [
-            k for k in rel_records
-            if passes_filter(k, parsed_filter, exact=True)
+            k for k in rel_records if passes_filter(k, parsed_filter, exact=True)
         ]
         rel_records = filtered
 
     # Get paging parameters:
-    start_raw = request.values.get('start')
+    start_raw = request.values.get("start")
     start = int(start_raw) if start_raw else None
 
-    page_raw = request.values.get('page')
+    page_raw = request.values.get("page")
     page = int(page_raw) if page_raw else None
 
-    page_size = int(request.values.get('pageSize', 10))
+    page_size = int(request.values.get("pageSize", 10))
 
     # Return result
-    return jsonify(as_response_page(
-        rel_records, url_for('.get_inv_relations'), page_size=page_size,
-        start=start, page=page, callback=embellish_inv_relation))
+    return jsonify(
+        as_response_page(
+            rel_records,
+            url_for(".get_inv_relations"),
+            page_size=page_size,
+            start=start,
+            page=page,
+            callback=embellish_inv_relation,
+        )
+    )
 
 
-@bp.route('/invrel/<string(length=1):table><int:number>', methods=['GET'])
-def get_inv_relation(table, number):
-    '''Return inverse relations for the given record.'''
+@bp.route("/invrel/<any(m, g, t, c, e):table><int:number>", methods=["GET"])
+def get_inv_relation(table: MainTableID, number: int):
+    """Returns inverse relations for the given record."""
     # Abort if series or number was wrong:
     base_record = Record.load(number, table)
     if (not base_record) or base_record.doc_id == 0:
@@ -906,33 +929,31 @@ def get_inv_relation(table, number):
 
     rel = Relation()
     mscid = f"{mscid_prefix}{table}{number}"
-    rel_record = {'@id': mscid}
+    rel_record = {"@id": mscid}
     rel_record.update(rel.related(mscid, direction=rel.INVERSE))
 
     # Return result
-    return jsonify(as_response_item(
-        rel_record, callback=embellish_inv_relation))
+    return jsonify(as_response_item(rel_record, callback=embellish_inv_relation))
 
 
-@bp.route('/thesaurus')
+@bp.route("/thesaurus")
 def get_thesaurus_scheme():
-    '''Return SKOS record for MSC Thesaurus Scheme.'''
+    """Returns SKOS record for MSC Thesaurus Scheme."""
     th = Thesaurus()
 
     return jsonify(as_response_item(th.as_jsonld, callback=do_not_embellish))
 
 
-@bp.route('/thesaurus/<any(domain, subdomain, concept):level><int:number>')
-def get_thesaurus_concept(level, number):
-    '''Return SKOS record for MSC Thesaurus Concept.'''
+@bp.route("/thesaurus/<any(domain, subdomain, concept):level><int:number>")
+def get_thesaurus_concept(level: ThesaurusLevel, number: int):
+    """Returns SKOS record for MSC Thesaurus Concept."""
     th = Thesaurus()
 
     # Get requested level of detail:
-    form = request.values.get('form', 'concept')
+    form = request.values.get("form", "concept")
 
     # Generate record
-    concept = th.get_concept(
-        f"{level}{number}", recursive=(form == 'tree'))
+    concept = th.get_concept(f"{level}{number}", recursive=(form == "tree"))
 
     if concept is None:
         abort(404)
@@ -940,68 +961,81 @@ def get_thesaurus_concept(level, number):
     return jsonify(as_response_item(concept, callback=do_not_embellish))
 
 
-@bp.route('/thesaurus/concepts')
+@bp.route("/thesaurus/concepts")
 def get_thesaurus_concepts():
-    '''Get list of concepts from the MSC Thesaurus.'''
+    """Gets list of concepts from the MSC Thesaurus."""
     th = Thesaurus()
 
     # Get paging parameters
-    start_raw = request.values.get('start')
+    start_raw = request.values.get("start")
     start = int(start_raw) if start_raw else None
 
-    page_raw = request.values.get('page')
+    page_raw = request.values.get("page")
     page = int(page_raw) if page_raw else None
 
-    page_size = int(request.values.get('pageSize', 10))
+    page_size = int(request.values.get("pageSize", 10))
 
     # Return result
-    return jsonify(as_response_page(
-        th.entries, url_for('.get_thesaurus_concepts'), page_size=page_size,
-        start=start, page=page, callback=convert_thesaurus))
+    return jsonify(
+        as_response_page(
+            th.entries,
+            url_for(".get_thesaurus_concepts"),
+            page_size=page_size,
+            start=start,
+            page=page,
+            callback=convert_thesaurus,
+        )
+    )
 
 
-@bp.route('/thesaurus/concepts/used')
+@bp.route("/thesaurus/concepts/used")
 def get_thesaurus_concepts_used():
-    '''Get list of concepts from the MSC Thesaurus that are in use.'''
+    """Gets list of concepts from the MSC Thesaurus that are in use."""
     th = Thesaurus()
     used = Scheme.get_used_keywords()
 
-    entries = [entry for entry in th.entries if entry.get('uri') in used]
+    entries = [entry for entry in th.entries if entry.get("uri") in used]
 
     # Get paging parameters
-    start_raw = request.values.get('start')
+    start_raw = request.values.get("start")
     start = int(start_raw) if start_raw else None
 
-    page_raw = request.values.get('page')
+    page_raw = request.values.get("page")
     page = int(page_raw) if page_raw else None
 
-    page_size = int(request.values.get('pageSize', 10))
+    page_size = int(request.values.get("pageSize", 10))
 
     # Return result
-    return jsonify(as_response_page(
-        entries, url_for('.get_thesaurus_concepts_used'),
-        page_size=page_size, start=start, page=page,
-        callback=convert_thesaurus))
+    return jsonify(
+        as_response_page(
+            entries,
+            url_for(".get_thesaurus_concepts_used"),
+            page_size=page_size,
+            start=start,
+            page=page,
+            callback=convert_thesaurus,
+        )
+    )
 
 
-@bp.route('/user/token', methods=['GET'])
+@bp.route("/user/token", methods=["GET"])
 @basic_auth.login_required
 def get_auth_token():
-    user = basic_auth.current_user()
+    """Returns a token for use in future requests."""
+    user: ApiUser = basic_auth.current_user()
     token = user.generate_auth_token()
-    return jsonify({
-        'apiVersion': api_version,
-        'token': token.decode('ascii')})
+    return jsonify({"apiVersion": api_version, "token": token.decode("ascii")})
 
 
-@bp.route('/user/reset-password', methods=['POST'])
+@bp.route("/user/reset-password", methods=["POST"])
 @multi_auth.login_required
 def reset_password():
-    user = multi_auth.current_user()
+    """Updates the password for an ApiUser."""
+    user: ApiUser = multi_auth.current_user()
     response = {
-        'apiVersion': api_version,
-        'username': user.get('userid'),
-        'password_reset': False
+        "apiVersion": api_version,
+        "username": user.get("userid"),
+        "password_reset": False,
     }
     try:
         data = request.get_json()
@@ -1009,32 +1043,34 @@ def reset_password():
         abort(make_response((response, e.code)))
     except werkzeug.exceptions.UnsupportedMediaType as e:
         abort(make_response((response, e.code)))
-    new_password = data.get('new_password', '')
+    if not isinstance(data, dict):
+        abort(make_response((response, 400)))
+    new_password = data.get("new_password", "")
     if len(new_password) < 8:
         abort(make_response((response, 400)))
-    response['password_reset'] = user.hash_password(new_password)
-    if response['password_reset']:
+    response["password_reset"] = user.hash_password(new_password)
+    if response["password_reset"]:
         return jsonify(response)
     else:
         abort(make_response((response, 400)))
 
 
 @bp.route(
-    '/<any(m, g, t, c, e, datatype, location, type, id_scheme):table>',
-    methods=['POST'])
+    "/<any(m, g, t, c, e, datatype, location, type, id_scheme):table>", methods=["POST"]
+)
 @bp.route(
-    '/<any(m, g, t, c, e, datatype, location, type, id_scheme):table>'
-    '<int:number>',
-    methods=['PUT'])
+    "/<any(m, g, t, c, e, datatype, location, type, id_scheme):table><int:number>",
+    methods=["PUT"],
+)
 @multi_auth.login_required
-def set_record(table, number=0):
-    '''Adds a record to the database and returns it.'''
+def set_record(table: TableID, number: int = 0):
+    """Adds a record to the database and returns it."""
     # Look up record to edit, or get new:
     record = Record.load(number, table)
 
     # If number is wrong, we reinforce the point by redirecting:
     if record.doc_id != number:
-        return redirect(url_for('api2.set_record', table=table, number=None))
+        return redirect(url_for("api2.set_record", table=table, number=None))
 
     # Get input:
     data = request.get_json()
@@ -1043,33 +1079,30 @@ def set_record(table, number=0):
     errors = record.save_api_input(data)
     if errors:
         response = {
-            'apiVersion': api_version,
-            'error': {
-                'message': errors[0]['message'],
-                'errors': errors
-            }
+            "apiVersion": api_version,
+            "error": {"message": errors[0]["message"], "errors": errors},
         }
         return jsonify(response), 400
 
     # Return report:
     record.reload()
     response = as_response_item(record, callback=embellish_record_fully)
-    response['meta'] = {
-        'conformance': record.conformance,
+    response["meta"] = {
+        "conformance": record.conformance,
     }
 
     return jsonify(response)
 
 
 @bp.route(
-    '/<any(m, g, t, c, e, datatype, location, type, id_scheme):table>'
-    '<int:number>',
-    methods=['DELETE'])
+    "/<any(m, g, t, c, e, datatype, location, type, id_scheme):table>" "<int:number>",
+    methods=["DELETE"],
+)
 @multi_auth.login_required
-def annul_record(table, number=0):
-    '''Effectively deletes a record by removing all data from it.
+def annul_record(table: TableID, number: int = 0):
+    """Effectively deletes a record by removing all data from it.
     It still remains in the database so it can be restored if the
-    deletion was in error.'''
+    deletion was in error."""
     # Look up record to edit, or get new:
     record = Record.load(number, table)
 
@@ -1081,23 +1114,19 @@ def annul_record(table, number=0):
     errors = record.annul()
     if errors:
         response = {
-            'apiVersion': api_version,
-            'error': {
-                'message': errors[0]['message'],
-                'errors': errors
-            }
+            "apiVersion": api_version,
+            "error": {"message": errors[0]["message"], "errors": errors},
         }
         return jsonify(response), 400
 
     # Otherwise return an empty success message:
-    return '', (204)
+    return "", (204)
 
 
-@bp.route(
-    '/rel/<any(m, t, c, e):table><int:number>', methods=['POST', 'PUT'])
+@bp.route("/rel/<any(m, t, c, e):table><int:number>", methods=["POST", "PUT"])
 @multi_auth.login_required
-def set_relation(table, number):
-    '''Add or replace entire forward relation table for a main entity.'''
+def set_relation(table: t.Literal["m", "t", "c", "e"], number: int):
+    """Add or replace entire forward relation table for a main entity."""
     record = Record.load(number, table)
 
     # Abort if table or number was wrong:
@@ -1111,11 +1140,8 @@ def set_relation(table, number):
     errors, result = record.save_rel_record(data)
     if errors:
         response = {
-            'apiVersion': api_version,
-            'error': {
-                'message': errors[0]['message'],
-                'errors': errors
-            }
+            "apiVersion": api_version,
+            "error": {"message": errors[0]["message"], "errors": errors},
         }
         return jsonify(response), 400
 
@@ -1124,10 +1150,9 @@ def set_relation(table, number):
     return jsonify(response)
 
 
-@bp.route(
-    '/rel/<any(m, t, c, e):table><int:number>', methods=['PATCH'])
+@bp.route("/rel/<any(m, t, c, e):table><int:number>", methods=["PATCH"])
 @multi_auth.login_required
-def patch_relation(table, number):
+def patch_relation(table: t.Literal["m", "t", "c", "e"], number: int):
     record = Record.load(number, table)
 
     # Abort if table or number was wrong:
@@ -1141,11 +1166,8 @@ def patch_relation(table, number):
     errors, result = record.save_rel_patch(data)
     if errors:
         response = {
-            'apiVersion': api_version,
-            'error': {
-                'message': errors[0]['message'],
-                'errors': errors
-            }
+            "apiVersion": api_version,
+            "error": {"message": errors[0]["message"], "errors": errors},
         }
         return jsonify(response), 400
 
@@ -1154,10 +1176,9 @@ def patch_relation(table, number):
     return jsonify(response)
 
 
-@bp.route(
-    '/invrel/<any(m, g):table><int:number>', methods=['PATCH'])
+@bp.route("/invrel/<any(m, g):table><int:number>", methods=["PATCH"])
 @multi_auth.login_required
-def patch_inv_relation(table, number):
+def patch_inv_relation(table: t.Literal["m", "g"], number: int):
     record = Record.load(number, table)
 
     # Abort if table or number was wrong:
@@ -1171,11 +1192,8 @@ def patch_inv_relation(table, number):
     errors, result = record.save_invrel_patch(data)
     if errors:
         response = {
-            'apiVersion': api_version,
-            'error': {
-                'message': errors[0]['message'],
-                'errors': errors
-            }
+            "apiVersion": api_version,
+            "error": {"message": errors[0]["message"], "errors": errors},
         }
         return jsonify(response), 400
 
