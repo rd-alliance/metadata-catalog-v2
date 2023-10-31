@@ -6,6 +6,8 @@ import tempfile
 import time
 
 import email_validator
+from flask import Flask
+from flask.testing import FlaskCliRunner, FlaskClient
 from passlib.apps import custom_app_context as pwd_context
 import pytest
 from requests.auth import _basic_auth_str
@@ -753,8 +755,30 @@ class UserDBActions(object):
             self._app.config['USER_DATABASE_PATH'])
 
 
+class AuthAPIActions(object):
+    def __init__(self, client, user_db):
+        self._client = client
+        self._username = user_db.api_users1.get('userid')
+        self._password = user_db.pwd1
+        self._token = ''
+        self._expiry = 0
+        user_db.write_db()
+
+    def get_token(self):
+        if time.time() > self._expiry:
+            credentials = _basic_auth_str(self._username, self._password)
+            self._expiry = time.time() + 595
+            response = self._client.get(
+                '/api2/user/token',
+                headers={"Authorization": credentials},
+                follow_redirects=True)
+            test_data = response.get_json()
+            self._token = test_data.get("token")
+        return self._token
+
+
 @pytest.fixture
-def app():
+def app() -> Flask:
     with tempfile.TemporaryDirectory() as inst_path:
         app = create_app({
             'TESTING': True,
@@ -779,56 +803,34 @@ def app():
         yield app
 
 
-class AuthAPIActions(object):
-    def __init__(self, client, user_db):
-        self._client = client
-        self._username = user_db.api_users1.get('userid')
-        self._password = user_db.pwd1
-        self._token = ''
-        self._expiry = 0
-        user_db.write_db()
-
-    def get_token(self):
-        if time.time() > self._expiry:
-            credentials = _basic_auth_str(self._username, self._password)
-            self._expiry = time.time() + 595
-            response = self._client.get(
-                '/api2/user/token',
-                headers={"Authorization": credentials},
-                follow_redirects=True)
-            test_data = response.get_json()
-            self._token = test_data.get("token")
-        return self._token
-
-
 @pytest.fixture
-def client(app):
+def client(app: Flask) -> FlaskClient:
     with app.test_client() as client:
         yield client
 
 
 @pytest.fixture
-def runner(app):
+def runner(app: Flask) -> FlaskCliRunner:
     return app.test_cli_runner()
 
 
 @pytest.fixture
-def auth(client, page):
+def auth(client: FlaskClient, page: PageActions):
     return AuthActions(client, page)
 
 
 @pytest.fixture
-def auth_api(client, user_db):
+def auth_api(client: FlaskClient, user_db: UserDBActions):
     return AuthAPIActions(client, user_db)
 
 
 @pytest.fixture
-def data_db(app):
+def data_db(app: Flask):
     return DataDBActions(app)
 
 
 @pytest.fixture
-def user_db(app):
+def user_db(app: Flask):
     return UserDBActions(app)
 
 

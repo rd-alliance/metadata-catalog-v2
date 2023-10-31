@@ -5,15 +5,18 @@ import time
 import typing as t
 
 from authlib.jose import jwt
+from flask import Flask
+from flask.testing import FlaskClient
 import pytest
 from requests.auth import _basic_auth_str
 
 import rdamsc.api2
+from tests.conftest import AuthAPIActions, DataDBActions, UserDBActions
 
 api_version = rdamsc.api2.api_version
 
 
-def test_main_get(client, data_db):
+def test_main_get(client: FlaskClient, data_db: DataDBActions):
 
     # Prepare database:
     data_db.write_db()
@@ -191,7 +194,7 @@ def test_main_get(client, data_db):
     assert json.dumps(ideal, sort_keys=True) == actual
 
 
-def test_term_get(client, data_db):
+def test_term_get(client: FlaskClient, data_db: DataDBActions):
 
     # Prepare term database:
     data_db.write_terms()
@@ -545,7 +548,7 @@ def test_parse_query():
             rdamsc.api2.parse_query(input)
 
 
-def test_main_search(client, data_db):
+def test_main_search(client: FlaskClient, data_db: DataDBActions):
     # Prepare database:
     data_db.write_db()
 
@@ -748,7 +751,7 @@ def test_main_search(client, data_db):
     assert result['error']['message'] == "Bad q parameter: Unmatched parentheses."
 
 
-def test_thesaurus(client, data_db):
+def test_thesaurus(client: FlaskClient, data_db: DataDBActions):
 
     # Test getting full scheme record
     ideal = {
@@ -1008,7 +1011,7 @@ def test_thesaurus(client, data_db):
         }]}
 
 
-def test_auth_api2(client, app, user_db):
+def test_auth_api2(client: FlaskClient, app: Flask, user_db: UserDBActions):
 
     # Generate expired token:
     old_token = jwt.encode(
@@ -1115,6 +1118,18 @@ def test_auth_api2(client, app, user_db):
     test_data = response.get_json()
     assert test_data.get('password_reset') is False
 
+    # Reset password: bad serialization
+    new_password = "Replacement password"
+    credentials = f"Bearer {token}"
+    response = client.post(
+        '/api2/user/reset-password',
+        headers={"Authorization": credentials},
+        json=["new_password", new_password],
+        follow_redirects=True)
+    assert response.status_code == 400
+    test_data = response.get_json()
+    assert test_data.get('password_reset') is False
+
     # Reset password: bad token
     credentials = f"Bearer GOBBLEDEGOOK"
     response = client.post(
@@ -1156,7 +1171,7 @@ def test_auth_api2(client, app, user_db):
     assert response.status_code == 200
 
 
-def test_main_write(client, auth_api, data_db):
+def test_main_write(client: FlaskClient, auth_api: AuthAPIActions, data_db: DataDBActions):
 
     available_records = set()
 
@@ -1921,7 +1936,7 @@ def test_main_write(client, auth_api, data_db):
 
 
 # Test suite for patch handling.
-def test_rel_patch(client, auth_api, data_db):
+def test_rel_patch(client: FlaskClient, auth_api: AuthAPIActions, data_db: DataDBActions):
 
     # Install terms
     data_db.write_terms()
@@ -2349,7 +2364,7 @@ def test_rel_patch(client, auth_api, data_db):
 
 
 # Test suite for editing DataTypes and VocabTerms.
-def test_term_write(client, auth_api, data_db):
+def test_term_write(client: FlaskClient, auth_api: AuthAPIActions, data_db: DataDBActions):
 
     # Test error on missing required field:
     record = data_db.get_apidata('datatype1')
