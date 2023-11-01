@@ -2913,7 +2913,9 @@ class VocabTerm(Document, metaclass=ABCMeta):
             return overlaps
 
         Q = Query()
-        for value, label, selected in self.get_form().applies.iter_choices():
+        for choice_bits in self.get_form().applies.iter_choices():
+            value = choice_bits[0]
+            selected = choice_bits[2]
             if is_save and not selected:
                 continue
             records = self.search((Q.id == id) & (Q.applies.any([value])))
@@ -3179,12 +3181,12 @@ class CheckboxSelect(widgets.Select):
     def __call__(self, field: Field, **kwargs) -> Markup:
         kwargs.setdefault("id", field.id)
         html = list()
-        for value, label, selected in field.iter_choices():
-            html.append(self.render_option(field, value, label, selected, **kwargs))
+        for choice_bits in field.iter_choices():
+            html.append(self.render_option(field, *choice_bits, **kwargs))
         return Markup("\n".join(html))
 
     def render_option(
-        self, field: Field, value: t.Any, label: str, selected: bool, **kwargs
+        self, field: Field, value: t.Any, label: str, selected: bool, *args, **kwargs
     ) -> Markup:
         if value is True:
             # Handle the special case of a 'True' value.
