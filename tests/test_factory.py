@@ -19,7 +19,7 @@ def test_bad_config():
     inst_path = '/'
 
     with pytest.raises(OSError):
-        app = create_app({
+        create_app({
             'TESTING': True,
             'MAIN_DATABASE_PATH': os.path.join(inst_path, 'data', 'db.json'),
             'VOCAB_DATABASE_PATH': os.path.join(inst_path, 'data', 'vocab.json'),

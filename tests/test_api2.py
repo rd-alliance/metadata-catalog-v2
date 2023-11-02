@@ -1131,7 +1131,7 @@ def test_auth_api2(client: FlaskClient, app: Flask, user_db: UserDBActions):
     assert test_data.get('password_reset') is False
 
     # Reset password: bad token
-    credentials = f"Bearer GOBBLEDEGOOK"
+    credentials = "Bearer GOBBLEDEGOOK"
     response = client.post(
         '/api2/user/reset-password',
         headers={"Authorization": credentials},
@@ -1178,7 +1178,7 @@ def test_main_write(client: FlaskClient, auth_api: AuthAPIActions, data_db: Data
     def assert_okay(response):
         data = response.get_json()
         if response.status_code != 200:
-            print(f"=====\nErrors:")
+            print("=====\nErrors:")
             print(data.get('error', dict()).get('errors'))
             print("=====")
         assert response.status_code == 200

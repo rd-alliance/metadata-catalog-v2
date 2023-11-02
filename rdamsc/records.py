@@ -1614,7 +1614,7 @@ class Record(Document, metaclass=ABCMeta):
                     t.update(delete(key), doc_ids=[rel_record.doc_id])
                 t.update(result, doc_ids=[rel_record.doc_id])
         else:
-            rel_id = rel.tb.insert(result)
+            rel.tb.insert(result)
 
         return (errors, result)
 
@@ -2009,7 +2009,7 @@ class Record(Document, metaclass=ABCMeta):
             if not isinstance(mscids, list):
                 v_errors.append(
                     {
-                        "message": f"Value must be a list of MSC IDs.",
+                        "message": "Value must be a list of MSC IDs.",
                         "location": f".{predicate}",
                     }
                 )
@@ -3630,8 +3630,8 @@ def get_safe_pad() -> int:
     if "safe_pad" not in g:
         safe_pad = 100
         data_db = get_data_db()
-        for t in data_db.tables():
-            tbl = data_db.table(t)
+        for tbl_name in data_db.tables():
+            tbl = data_db.table(tbl_name)
             while len(tbl) > safe_pad:
                 safe_pad *= 10
         g.safe_pad = 10 * safe_pad

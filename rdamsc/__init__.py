@@ -17,7 +17,7 @@ from github_webhook import Webhook
 # Local
 # -----
 from .records import VocabTerm
-from .utils import *
+from .utils import from_url_slug, has_day, is_list, to_url_slug, url_for_subject
 
 
 def create_app(test_config: t.Mapping[str, t.Any] = None) -> Flask:

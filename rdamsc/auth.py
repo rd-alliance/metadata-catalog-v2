@@ -234,7 +234,7 @@ class GoogleSignIn(OAuthSignIn):  # pragma: no cover
         oauth_info = r.json()
         access_token = oauth_info["access_token"]
         id_token = oauth_info["id_token"]
-        oauth_session = self.service.get_session(access_token)
+        self.service.get_session(access_token)
         try:
             idinfo = client.verify_id_token(id_token, self.consumer_id)
             if idinfo["iss"] not in [
@@ -470,7 +470,6 @@ class GitlabSignIn(OAuthSignIn):  # pragma: no cover
         )
         oauth_info = r.json()
         access_token = oauth_info["access_token"]
-        id_token = oauth_info["id_token"]
         oauth_session = self.service.get_session(access_token)
         idinfo = oauth_session.get(self.userinfo).json()
         return (

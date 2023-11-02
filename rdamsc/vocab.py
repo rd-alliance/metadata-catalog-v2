@@ -7,9 +7,9 @@ import typing as t
 
 # Non-standard
 # ------------
-from flask import current_app, g, url_for
+from flask import current_app, g
 from rdflib import Graph, Namespace, URIRef
-from rdflib.graph import _SubjectType, _PredicateType, _ObjectType
+from rdflib.graph import _SubjectType, _PredicateType
 from rdflib.namespace import SKOS, RDFS
 from tinydb import TinyDB, Query
 from tinydb.database import Document
@@ -253,7 +253,6 @@ class Thesaurus(object):
         URI of each ancestor and descendent term. Returns an empty list if term
         not recognised.
         """
-        Q = Query()
         uris = list()
 
         # Get base entry
