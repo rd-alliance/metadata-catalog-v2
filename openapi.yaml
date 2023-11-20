@@ -1672,6 +1672,9 @@ components:
         description:
           type: string
           description: "A few sentences describing the nature of the standard and for what it is meant to be used. If any of the information in the remainder of the record needs be clarified, perhaps because the reality is more nuanced than the coarse semantics provide for, then an explanation can be given here."
+        citation_docs:
+          type: string
+          description: "A few sentences describing how to cite datasets or digital objects described by this standard." 
         keywords:
           type: array
           description: "Keywords indicating the disciplinary scope of the scheme. Provide as few terms as possible to describe the subject areas in which the scheme is most used and useful. In some cases, it may be better to use a broader term even if not all of the available narrower terms apply."
@@ -1800,6 +1803,9 @@ components:
         description:
           type: string
           description: "A sentence or several describing the organization and its relevance to research data and metadata."
+        citation_docs:
+          type: string
+          description: "A few sentences describing the organization citation policy, useful for archives, digital repositories or standards body organizations" 
         types:
           type: array
           items:
