@@ -64,11 +64,10 @@ recommended you make the changes in the following order.
     new validators, and adjust the existing tests as necessary (e.g. to take
     account of new fields on conformance evaluations)
 
-
 ## Testing
 
-You should have your Python virtual environment set up as described in
-INSTALLATION.md.
+You should have your Python virtual environment set up as described in the
+[Installation Guide](INSTALLATION.md).
 
 Having activated the virtual environment, use the following command to run all
 the functional tests:
@@ -113,6 +112,7 @@ deactivate
 rm -r venv
 python3 -m venv venv
 . venv/bin/activate
+pip install wheel  # optional
 pip install -e .
 pip freeze | sed 's/==/~=/' | grep -vEe "^-e" > requirements.txt
 ```

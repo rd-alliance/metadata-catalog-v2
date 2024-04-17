@@ -2,7 +2,7 @@
 
 ## Pre-requisite software
 
-The Metadata Standards Catalog is written in [Python 3.8+], so as a first step
+The Metadata Standards Catalog is written in [Python 3].8+, so as a first step
 this will need to be installed on your machine. (It should work with Python 3.7
 as well, but this has not been tested recently. It will not work on earlier
 versions.)
@@ -45,6 +45,75 @@ are if you want to look up the documentation:
 
 
 ## Installation
+
+### Installing in a container using cloud-init
+
+A [YAML configuration] is provided to automate the process of initializing the
+Catalog in a Linux container. This is especially useful if you want to test how
+the code runs under a version of Python different from the one you have
+installed. These instructions use [LXD] but the equivalent steps should work
+with [Incus].
+
+[YAML configuration]: rdamsc-init.yaml
+[LXD]: https://canonical.com/lxd
+[Incus]: https://linuxcontainers.org/incus/
+[linuxcontainers public image server]: https://images.linuxcontainers.org
+
+ 1. Create a new container using an image that is Debian-based and supports
+    `cloud-init`. (If you are choosing from the [linuxcontainers public image
+    server], the ‘cloud’ variants support `cloud-init`.) An Ubuntu one is given
+    here as an example:
+
+    ```bash
+    lxc image list ubuntu:24.04
+    ```
+
+ 2. Configure the container using the [YAML configuration]:
+
+    ```bash
+    cat rdamsc-init.yaml | lxc config set rdamsc user.user-data -
+    ```
+
+ 3. Start the image, then log into it:
+
+    ```bash
+    lxc start rdamsc
+    lxc shell rdamsc
+    ```
+
+ 4. In the container's shell, check that the setup completed successfully:
+
+    ```bash
+    cloud-init status --wait
+    # Should end up saying "status: done"
+    ```
+
+    The automated installation simulates a production instance, including
+    the steps given below for running in production and implementing
+    maintenance mode.
+
+ 5. The testing apparatus is not automatically installed. To install it,
+    you will need to do a few final steps in the container's shell:
+
+    ```bash
+    cd ~rdamsc
+    sudo -su rdamsc
+    . venv/bin/activate
+    pip install -e ".[dev]"
+    # This would be a good point to run the test suite. When finished...
+    deactivate
+    exit
+    ```
+
+ 6. To remove the container, run these commands outside the container:
+
+    ```bash
+    lxc stop rdamsc
+    lxc delete rdamsc
+    ```
+
+
+### Installing manually
 
 Use `git clone` as normal to get a copy of this code folder where you want it on
 your file system, then enter the folder on the command line.
@@ -155,12 +224,12 @@ sudo usermod -aG rdamsc www-data
 sudo chown -R rdamsc:www-data /opt/rdamsc
 ```
 
-You should create an instance folder where the Catalog can keep its data. You
-could put it in `/var/rdamsc`:
+You should create an instance folder where the Catalog can keep its data. The
+canonical location would be `/var/opt/rdamsc` but you can choose another one:
 
 ```bash
-sudo mkdir /var/rdamsc
-sudo chown rdamsc:www-data /var/rdamsc
+sudo mkdir /var/opt/rdamsc
+sudo chown rdamsc:www-data /var/opt/rdamsc
 ```
 
 You can now switch to the `rdamsc` user:
@@ -174,7 +243,7 @@ assignment line in `rdamsc/__init__.py` to include the information:
 
 ```python
 # Create the app:
-app = Flask(__name__, instance_relative_config=True, instance_path='/var/rdamsc')
+app = Flask(__name__, instance_relative_config=True, instance_path='/var/opt/rdamsc')
 ```
 
 Commit this change so Git can reapply it over any other code changes. Doing
@@ -242,6 +311,8 @@ WSGIPassAuthorization On
 
     WSGIDaemonProcess rdamsc user=rdamsc group=rdamsc threads=5 python-home=/opt/rdamsc/venv
     WSGIScriptAlias / /srv/rdamsc/rdamsc.wsgi
+
+    AllowEncodedSlashes NoDecode
 
     <Directory /srv/rdamsc>
         WSGIProcessGroup rdamsc

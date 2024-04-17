@@ -11,6 +11,12 @@ from tests.conftest import PageActions
 
 
 def test_config():
+    """This test creates or accesses the currently configured (real)
+    instance directory, to cover the code that does this in the absence
+    of an argument to `create_app`. The app objects are immediately
+    discarded so that the tests do not affect real data. Note that the
+    test will fail if the default instance location is not writeable.
+    """
     assert not create_app().testing
     assert create_app({'TESTING': True}).testing
 
@@ -167,7 +173,17 @@ def test_hello(app: Flask, client: FlaskClient, page: PageActions):
     )
 
 
-def test_terms_of_use(client: FlaskClient, page: PageActions):
+def test_static_pages(client: FlaskClient, page: PageActions):
+    response = client.get('/Accessibility')
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.assert_contains("<h1>Accessibility statement</h1>", html)
+
+    response = client.get('/scope')
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.assert_contains("<h1>Scope of the Catalog</h1>", html)
+
     response = client.get('/terms-of-use')
     assert response.status_code == 200
     html = response.get_data(as_text=True)

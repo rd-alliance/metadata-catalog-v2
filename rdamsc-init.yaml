@@ -1,0 +1,90 @@
+#cloud-config
+timezone: Europe/London
+package_upgrade: true
+packages:
+- apache2
+- libapache2-mod-wsgi-py3
+- python3-venv
+- uuid
+write_files:
+- content: |
+    WSGIPassAuthorization On
+
+    <VirtualHost *:80>
+        ServerName rdamsc.example.com
+
+        Alias /maintenance.html /srv/rdamsc/maintenance.html
+
+        WSGIDaemonProcess rdamsc user=rdamsc group=rdamsc threads=5 python-home=/opt/rdamsc/venv
+        WSGIScriptAlias / /srv/rdamsc/rdamsc.wsgi
+
+        AllowEncodedSlashes NoDecode
+
+        <Directory /srv/rdamsc>
+            WSGIProcessGroup rdamsc
+            WSGIApplicationGroup %{GLOBAL}
+            Require all granted
+        </Directory>
+
+        <IfDefine Maintenance>
+            ErrorDocument 503 /maintenance.html
+
+            # Set Retry-After on error pages:
+            Header always set Retry-After 7200
+            Header onsuccess unset Retry-After
+
+            RewriteEngine on
+            RewriteMap exceptions txt:/srv/rdamsc/exceptions.map
+
+            # Allow individual IP addresses through:
+            RewriteCond ${exceptions:%{REMOTE_ADDR}} =OK
+            RewriteRule ^ - [L]
+
+            # Otherwise redirect all traffic to the maintenance page:
+            RewriteCond %{REQUEST_URI} !=/maintenance.html
+            RewriteRule ^ - [R=503,L]
+        </IfDefine>
+
+        <IfDefine !Maintenance>
+            # Redirect requests for maintenance page to home page:
+            RewriteEngine on
+            RewriteRule ^/maintenance.html$ / [R,L]
+        </IfDefine>
+    </VirtualHost>
+  path: /etc/apache2/sites-available/rdamsc.conf
+- content: |
+    #!/usr/bin/env bash
+    cd ~rdamsc
+    . venv/bin/activate
+    pip install --upgrade pip
+    pip install wheel
+    pip install -e .
+  path: /tmp/install-rdamsc.sh
+  permissions: '0755'
+runcmd:
+- adduser --system --group --home=/opt/rdamsc rdamsc
+- usermod -aG www-data rdamsc
+- usermod -aG rdamsc www-data
+- chown -R rdamsc:www-data /opt/rdamsc
+- mkdir -p /var/opt/rdamsc
+- chown rdamsc:www-data /var/opt/rdamsc
+- echo "SECRET_KEY = '$(uuid)'" >> /var/opt/rdamsc/config.py
+- echo "WSGI_PATH = '/srv/rdamsc/rdamsc.wsgi'" >> /var/opt/rdamsc/config.py
+- echo "WEBHOOK_SECRET = '$(uuid)'" >> /var/opt/rdamsc/config.py
+- chown rdamsc:www-data /var/opt/rdamsc/config.py
+- cd ~rdamsc
+- sudo -u rdamsc git clone https://github.com/rd-alliance/metadata-catalog-v2.git .
+- sudo -u rdamsc git config --global user.name "RDA MSCWG"
+- sudo -u rdamsc git config --global user.email "rdamsc@localhost"
+- sudo -u rdamsc sed -i -E 's/instance_relative_config=True/instance_relative_config=True, instance_path="\/var\/opt\/rdamsc"/' rdamsc/__init__.py
+- sudo -u rdamsc git add rdamsc/__init__.py
+- sudo -u rdamsc git commit -m "Update production instance path"
+- sudo -u rdamsc python3 -m venv venv
+- sudo -u rdamsc /tmp/install-rdamsc.sh
+- mkdir /srv/rdamsc
+- chown rdamsc:www-data /srv/rdamsc
+- sudo -u rdamsc cp srv/*.* /srv/rdamsc
+- a2enmod rewrite
+- a2ensite rdamsc
+- a2dissite 000-default
+- systemctl restart apache2
