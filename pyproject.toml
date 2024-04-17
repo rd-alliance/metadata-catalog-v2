@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rdamsc"
+version = "2.1.0"
+description = "RDA Metadata Standards Catalog"
+readme = "README.md"
+requires-python = ">= 3.8"
+dependencies = [
+    "authlib",
+    "dulwich",
+    "email_validator",
+    "flask",
+    "flask-cors",
+    "flask-httpauth",
+    "flask-login",
+    "Flask-OpenID",
+    "Flask-WTF",
+    "github-webhook",
+    "oauth2client",
+    "passlib",
+    "rauth",
+    "rdflib",
+    "tinydb>=4",
+    "tinyrecord>=0.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "coverage",
+    "pytest",
+]
+
+[tool.setuptools]
+packages = ["rdamsc"]
