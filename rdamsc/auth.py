@@ -532,6 +532,51 @@ class OrcidSignIn(OAuthSignIn):  # pragma: no cover
         return (self.provider_name + "$" + orcid, oauth_info.get("name"), email)
 
 
+class WicketSignIn(OAuthSignIn):  # pragma: no cover
+    def __init__(self):
+        super(WicketSignIn, self).__init__("wicket")
+        self.formatted_name = "RDA"
+        self.icon = "fas fa-key"
+        self.service = OAuth2Service(
+            name=self.provider_name,
+            client_id=self.consumer_id,
+            client_secret=self.consumer_secret,
+            authorize_url="https://rda-login.staging.wicketcloud.com/oauth2.0/authorize",
+            access_token_url="https://rda-login.staging.wicketcloud.com/oauth2.0/accessToken",
+            base_url="https://rda-login.staging.wicketcloud.com/oauth2.0/",
+        )
+
+    def authorize(self):
+        return redirect(
+            self.service.get_authorize_url(
+                response_type="code", redirect_uri=self.get_callback_url()
+            )
+        )
+
+    def callback(self) -> t.Tuple[t.Optional[str], t.Optional[str], t.Optional[str]]:
+        if "code" not in request.args:
+            return (None, None, None)
+        r = self.service.get_raw_access_token(
+            method="POST",
+            data={
+                "code": request.args["code"],
+                "grant_type": "authorization_code",
+                "redirect_uri": self.get_callback_url(),
+            },
+        )
+        oauth_info = r.json()
+        access_token = oauth_info["access_token"]
+        oauth_session = self.service.get_session(access_token)
+        idinfo = oauth_session.get("profile").json()
+        name = idinfo.get("name", idinfo.get("attributes", {}).get("name"))
+        email = idinfo.get("email", idinfo.get("attributes", {}).get("email"))
+        return (
+            self.provider_name + "$" + idinfo["id"],
+            name,
+            email,
+        )
+
+
 # Form components
 # ===============
 class LoginForm(FlaskForm):
