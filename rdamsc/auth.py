@@ -41,7 +41,9 @@ werkzeug.urls.url_quote = urllib.parse.quote
 
 from flask_openid import OpenID, OpenIDResponse
 from flask_wtf import FlaskForm
-from oauth2client import client, crypt
+import google.auth.transport.requests as google_requests
+import google.auth.exceptions as google_exceptions
+from google.oauth2 import id_token as google_id_token
 from rauth import OAuth1Service, OAuth2Service
 import requests
 from tinydb import TinyDB, Query
@@ -234,15 +236,11 @@ class GoogleSignIn(OAuthSignIn):  # pragma: no cover
         oauth_info = r.json()
         access_token = oauth_info["access_token"]
         id_token = oauth_info["id_token"]
-        self.service.get_session(access_token)
+        oauth_session = self.service.get_session(access_token)
+        r = google_requests.Request(oauth_session)
         try:
-            idinfo = client.verify_id_token(id_token, self.consumer_id)
-            if idinfo["iss"] not in [
-                "accounts.google.com",
-                "https://accounts.google.com",
-            ]:
-                raise crypt.AppIdentityError("Wrong issuer.")
-        except crypt.AppIdentityError as e:
+            idinfo = google_id_token.verify_oauth2_token(id_token, r, self.consumer_id)
+        except google_exceptions.GoogleAuthError as e:
             print(e)
             return (None, None, None)
         return (

@@ -19,7 +19,7 @@ dependencies = [
     "Flask-OpenID",
     "Flask-WTF",
     "github-webhook",
-    "oauth2client",
+    "google-auth",
     "passlib",
     "rauth",
     "rdflib",

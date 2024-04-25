@@ -174,7 +174,7 @@ def test_hello(app: Flask, client: FlaskClient, page: PageActions):
 
 
 def test_static_pages(client: FlaskClient, page: PageActions):
-    response = client.get('/Accessibility')
+    response = client.get('/accessibility')
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     page.assert_contains("<h1>Accessibility statement</h1>", html)
