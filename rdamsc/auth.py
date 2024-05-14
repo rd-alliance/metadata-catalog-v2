@@ -569,9 +569,36 @@ class WicketSignIn(OAuthSignIn):  # pragma: no cover
         oauth_info = r.json()
         access_token = oauth_info["access_token"]
         oauth_session = self.service.get_session(access_token)
-        idinfo = oauth_session.get("profile").json()
-        name = idinfo.get("name", idinfo.get("attributes", {}).get("name"))
-        email = idinfo.get("email", idinfo.get("attributes", {}).get("email"))
+        idinfo: dict = oauth_session.get("profile").json()
+        user_attr: dict = idinfo.get("attributes", dict())
+
+        # Sense check for debugging:
+        if user_attr:
+            missing = list()
+            for field in ["givenName", "familyName", "email"]:
+                if field not in user_attr:
+                    missing.append(field)
+            if missing:
+                current_app.logger.warn(
+                    "Wicket idinfo missing '"
+                    + "', '".join([f"attributes.{v}" for v in missing])
+                    + "' key; found '"
+                    + "', '".join([f"attributes.{k}" for k in user_attr.keys()])
+                    + "'"
+                )
+        else:
+            current_app.logger.warn(
+                "Wicket idinfo missing 'attributes' key; found '"
+                + "', '".join(idinfo.keys())
+                + "'"
+            )
+
+        name_parts = list()
+        for part in ["givenName", "familyName"]:
+            if name_part := user_attr.get(part):
+                name_parts.append(name_part)
+        name = " ".join(name_parts) if name_parts else None
+        email = user_attr.get("email")
         return (
             self.provider_name + "$" + idinfo["id"],
             name,
