@@ -3,18 +3,29 @@
 {% block title %}Sign in{% endblock %}
 {% block main %}
   <p>In order to contribute changes to the Catalog, you must sign in.</p>
+  {% if main_providers %}
+  <ul class="list-inline d-flex justify-content-around align-content-center flex-wrap">
+    {% for p in main_providers %}
+    <li class="list-inline-item my-1"><a class="btn btn-outline-primary" href="{{ url_for('auth.oauth_authorize', provider=p['slug']) }}">{% if p['icon'] %}<span class="{{ p['icon'] }}"></span>&ensp;{% endif %}Sign in with {{ p['name'] }}</a></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
   {% if providers %}
-  <p>You can sign in with one of these OpenID Connect providers:</p>
+  <p>You can {% if main_providers %}also {% endif %}sign in with one of these identity providers:</p>
   <ul class="list-inline d-flex justify-content-around align-content-center flex-wrap">
     {% for p in providers %}
     <li class="list-inline-item my-1"><a class="btn btn-outline-primary" href="{{ url_for('auth.oauth_authorize', provider=p['slug']) }}">{% if p['icon'] %}<span class="{{ p['icon'] }}"></span>&ensp;{% endif %}Sign in with {{ p['name'] }}</a></li>
     {% endfor %}
   </ul>
   {% endif %}
-  <p>{% if providers %}Alternatively, you can{% else %}Please{% endif %} sign in through the Research Data Alliance website.
-    To find the URL for your OpenID account, log in to the (old) Research Data Alliance
-    website and view your own profile. Take the URL of that page and add
+  <p>{% if providers %}Alternatively, you can{% else %}Please{% endif %} sign in through the archived Research Data Alliance website.
+    To find the URL for your OpenID account, log in to the archived website and
+    view your own profile. Take the URL of that page and add
     <code>/openid</code>.</p>
+  <div class="alert alert-msg alert-warning alert-dismissible fade show" role="alert">
+    <p class="mb-0">Signing in via OpenID v2 is deprecated and will be removed soon.</p>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
   <p>
     <form action="{{ url_for('auth.login') }}" method=post>
       {{ form.hidden_tag() }}
@@ -31,33 +42,10 @@
       {{ errors(form.openid) }}
     </form>
   </p>
-  <p>If you have an account with another OpenID v2 provider, you can use that
-    instead. Please consult your provider's documentation for the right URL to
-    use; some known URL patterns are provided below.</p>
   <dl class="dl-striped">
     <div class="row">
-      <dt class="col-md-5 col-lg-4">Research Data Alliance</dt>
+      <dt class="col-md-5 col-lg-4">Example</dt>
       <dd class="col-md-7 col-lg-8"><code>https://archive.rd-alliance.org/users/</code>(username)<code>/openid</code></dd>
-    </div>
-    <div class="row">
-      <dt class="col-md-5 col-lg-4">AOL</dt>
-      <dd class="col-md-7 col-lg-8"><code>https://openid.aol.com/</code>(screenname)</dd>
-    </div>
-    <div class="row">
-      <dt class="col-md-5 col-lg-4">Launchpad/Ubuntu One</dt>
-      <dd class="col-md-7 col-lg-8"><code>https://launchpad.net/~</code>(username)</dd>
-    </div>
-    <div class="row">
-      <dt class="col-md-5 col-lg-4">LiveJournal</dt>
-      <dd class="col-md-7 col-lg-8"><code>https://</code>(username)<code>.livejournal.com/</code></dd>
-    </div>
-    <div class="row">
-      <dt class="col-md-5 col-lg-4">Steam</dt>
-      <dd class="col-md-7 col-lg-8"><code>https://steamcommunity.com/openid/id/</code>(64-character ID)</dd>
-    </div>
-    <div class="row">
-      <dt class="col-md-5 col-lg-4">WordPress</dt>
-      <dd class="col-md-7 col-lg-8"><code>https://</code>(blog)<code>.wordpress.com/</code></dd>
     </div>
   </dl>
 {% endblock %}

@@ -73,6 +73,7 @@ class OAuthSignIn(object):
 
     def __init__(self, provider_name: str):
         self.provider_name = provider_name
+        self.main = False
         if "OAUTH_CREDENTIALS" not in current_app.config:
             print(
                 "WARNING: OAuth authentication will not work without secret"
@@ -536,14 +537,15 @@ class WicketSignIn(OAuthSignIn):  # pragma: no cover
     def __init__(self):
         super(WicketSignIn, self).__init__("wicket")
         self.formatted_name = "RDA"
+        self.main = True
         self.icon = "fas fa-key"
         self.service = OAuth2Service(
             name=self.provider_name,
             client_id=self.consumer_id,
             client_secret=self.consumer_secret,
-            authorize_url="https://rda-login.staging.wicketcloud.com/oauth2.0/authorize",
-            access_token_url="https://rda-login.staging.wicketcloud.com/oauth2.0/accessToken",
-            base_url="https://rda-login.staging.wicketcloud.com/oauth2.0/",
+            authorize_url="https://rda-login.wicketcloud.com/oauth2.0/authorize",
+            access_token_url="https://rda-login.wicketcloud.com/oauth2.0/accessToken",
+            base_url="https://rda-login.wicketcloud.com/oauth2.0/",
         )
 
     def authorize(self):
@@ -580,7 +582,7 @@ class WicketSignIn(OAuthSignIn):  # pragma: no cover
 # Form components
 # ===============
 class LoginForm(FlaskForm):
-    openid = StringField("OpenID URL", validators=[validators.URL()])
+    openid = StringField("OpenID v2 URL", validators=[validators.URL()])
 
 
 class ProfileForm(FlaskForm):
@@ -640,6 +642,7 @@ def login():
     error = oid.fetch_error()
     if error:  # pragma: no cover
         flash(error, "error")
+    main_providers = list()
     providers = list()
     if "OAUTH_CREDENTIALS" in current_app.config:
         for provider_class in OAuthSignIn.__subclasses__():
@@ -654,10 +657,17 @@ def login():
             }
             if hasattr(provider, "icon"):
                 provider_details["icon"] = provider.icon
-            providers.append(provider_details)
+            if provider.main:
+                main_providers.append(provider_details)
+            else:
+                providers.append(provider_details)
         providers.sort(key=lambda k: k["slug"])
     return render_template(
-        "login.html", form=form, providers=providers, next=oid.get_next_url()
+        "login.html",
+        form=form,
+        main_providers=main_providers,
+        providers=providers,
+        next=oid.get_next_url(),
     )
 
 
