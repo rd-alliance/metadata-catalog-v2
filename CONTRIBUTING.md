@@ -137,10 +137,10 @@ requirements can be updated immediately afterwards.
 
 ### Dependency notes
 
-There are a couple of dependencies that are blocking updates:
+Python3-openid <= v3.2.0 uses an ElementTree implementation from defusedxml that
+has since been deprecated. There is a workaround in `rdamsc/auth.py` to use the
+non-deprecated implementation instead.
 
-- Flask-WTF v1.1.1 depends on Flask < 2.4 (wtforms/flask-wtf#561)
-- Flask-Login v0.6.2 depends on Werkzeug < 2.4 (maxcountryman/flask-login#744)
-
-When these issues have been resolved, the version limits on Flask and Werkzeug
-can be removed.
+There is also a pull request to solve this issue upstream
+(necaris/python3-openid#64); if and when this makes it into a new release,
+the workaround can be removed.

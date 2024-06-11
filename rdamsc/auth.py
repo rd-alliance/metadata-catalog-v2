@@ -33,12 +33,6 @@ import openid.oidutil
 
 openid.oidutil.xxe_safe_elementtree_modules = ["defusedxml.ElementTree"]
 
-# The following three statements fix an issue in flask-openid v1.3.0,
-# https://github.com/pallets-eco/flask-openid/issues/70
-import urllib.parse
-import werkzeug.urls
-werkzeug.urls.url_quote = urllib.parse.quote
-
 from flask_openid import OpenID, OpenIDResponse
 from flask_wtf import FlaskForm
 import google.auth.transport.requests as google_requests
