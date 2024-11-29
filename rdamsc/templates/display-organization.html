@@ -24,6 +24,10 @@
     </ul>
   </div>
   {% endif %}
+  {% if 'citation_docs' in record %}
+  <h2>Citation Documentation</h2>
+  <div class="citation_docs">{{ record['citation_docs']|safe }}</div>
+  {% endif %}
   {% if related_schemes %}
   <div class="schemes">
     <h2>Related metadata standards</h2>

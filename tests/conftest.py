@@ -53,6 +53,7 @@ class DataDBActions(object):
             "title": "Test scheme 1",
             "slug": "test-scheme-1",
             "description": "Description without tags.",
+            "citation_docs": "Citations practices without tags.",
             "keywords": [
                 "http://rdamsc.bath.ac.uk/thesaurus/subdomain235",
                 "http://vocabularies.unesco.org/thesaurus/concept4011"],
@@ -77,6 +78,8 @@ class DataDBActions(object):
             "slug": "test-scheme-2",
             "description": "<p>Paragraph 1.</p>"
                            "<p><a href=\"https://m.us/\">Paragraph</a> 2.</p>",
+            "citation_docs": "<p>Paragraph 1.</p>"
+                           "<p><a href=\"https://c.us/\">Paragraph</a> 2.</p>",
             "keywords": [
                 "http://rdamsc.bath.ac.uk/thesaurus/subdomain235",
                 "http://vocabularies.unesco.org/thesaurus/concept4011"],
@@ -222,6 +225,7 @@ class DataDBActions(object):
         self.g1 = {
             "name": "Organization 1",
             "slug": "organization-1",
+            "citation_docs": "<p>Paragraph 1.</p><p>Paragraph 2.</p>",
             "description": "<p>Paragraph 1.</p><p>Paragraph 2.</p>",
             "types": ["standards body"],
             "locations": [

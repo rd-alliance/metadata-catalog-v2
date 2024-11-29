@@ -40,6 +40,10 @@
     </ul>
   </div>
   {% endif %}
+  {% if 'citation_docs' in record %}
+  <h2>Citation Documentation</h2>
+  <div class="citation_docs">{{ record['citation_docs']|safe }}</div>
+  {% endif %}
   {% if 'maintainers' in relations or 'funders' in relations %}
   <div class="organizations">
     <h2>Responsible organizations</h2>

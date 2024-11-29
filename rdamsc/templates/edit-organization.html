@@ -23,6 +23,15 @@
           standards.</li>
       </ul>
     </div>
+    <div class="form-group{{ state(form.citation_docs) }}">
+      {{ form.citation_docs.label(class="form-label") }}
+      {{ form.citation_docs(class="form-control") }}
+      {{ errors(form.citation_docs) }}
+      <ul class="form-text text-muted">
+        <li>Insert references about citations
+        </li>
+      </ul>
+    </div>
     <div class="form-group{{ state(form.types) }}">
       {{ form.types.label(class="form-label") }}
       {{ form.types(class="form-control w-auto mw-100") }}
