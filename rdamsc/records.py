@@ -3149,6 +3149,42 @@ class RequiredIf(object):
                 field.errors[:] = []
                 raise validators.StopValidation(message)
 
+class ValuesDistinctFrom(object):
+    """A validator for SelectMultipleField that requires that all values
+    are distinct from the values in another SelectMultipleField."""
+
+    def __init__(
+        self,
+        other_field: str,
+        message: str = None,
+    ):
+        self.other_field_name = other_field
+        self.message = message
+
+    def __call__(self, form: Form, field: Field):
+        other_field = form._fields.get(self.other_field_name)
+        if other_field is None:
+            raise Exception('No field named "{}" in form'.format(self.other_field_name))
+        if field.data is None:
+            return
+        other_values = other_field.data
+        if other_values is None:
+            return
+        duplicates = list()
+        assert hasattr(field, "choices")
+        ui_values = {v[0]: v[1] for v in field.choices} if field.choices else dict()
+        for data in field.data:
+            if data in other_values:
+                ui_value = ui_values.get(data, data)
+                duplicates.append(ui_value)
+        if not duplicates:
+            return
+        message = self.message or field.gettext(
+            "You cannot specify {} both here and under {}."
+        )
+        dups_quoted = "‘" + "’, ‘".join(duplicates) + "’"
+        raise validators.StopValidation(message.format(dups_quoted, other_field.label))
+
 
 class W3CDate(validators.Regexp):
     """Validates a W3C-formatted year, month or date syntactically, but does
@@ -3161,14 +3197,14 @@ class W3CDate(validators.Regexp):
             r"(?P<month>-0[1-9]|-1[0-2])?"
             r"(?(month)(?P<day>-0[1-9]|-[1-2][0-9]|-3[0-1])?)$"
         )
-        super(W3CDate, self).__init__(pattern, message=message)
+        super().__init__(pattern, message=message)
 
     def __call__(self, form: Form, field: Field):
-        message = self.message
-        if message is None:
-            message = field.gettext("Please provide the date in yyyy-mm-dd format.")
+        message = self.message or field.gettext(
+            "Please provide the date in yyyy-mm-dd format."
+        )
 
-        super(W3CDate, self).__call__(form, field, message)
+        super().__call__(form, field, message)
 
 
 # Custom widgets
@@ -3339,10 +3375,17 @@ class SchemeForm(FlaskForm):
         FormField(IdentifierForm), "Identifiers for this scheme", min_entries=1
     )
     parent_schemes = SelectRelatedField(
-        "Parent metadata schemes", Scheme, description="parent schemes"
+        "Parent metadata schemes",
+        Scheme,
+        description="parent schemes",
+        validators=[ValuesDistinctFrom("child_schemes")],
     )
     child_schemes = SelectRelatedField(
-        "Profiles of this scheme", Scheme, description="parent schemes", inverse=True
+        "Profiles of this scheme",
+        Scheme,
+        description="parent schemes",
+        inverse=True,
+        validators=[ValuesDistinctFrom("parent_schemes")],
     )
     input_to_mappings = SelectRelatedField(
         "Mappings that take this scheme as input",

@@ -7,6 +7,8 @@ def test_create_view_records(client, auth, app, page, data_db):
     # Prepare term database:
     data_db.write_terms()
 
+    ## Using m1 ##
+
     # Test CSRF error message:
     m1 = data_db.get_formdata('m1')
     response = client.post('/edit/m0', data=m1, follow_redirects=True)
@@ -113,6 +115,8 @@ def test_create_view_records(client, auth, app, page, data_db):
         orig['slug'] = 'test-scheme-1'
         assert orig == entry
 
+    ## Using None ##
+
     # Test redirection for bad numbers:
     response = client.get('/edit/m12', follow_redirects=True)
     html = response.get_data(as_text=True)
@@ -120,6 +124,8 @@ def test_create_view_records(client, auth, app, page, data_db):
     page.assert_contains(
         "You are trying to update a record that doesn't exist.")
     page.assert_contains("Add new metadata scheme")
+
+    ## Using m2 ##
 
     # Test stripping out bad tags:
     m2 = data_db.get_formdata('m2')
@@ -142,6 +148,28 @@ def test_create_view_records(client, auth, app, page, data_db):
         del orig['versions']
         orig['slug'] = 'test-scheme-2'
         assert orig == entry
+
+    # Test ValuesDistinctFrom validator (blocking circular relationships):
+    response = client.get("/edit/m2", follow_redirects=True)
+    html = response.get_data(as_text=True)
+    page.read(html)
+    m2 = data_db.get_formdata("m2")
+    m2.update(page.get_all_hidden())
+    m2.setlist("parent_schemes", ["msc:m1"])
+    m2.setlist("child_schemes", ["msc:m1"])
+    response = client.post("/edit/m2", data=m2, follow_redirects=True)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains("there were 2 errors")
+    page.assert_contains(
+        "You cannot specify ‘Test scheme 1’ both here and under "
+        '<label for="child_schemes'
+    )
+    page.assert_contains(
+        "You cannot specify ‘Test scheme 1’ both here and under "
+        '<label for="parent_schemes'
+    )
 
     # Test normal version addition screen:
     response = client.get('/edit/m2/add')
@@ -213,6 +241,8 @@ def test_create_view_records(client, auth, app, page, data_db):
         orig['slug'] = 'test-scheme-2'
         assert orig == entry
 
+    ## Using t1 ##
+
     # Test presentation of name, no fullName:
     response = client.get('/edit/t0')
     assert response.status_code == 200
@@ -235,6 +265,8 @@ def test_create_view_records(client, auth, app, page, data_db):
         orig['slug'] = 'test-tool-1'
         assert orig == entry
 
+    ## Using None ##
+
     # Test redirection for bad number and non-existent version:
     response = client.get('/edit/t12/3', follow_redirects=True)
     assert response.status_code == 200
@@ -243,6 +275,8 @@ def test_create_view_records(client, auth, app, page, data_db):
     page.assert_contains(
         "You are trying to update a record that doesn't exist.")
     page.assert_contains("Add new tool")
+
+    ## Using t2 ##
 
     t2 = data_db.get_formdata('t2')
     t2.update(page.get_all_hidden())
@@ -260,6 +294,8 @@ def test_create_view_records(client, auth, app, page, data_db):
         orig = json.loads(json.dumps(data_db.t2))
         orig['slug'] = 'test-tool-2'
         assert orig == entry
+
+    ## Using c1 ##
 
     # Test presentation of fullName, familyName, givenName:
     response = client.get('/edit/c0')
@@ -284,9 +320,13 @@ def test_create_view_records(client, auth, app, page, data_db):
         orig['slug'] = 'test-crosswalk-1'
         assert orig == entry
 
+    ## Using None
+
     # Test redirection for version route for unversioned series:
     response = client.get('/edit/g12/1', follow_redirects=True)
     assert response.status_code == 404
+
+    ## Using g1 ##
 
     response = client.get('/edit/g0')
     assert response.status_code == 200
@@ -320,6 +360,8 @@ def test_create_view_records(client, auth, app, page, data_db):
         orig['slug'] = 'organization-1'
         assert orig == entry
 
+    ## Using e1 ##
+
     # Test adding record with relations:
     response = client.get('/edit/e0')
     html = response.get_data(as_text=True)
@@ -331,9 +373,9 @@ def test_create_view_records(client, auth, app, page, data_db):
     e1.pop('valid-start')
     e1.pop('valid-end')
     endorsed_schemes = e1.poplist('endorsed_schemes')
-    endorsed_schemes.pop()
-    for s in endorsed_schemes:
-        e1.add('endorsed_schemes', s)
+    assert len(endorsed_schemes) > 0
+    s = endorsed_schemes[0]
+    e1.add("endorsed_schemes", s)
     response = client.post('/edit/e0', data=e1, follow_redirects=True)
     html = response.get_data(as_text=True)
     page.assert_contains("Successfully added record.", html)
@@ -381,6 +423,8 @@ def test_create_view_records(client, auth, app, page, data_db):
         rel_orig = json.loads(json.dumps(data_db.rel1))
         assert rel_orig == rel_entry
 
+    ## Using c2 ##
+
     # Test generation of name/slug for mappings:
     response = client.get('/edit/c0')
     html = response.get_data(as_text=True)
@@ -406,6 +450,8 @@ def test_create_view_records(client, auth, app, page, data_db):
         rel_entry = db.get('rel', dict()).get('2', dict())
         rel_orig = json.loads(json.dumps(data_db.rel2))
         assert rel_orig == rel_entry
+
+    ## Using g1 ##
 
     # Get group update form:
     response = client.get('/edit/g1')
@@ -460,6 +506,8 @@ def test_create_view_records(client, auth, app, page, data_db):
         rel_entry = db.get('rel', dict()).get('3', dict())
         rel_orig = json.loads(json.dumps(data_db.rel3))
         assert rel_orig == rel_entry
+
+    ## Using e1 ##
 
     # Test removing forward relationships:
     response = client.get('/edit/e1')
