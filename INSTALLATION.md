@@ -407,7 +407,10 @@ OAUTH_CREDENTIALS = {
 ```
 
 I have registered a set of these for use in the official instance at
-<https://rdamsc.bath.ac.uk>.
+<https://rdamsc.bath.ac.uk>. If you want to be able to log into an instance
+hosted elsewhere, you will have to register that instance separately with one
+of the supported providers. You should be able to register instances running
+on localhost (127.0.0.1) for testing purposes.
 
 
 ### Database files
