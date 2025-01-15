@@ -209,7 +209,8 @@ def scheme_search():
         title_set.add(scheme.name)
         for type_id in scheme.get("dataTypes", list()):
             type = Datatype.load_by_mscid(type_id)
-            type_set.add(type.get("label"))
+            if type:
+                type_set.add(type.get("label"))
         for group in rel.object_records(predicate="funders"):
             funder_set.add(group.name)
         for id in scheme.get("identifiers", list()):
