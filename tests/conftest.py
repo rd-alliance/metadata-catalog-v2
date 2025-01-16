@@ -641,6 +641,14 @@ class DataDBActions(object):
         with open(db_file, 'w') as f:
             json.dump(db, f, indent=1, ensure_ascii=False)
 
+    def write_bad_db1(self) -> None:
+        """Writes main database file with a high-level reciprocal parent
+        relationship."""
+        self.rel3["parent schemes"] = ["msc:m2"]
+        self._tables_to_file(
+            ["m", "t", "c", "g", "e", "rel"], self._app.config["MAIN_DATABASE_PATH"]
+        )
+
     def write_bad_db2(self) -> None:
         """Writes main database file with a low-level reciprocal parent
         relationship."""

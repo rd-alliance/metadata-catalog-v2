@@ -86,7 +86,6 @@ def test_bad_record_index(
     """Tests handling of infinite loops."""
 
     data_db.write_bad_db2()
-
     response = client.get('/scheme-index')
     assert response.status_code == 200
     html = response.get_data(as_text=True)
@@ -97,6 +96,18 @@ def test_bad_record_index(
     page.assert_contains(
         '  ' * 7 +
         '<a class="nav-link" href="/msc/m3">Test scheme 3</a>')
+
+    data_db.write_bad_db1()
+    response = client.get("/scheme-index")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    page.read(html)
+    page.assert_contains(
+        "  " * 3 + '<a class="nav-link" href="/msc/m1">Test scheme 1</a>'
+    )
+    page.assert_contains(
+        "  " * 3 + '<a class="nav-link" href="/msc/m2">Test scheme 2</a>'
+    )
 
 
 def test_subject_index(client: FlaskClient, page: PageActions, data_db: DataDBActions):

@@ -28,15 +28,31 @@ RoleLabel = t.Literal[
 
 
 def get_scheme_tree(
-    records: t.List[Scheme], seen_so_far: t.List[str] = None
+    records: t.List[Scheme],
+    descendent_ids: t.Optional[t.Set[str]] = None,
+    seen_so_far: t.Optional[t.List[str]] = None,
 ) -> t.List[t.Dict[str, t.Union[str, list]]]:
     """Takes list of parent schemes and returns tree suitable for use with the
-    contents template."""
-    records.sort(key=lambda k: k.name.lower())
+    contents template.
+
+    If provided, populates `descendent_ids` with the MSCIDs of all records
+    descending from the given list of parent schemes.
+    """
+    if descendent_ids is None:
+
+        def add_children(__: t.List[Record]):
+            pass
+    else:
+
+        def add_children(children: t.List[Record]):
+            for child in children:
+                descendent_ids.add(child.mscid)
+
     if seen_so_far is None:
         seen_so_far = list()
     tree = list()
     rel = Relation()
+    records.sort(key=lambda k: k.name.lower())
     for record in records:
         if record.mscid in seen_so_far:
             print(
@@ -44,11 +60,14 @@ def get_scheme_tree(
             )
             return tree
         children = rel.subject_records("parent schemes", record.mscid)
+        add_children(children)
         node = {
             "name": record.name,
             "url": url_for("main.display", table=record.table, number=record.doc_id),
             "children": get_scheme_tree(
-                children, seen_so_far=seen_so_far + [record.mscid]
+                children,
+                descendent_ids=descendent_ids,
+                seen_so_far=seen_so_far + [record.mscid],
             ),
         }
         tree.append(node)
@@ -81,11 +100,22 @@ def record_index(series: str, role: RoleLabel = None):
 
         # Get blacklist of child schemes
         children = rel.subjects(predicate="parent schemes")
+        children_seen = set()
 
         # Assemble tree of records that are not on blacklist:
         tree = get_scheme_tree(
-            [record for record in records if record and record.mscid not in children]
+            [record for record in records if record and record.mscid not in children],
+            descendent_ids=children_seen,
         )
+
+        # Check for records excluded because of parent/child looping:
+        children_unseen = [v for v in children if v not in children_seen]
+        if children_unseen:
+            tree.extend(
+                get_scheme_tree([Scheme.load_by_mscid(v) for v in children_unseen])
+            )
+            tree.sort(key=lambda d: d["name"].lower())
+
         return render_template("contents.html", title=f"Index of {heading}", tree=tree)
 
     # Abort if series is a vocabulary item:
