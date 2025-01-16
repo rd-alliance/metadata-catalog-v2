@@ -1,7 +1,18 @@
 import json
 
+from flask import Flask
+from flask.testing import FlaskClient
 
-def test_create_view_records(client, auth, app, page, data_db):
+from tests.conftest import AuthActions, DataDBActions, PageActions
+
+
+def test_create_view_records(
+    client: FlaskClient,
+    auth: AuthActions,
+    app: Flask,
+    page: PageActions,
+    data_db: DataDBActions,
+):
     auth.login()
 
     # Prepare term database:
@@ -109,7 +120,7 @@ def test_create_view_records(client, auth, app, page, data_db):
     page.assert_contains("Successfully added record.", html)
 
     with open(app.config['MAIN_DATABASE_PATH']) as f:
-        db = json.load(f)
+        db: dict[str, dict[str, dict]] = json.load(f)
         entry = db.get('m', dict()).get('1', dict())
         orig = json.loads(json.dumps(data_db.m1))
         orig['slug'] = 'test-scheme-1'
@@ -142,7 +153,7 @@ def test_create_view_records(client, auth, app, page, data_db):
         '<p>Paragraph 1.</p><p><a href="https://m.us/">Paragraph</a> 2.</p>')
 
     with open(app.config['MAIN_DATABASE_PATH']) as f:
-        db = json.load(f)
+        db: dict[str, dict[str, dict]] = json.load(f)
         entry = db.get('m', dict()).get('2', dict())
         orig = json.loads(json.dumps(data_db.m2))
         del orig['versions']
@@ -235,7 +246,7 @@ def test_create_view_records(client, auth, app, page, data_db):
     page.assert_contains("Successfully updated version.", html)
 
     with open(app.config['MAIN_DATABASE_PATH']) as f:
-        db = json.load(f)
+        db: dict[str, dict[str, dict]] = json.load(f)
         entry = db.get('m', dict()).get('2', dict())
         orig = json.loads(json.dumps(data_db.m2))
         orig['slug'] = 'test-scheme-2'
@@ -259,7 +270,7 @@ def test_create_view_records(client, auth, app, page, data_db):
     page.assert_contains("Forename Surname")
 
     with open(app.config['MAIN_DATABASE_PATH']) as f:
-        db = json.load(f)
+        db: dict[str, dict[str, dict]] = json.load(f)
         entry = db.get('t', dict()).get('1', dict())
         orig = json.loads(json.dumps(data_db.t1))
         orig['slug'] = 'test-tool-1'
@@ -289,7 +300,7 @@ def test_create_view_records(client, auth, app, page, data_db):
     response = client.post('/edit/t2/add', data=t2v1, follow_redirects=True)
 
     with open(app.config['MAIN_DATABASE_PATH']) as f:
-        db = json.load(f)
+        db: dict[str, dict[str, dict]] = json.load(f)
         entry = db.get('t', dict()).get('2', dict())
         orig = json.loads(json.dumps(data_db.t2))
         orig['slug'] = 'test-tool-2'
@@ -314,7 +325,7 @@ def test_create_view_records(client, auth, app, page, data_db):
     page.assert_lacks("Forename Surname")
 
     with open(app.config['MAIN_DATABASE_PATH']) as f:
-        db = json.load(f)
+        db: dict[str, dict[str, dict]] = json.load(f)
         entry = db.get('c', dict()).get('1', dict())
         orig = json.loads(json.dumps(data_db.c1))
         orig['slug'] = 'test-crosswalk-1'
@@ -354,7 +365,7 @@ def test_create_view_records(client, auth, app, page, data_db):
     response = client.post('/edit/g0', data=g1, follow_redirects=True)
 
     with open(app.config['MAIN_DATABASE_PATH']) as f:
-        db = json.load(f)
+        db: dict[str, dict[str, dict]] = json.load(f)
         entry = db.get('g', dict()).get('1', dict())
         orig = json.loads(json.dumps(data_db.g1))
         orig['slug'] = 'organization-1'
@@ -414,7 +425,7 @@ def test_create_view_records(client, auth, app, page, data_db):
     page.assert_contains("Endorsed between 2018-01-01 and 2019-12-31", html)
 
     with open(app.config['MAIN_DATABASE_PATH']) as f:
-        db = json.load(f)
+        db: dict[str, dict[str, dict]] = json.load(f)
         entry = db.get('e', dict()).get('1', dict())
         orig = json.loads(json.dumps(data_db.e1))
         orig['slug'] = 'test-endorsement-1'
@@ -442,7 +453,7 @@ def test_create_view_records(client, auth, app, page, data_db):
     response = client.post('/edit/c2/add', data=c2v1, follow_redirects=True)
 
     with open(app.config['MAIN_DATABASE_PATH']) as f:
-        db = json.load(f)
+        db: dict[str, dict[str, dict]] = json.load(f)
         entry = db.get('c', dict()).get('2', dict())
         orig = json.loads(json.dumps(data_db.c2))
         orig['slug'] = 'test-scheme-1_TO_test-scheme-2'
@@ -469,7 +480,7 @@ def test_create_view_records(client, auth, app, page, data_db):
     page.assert_contains("Successfully updated record.", html)
 
     with open(app.config['MAIN_DATABASE_PATH']) as f:
-        db = json.load(f)
+        db: dict[str, dict[str, dict]] = json.load(f)
         assert orig == entry
         rel_entry = db.get('rel', dict()).get('1', dict())
         rel_orig = json.loads(json.dumps(data_db.rel1))
@@ -496,7 +507,7 @@ def test_create_view_records(client, auth, app, page, data_db):
     page.assert_contains("Successfully updated record.", html)
 
     with open(app.config['MAIN_DATABASE_PATH']) as f:
-        db = json.load(f)
+        db: dict[str, dict[str, dict]] = json.load(f)
         rel_entry = db.get('rel', dict()).get('1', dict())
         rel_orig = json.loads(json.dumps(data_db.rel1))
         assert rel_orig == rel_entry
@@ -517,12 +528,18 @@ def test_create_view_records(client, auth, app, page, data_db):
     response = client.post('/edit/e1', data=e1, follow_redirects=True)
 
     with open(app.config['MAIN_DATABASE_PATH']) as f:
-        db = json.load(f)
+        db: dict[str, dict[str, dict]] = json.load(f)
         rel_entry = db.get('rel', dict()).get('1', dict())
         assert {"@id": "msc:e1"} == rel_entry
 
 
-def test_create_terms(client, auth, app, page, data_db):
+def test_create_terms(
+    client: FlaskClient,
+    auth: AuthActions,
+    app: Flask,
+    page: PageActions,
+    data_db: DataDBActions,
+):
     auth.login()
 
     # Create Datatype
@@ -540,7 +557,7 @@ def test_create_terms(client, auth, app, page, data_db):
     page.assert_contains("Successfully added record.", html)
 
     with open(app.config['TERM_DATABASE_PATH']) as f:
-        db = json.load(f)
+        db: dict[str, dict[str, dict]] = json.load(f)
         rel_entry = db.get('datatype', dict()).get('1', dict())
         assert data_db.datatype1 == rel_entry
 
@@ -620,7 +637,9 @@ def test_create_terms(client, auth, app, page, data_db):
         "A term with ID ‘document’ has already been coined for scheme.")
 
 
-def test_auth_protection(client, page, data_db):
+def test_auth_protection(
+    client: FlaskClient, page: PageActions, data_db: DataDBActions
+):
     data_db.write_db()
     data_db.write_terms()
 

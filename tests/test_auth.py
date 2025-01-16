@@ -1,8 +1,13 @@
 import json
 from urllib.parse import urlencode
 
+from flask import Flask
+from flask.testing import FlaskClient
 
-def test_bad_provider(client):
+from tests.conftest import AuthActions, PageActions
+
+
+def test_bad_provider(client: FlaskClient):
     # Unsupported provider:
     response = client.get('/authorize/null')
     assert response.status_code == 404
@@ -18,7 +23,9 @@ def test_bad_provider(client):
     assert response.status_code == 404
 
 
-def test_oauth_login(client, auth, app, page):
+def test_oauth_login(
+    client: FlaskClient, auth: AuthActions, app: Flask, page: PageActions
+):
     base = 'http://localhost'
     scope = 'read:user'
     callback = f'{base}/callback/test'

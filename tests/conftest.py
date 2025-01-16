@@ -4,6 +4,7 @@ import os
 import re
 import tempfile
 import time
+import typing as t
 
 import email_validator
 from flask import Flask
@@ -12,6 +13,7 @@ from passlib.apps import custom_app_context as pwd_context
 import pytest
 from requests.auth import _basic_auth_str
 from werkzeug.datastructures import MultiDict
+from werkzeug.test import TestResponse
 
 from rdamsc import create_app
 
@@ -19,11 +21,11 @@ email_validator.TEST_ENVIRONMENT = True
 
 
 class AuthActions(object):
-    def __init__(self, client, page):
-        self._client = client
-        self._page = page
+    def __init__(self, client: FlaskClient, page: "PageActions"):
+        self._client: FlaskClient = client
+        self._page: PageActions = page
 
-    def login(self):
+    def login(self) -> TestResponse:
         r = self._client.get('/callback/test', follow_redirects=True)
         html = r.get_data(as_text=True)
         if "<h1>Create Profile</h1>" in html:
@@ -42,13 +44,13 @@ class AuthActions(object):
                 follow_redirects=True)
         return r
 
-    def logout(self):
+    def logout(self) -> TestResponse:
         return self._client.get('/logout')
 
 
 class DataDBActions(object):
-    def __init__(self, app):
-        self._app = app
+    def __init__(self, app: Flask):
+        self._app: Flask = app
         self.m1 = {
             "title": "Test scheme 1",
             "slug": "test-scheme-1",
@@ -337,14 +339,16 @@ class DataDBActions(object):
             i += 1
         self.rels = rels
 
-    def count(self, table: str):
+    def count(self, table: str) -> int:
         '''Returns number of records in table.'''
         i = 1
         while hasattr(self, f'{table}{i}'):
             i += 1
         return i - 1
 
-    def get_formdata(self, record: str, with_relations=False, version=None):
+    def get_formdata(
+        self, record: str, with_relations: bool = False, version: t.Optional[int] = None
+    ) -> MultiDict:
         '''Returns record in the form that WTForms would produce.'''
         dbdata = getattr(self, record)
         if version is not None:
@@ -392,7 +396,7 @@ class DataDBActions(object):
         formdata = MultiDict(multi_dict_items)
         return formdata
 
-    def get_apidata(self, record: str, with_embedded=True):
+    def get_apidata(self, record: str, with_embedded: bool = True) -> dict:
         '''Returns record in form that API would respond with.'''
         dbdata = getattr(self, record)
         apidata = dict()
@@ -418,7 +422,7 @@ class DataDBActions(object):
             apidata['relatedEntities'] = related_entities
         return json.loads(json.dumps(apidata))
 
-    def get_api1data(self, record: str, with_embedded=True):
+    def get_api1data(self, record: str) -> dict:
         '''Returns record in form that API 1 would respond with.'''
         kw_map = {
             'http://rdamsc.bath.ac.uk/thesaurus/subdomain235':
@@ -476,7 +480,7 @@ class DataDBActions(object):
             apidata['relatedEntities'] = related_entities
         return json.loads(json.dumps(apidata))
 
-    def get_apidataset(self, table: str):
+    def get_apidataset(self, table: str) -> list[dict]:
         '''Returns table in form that API would respond with.'''
         apidataset = list()
         i = 1
@@ -486,7 +490,7 @@ class DataDBActions(object):
             i += 1
         return apidataset
 
-    def get_apirel(self, record: str, inverse=False):
+    def get_apirel(self, record: str, inverse: bool = False) -> dict:
         '''Returns relation in form that API would respond with.'''
         rel_id = f'msc:{record}'
         if inverse:
@@ -534,7 +538,7 @@ class DataDBActions(object):
                     key=lambda k: table_order[k[n - 1:n]] + int(k[n:]))
         return apirel
 
-    def get_apirelset(self, inverse=False):
+    def get_apirelset(self, inverse: bool = False) -> list[dict]:
         '''Returns table of relations in form that API would respond with.'''
         table_order = {'m': 0, 't': 10, 'c': 20, 'g': 30, 'e': 40}
         apidataset = list()
@@ -579,7 +583,7 @@ class DataDBActions(object):
             key=lambda k: table_order[k['@id'][n - 1:n]] + int(k['@id'][n:]))
         return apidataset
 
-    def get_apiterm(self, table: str, number: int):
+    def get_apiterm(self, table: str, number: int) -> dict:
         '''Returns term record in form that API would respond with.'''
         apidataset = self.get_apitermset(table)
         if number < 1 or number > len(apidataset):
@@ -587,7 +591,7 @@ class DataDBActions(object):
 
         return apidataset[number - 1]
 
-    def get_apitermset(self, table: str):
+    def get_apitermset(self, table: str) -> list[dict]:
         '''Returns term table in form that API would respond with.'''
         apidataset = list()
         db_file = self._app.config['TERM_DATABASE_PATH']
@@ -611,7 +615,7 @@ class DataDBActions(object):
 
         return apidataset
 
-    def _tables_to_file(self, tables: list, db_file: str):
+    def _tables_to_file(self, tables: list, db_file: str) -> None:
         '''Writes a set of tables to a given DB file.'''
         if os.path.isfile(db_file):
             try:
@@ -637,25 +641,24 @@ class DataDBActions(object):
         with open(db_file, 'w') as f:
             json.dump(db, f, indent=1, ensure_ascii=False)
 
-    def write_bad_db(self):
-        '''Writes main database file.'''
+    def write_bad_db2(self) -> None:
+        """Writes main database file with a low-level reciprocal parent
+        relationship."""
         self.rel4["parent schemes"] += ["msc:m3"]
         self.rel6["parent schemes"] = ["msc:m2"]
         self._tables_to_file(
-            ["m", "t", "c", "g", "e", "rel"],
-            self._app.config['MAIN_DATABASE_PATH'])
+            ["m", "t", "c", "g", "e", "rel"], self._app.config["MAIN_DATABASE_PATH"]
+        )
 
-    def write_db(self):
+    def write_db(self) -> None:
         '''Writes main database file.'''
         self._tables_to_file(
-            ["m", "t", "c", "g", "e", "rel"],
-            self._app.config['MAIN_DATABASE_PATH'])
+            ["m", "t", "c", "g", "e", "rel"], self._app.config["MAIN_DATABASE_PATH"]
+        )
 
-    def write_terms(self):
+    def write_terms(self) -> None:
         '''Writes term database file.'''
-        self._tables_to_file(
-            ["datatype"],
-            self._app.config['TERM_DATABASE_PATH'])
+        self._tables_to_file(["datatype"], self._app.config["TERM_DATABASE_PATH"])
 
 
 class PageActions(object):
@@ -663,7 +666,7 @@ class PageActions(object):
         self.html = ''
         self.trimmed_html = ''
 
-    def read(self, html):
+    def read(self, html: str) -> None:
         '''Loads HTML ready to be tested or processed further. Could include
         additional prep, currently doesn't.'''
         self.html = html
@@ -671,7 +674,7 @@ class PageActions(object):
             r'<datalist[^>]*>(\n\s+<option>[^<]*</option>)+\n\s+</datalist>\n',
             '', html)
 
-    def get_csrf(self, html=None) -> str:
+    def get_csrf(self, html: str = None) -> str:
         '''Extracts CSRF token from page's form controls.'''
         if html is not None:
             self.read(html)
@@ -682,7 +685,7 @@ class PageActions(object):
             return None
         return m.group(1)
 
-    def get_all_hidden(self, html=None) -> MultiDict:
+    def get_all_hidden(self, html: str = None) -> MultiDict:
         '''Extracts hidden inputs from page's form controls.'''
         if html is not None:
             self.read(html)
@@ -693,7 +696,7 @@ class PageActions(object):
             results.add(m.group('name'), unescape(m.group('value')))
         return results
 
-    def assert_contains(self, substring, html=None):
+    def assert_contains(self, substring: str, html: str = None) -> None:
         '''Asserts page source includes substring.'''
         __tracebackhide__ = True
         if html is not None:
@@ -702,7 +705,7 @@ class PageActions(object):
             pytest.fail(
                 f"‘{substring}’ not in page. Full page:\n{self.trimmed_html}")
 
-    def assert_lacks(self, substring, html=None):
+    def assert_lacks(self, substring: str, html: str = None) -> None:
         '''Asserts page source does not include substring.'''
         __tracebackhide__ = True
         if html is not None:
@@ -727,7 +730,7 @@ class UserDBActions(object):
             'blocked': True,
         }
 
-    def _tables_to_file(self, tables: list, db_file: str):
+    def _tables_to_file(self, tables: list, db_file: str) -> None:
         '''Writes a set of tables to a given DB file.'''
         if os.path.isfile(db_file):
             try:
@@ -748,7 +751,7 @@ class UserDBActions(object):
         with open(db_file, 'w') as f:
             json.dump(db, f, indent=1, ensure_ascii=False)
 
-    def write_db(self):
+    def write_db(self) -> None:
         '''Writes main database file.'''
         self._tables_to_file(
             ["api_users"],
@@ -756,7 +759,7 @@ class UserDBActions(object):
 
 
 class AuthAPIActions(object):
-    def __init__(self, client, user_db):
+    def __init__(self, client: FlaskClient, user_db: UserDBActions):
         self._client = client
         self._username = user_db.api_users1.get('userid')
         self._password = user_db.pwd1
@@ -764,7 +767,7 @@ class AuthAPIActions(object):
         self._expiry = 0
         user_db.write_db()
 
-    def get_token(self):
+    def get_token(self) -> str:
         if time.time() > self._expiry:
             credentials = _basic_auth_str(self._username, self._password)
             self._expiry = time.time() + 595
@@ -772,13 +775,13 @@ class AuthAPIActions(object):
                 '/api2/user/token',
                 headers={"Authorization": credentials},
                 follow_redirects=True)
-            test_data = response.get_json()
+            test_data: dict = response.get_json()
             self._token = test_data.get("token")
         return self._token
 
 
 @pytest.fixture
-def app() -> Flask:
+def app() -> t.Generator[Flask, None, None]:
     with tempfile.TemporaryDirectory() as inst_path:
         app = create_app({
             'TESTING': True,
@@ -804,7 +807,7 @@ def app() -> Flask:
 
 
 @pytest.fixture
-def client(app: Flask) -> FlaskClient:
+def client(app: Flask) -> t.Generator[FlaskClient, None, None]:
     with app.test_client() as client:
         yield client
 

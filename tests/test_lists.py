@@ -1,4 +1,9 @@
-def test_record_index(client, page, data_db):
+from flask.testing import FlaskClient
+
+from tests.conftest import DataDBActions, PageActions
+
+
+def test_record_index(client: FlaskClient, page: PageActions, data_db: DataDBActions):
     data_db.write_db()
 
     response = client.get('/scheme-index')
@@ -75,8 +80,12 @@ def test_record_index(client, page, data_db):
     assert response.status_code == 404
 
 
-def test_bad_record_index(client, page, data_db):
-    data_db.write_bad_db()  # This has an infinite loop in it
+def test_bad_record_index(
+    client: FlaskClient, page: PageActions, data_db: DataDBActions
+):
+    """Tests handling of infinite loops."""
+
+    data_db.write_bad_db2()
 
     response = client.get('/scheme-index')
     assert response.status_code == 200
@@ -90,7 +99,7 @@ def test_bad_record_index(client, page, data_db):
         '<a class="nav-link" href="/msc/m3">Test scheme 3</a>')
 
 
-def test_subject_index(client, page, data_db):
+def test_subject_index(client: FlaskClient, page: PageActions, data_db: DataDBActions):
     data_db.write_db()
 
     response = client.get('/subject-index')

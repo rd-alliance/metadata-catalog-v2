@@ -1,4 +1,9 @@
-def test_scheme_search(client, page, data_db):
+from flask.testing import FlaskClient
+
+from tests.conftest import DataDBActions, PageActions
+
+
+def test_scheme_search(client: FlaskClient, page: PageActions, data_db: DataDBActions):
     data_db.write_db()
     data_db.write_terms()
 
@@ -162,7 +167,7 @@ def test_scheme_search(client, page, data_db):
         f"No schemes found used with data of type \"{query['dataType']}\".")
 
 
-def test_subject_search(client, page, data_db):
+def test_subject_search(client: FlaskClient, page: PageActions, data_db: DataDBActions):
     data_db.write_db()
     data_db.write_terms()
 
@@ -223,7 +228,9 @@ def test_subject_search(client, page, data_db):
         'The subject "Wurzels" was not found in the thesaurus.')
 
 
-def test_datatype_search(client, page, data_db):
+def test_datatype_search(
+    client: FlaskClient, page: PageActions, data_db: DataDBActions
+):
     data_db.write_db()
     data_db.write_terms()
 
@@ -251,7 +258,7 @@ def test_datatype_search(client, page, data_db):
     assert response.status_code == 404
 
 
-def test_group_search(client, page, data_db):
+def test_group_search(client: FlaskClient, page: PageActions, data_db: DataDBActions):
     data_db.write_db()
 
     # Test results for role
@@ -282,7 +289,7 @@ def test_group_search(client, page, data_db):
     assert response.status_code == 404
 
 
-def test_search_no_data(client):
+def test_search_no_data(client: FlaskClient):
 
     # Make sure page still renders with empty database
     response = client.get('/search')

@@ -3,9 +3,10 @@ import tempfile
 
 from rdamsc import create_app
 from rdamsc.auth import OAuthSignIn
+from tests.conftest import PageActions
 
 
-def test_back_door(page):
+def test_back_door(page: PageActions):
     '''This test must be run last as it disables the test login credentials.'''
     with tempfile.TemporaryDirectory() as inst_path:
         live_app = create_app({

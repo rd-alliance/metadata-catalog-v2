@@ -1,10 +1,12 @@
 import hashlib
 import hmac
 
+from flask import Flask
+from flask.testing import FlaskClient
 from werkzeug.test import EnvironBuilder
 
 
-def test_webhook(client, app):
+def test_webhook(client: FlaskClient, app: Flask):
     ping = {
         "ref": "refs/tags/simple-tag",
         "repository": {

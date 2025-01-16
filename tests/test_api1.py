@@ -1,7 +1,11 @@
 import json
 
+from flask.testing import FlaskClient
 
-def test_main_get(client, data_db):
+from tests.conftest import DataDBActions
+
+
+def test_main_get(client: FlaskClient, data_db: DataDBActions):
 
     # Prepare database:
     data_db.write_db()
@@ -86,7 +90,7 @@ def test_main_get(client, data_db):
     assert ideal == actual
 
 
-def test_tree_get(client, data_db):
+def test_tree_get(client: FlaskClient, data_db: DataDBActions):
     # Prepare database:
     data_db.write_db()
     data_db.write_terms()
