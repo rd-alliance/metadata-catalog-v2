@@ -2,6 +2,7 @@
 # ============
 # Standard
 # --------
+from collections import abc
 import typing as t
 
 # Non-standard
@@ -26,6 +27,16 @@ RoleLabel = t.Literal[
     "originators",
 ]
 
+def noop(*args) -> None:
+    """Null operation."""
+    pass
+
+
+def add_mscids(collection: t.Set[str], records: abc.Iterable[Record]) -> None:
+    """Adds MSCIDs of records to the given set."""
+    for record in records:
+        collection.add(record.mscid)
+
 
 def get_scheme_tree(
     records: t.List[Scheme],
@@ -38,18 +49,10 @@ def get_scheme_tree(
     If provided, populates `descendent_ids` with the MSCIDs of all records
     descending from the given list of parent schemes.
     """
-    if descendent_ids is None:
-
-        def add_children(__: t.List[Record]):
-            pass
-    else:
-
-        def add_children(children: t.List[Record]):
-            for child in children:
-                descendent_ids.add(child.mscid)
-
+    add_children = noop if descendent_ids is None else add_mscids
     if seen_so_far is None:
         seen_so_far = list()
+
     tree = list()
     rel = Relation()
     records.sort(key=lambda k: k.name.lower())
@@ -60,7 +63,7 @@ def get_scheme_tree(
             )
             return tree
         children = rel.subject_records("parent schemes", record.mscid)
-        add_children(children)
+        add_children(descendent_ids, children)
         node = {
             "name": record.name,
             "url": url_for("main.display", table=record.table, number=record.doc_id),
