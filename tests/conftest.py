@@ -480,7 +480,7 @@ class DataDBActions(object):
             apidata['relatedEntities'] = related_entities
         return json.loads(json.dumps(apidata))
 
-    def get_apidataset(self, table: str) -> list[dict]:
+    def get_apidataset(self, table: str) -> t.List[dict]:
         '''Returns table in form that API would respond with.'''
         apidataset = list()
         i = 1
@@ -538,7 +538,7 @@ class DataDBActions(object):
                     key=lambda k: table_order[k[n - 1:n]] + int(k[n:]))
         return apirel
 
-    def get_apirelset(self, inverse: bool = False) -> list[dict]:
+    def get_apirelset(self, inverse: bool = False) -> t.List[dict]:
         '''Returns table of relations in form that API would respond with.'''
         table_order = {'m': 0, 't': 10, 'c': 20, 'g': 30, 'e': 40}
         apidataset = list()
@@ -591,7 +591,7 @@ class DataDBActions(object):
 
         return apidataset[number - 1]
 
-    def get_apitermset(self, table: str) -> list[dict]:
+    def get_apitermset(self, table: str) -> t.List[dict]:
         '''Returns term table in form that API would respond with.'''
         apidataset = list()
         db_file = self._app.config['TERM_DATABASE_PATH']

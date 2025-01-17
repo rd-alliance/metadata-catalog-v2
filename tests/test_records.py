@@ -3,7 +3,7 @@ import json
 from flask import Flask
 from flask.testing import FlaskClient
 
-from tests.conftest import AuthActions, DataDBActions, PageActions
+from .conftest import AuthActions, DataDBActions, PageActions
 
 
 def test_create_view_records(

@@ -4,7 +4,7 @@ from urllib.parse import urlencode
 from flask import Flask
 from flask.testing import FlaskClient
 
-from tests.conftest import AuthActions, PageActions
+from .conftest import AuthActions, PageActions
 
 
 def test_bad_provider(client: FlaskClient):

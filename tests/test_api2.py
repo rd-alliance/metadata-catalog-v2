@@ -11,7 +11,7 @@ import pytest
 from requests.auth import _basic_auth_str
 
 import rdamsc.api2
-from tests.conftest import AuthAPIActions, DataDBActions, UserDBActions
+from .conftest import AuthAPIActions, DataDBActions, UserDBActions
 
 api_version = rdamsc.api2.api_version
 

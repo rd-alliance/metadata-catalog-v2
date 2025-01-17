@@ -1,6 +1,6 @@
 from flask.testing import FlaskClient
 
-from tests.conftest import DataDBActions, PageActions
+from .conftest import DataDBActions, PageActions
 
 
 def test_scheme_search(client: FlaskClient, page: PageActions, data_db: DataDBActions):

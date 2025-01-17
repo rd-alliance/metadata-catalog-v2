@@ -2,7 +2,7 @@ import json
 
 from flask.testing import FlaskClient
 
-from tests.conftest import DataDBActions
+from .conftest import DataDBActions
 
 
 def test_main_get(client: FlaskClient, data_db: DataDBActions):

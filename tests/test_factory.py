@@ -7,7 +7,7 @@ from flask.testing import FlaskClient
 import pytest
 
 from rdamsc import create_app
-from tests.conftest import PageActions
+from .conftest import PageActions
 
 
 def test_config():

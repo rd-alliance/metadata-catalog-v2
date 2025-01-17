@@ -1,6 +1,6 @@
 from flask.testing import FlaskClient
 
-from tests.conftest import DataDBActions, PageActions
+from .conftest import DataDBActions, PageActions
 
 
 def test_record_index(client: FlaskClient, page: PageActions, data_db: DataDBActions):
