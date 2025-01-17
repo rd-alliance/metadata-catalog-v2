@@ -2,7 +2,6 @@
 # ============
 # Standard
 # --------
-from collections import abc
 import typing as t
 
 # Non-standard
@@ -32,7 +31,7 @@ def noop(*args) -> None:
     pass
 
 
-def add_mscids(collection: t.Set[str], records: abc.Iterable[Record]) -> None:
+def add_mscids(collection: t.Set[str], records: t.Iterable[Record]) -> None:
     """Adds MSCIDs of records to the given set."""
     for record in records:
         collection.add(record.mscid)
