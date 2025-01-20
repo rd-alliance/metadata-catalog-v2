@@ -3,6 +3,7 @@
 # Standard
 # --------
 from abc import ABCMeta, abstractmethod
+from collections import defaultdict
 import json
 import os
 import re
@@ -813,8 +814,24 @@ class Record(Document, metaclass=ABCMeta):
         """
         if not hasattr(self, "rolemap"):  # pragma: no cover
             raise NotImplementedError
+
+        # predicate to [role]:
+        nonreciprocal: t.DefaultDict[str, t.List[str]] = defaultdict(list)
+        for role, attrs in self.rolemap.items():
+            if attrs.get("nonreciprocal"):
+                nonreciprocal[attrs["predicate"]].append(role)
+
         result = {"errors": list(), "value": list()}
-        cache = dict()
+
+        # location to relation:
+        valid: t.Dict[int, dict] = dict()
+
+        # role to ID to [location]:
+        lookup: t.DefaultDict[str, t.DefaultDict[str, t.List[int]]] = defaultdict(
+            lambda: defaultdict(list)
+        )
+
+        cache: t.Dict[str, Record] = dict()
         for i, v in enumerate(value):
             clean_relation = dict()
             has_error = False
@@ -879,13 +896,35 @@ class Record(Document, metaclass=ABCMeta):
 
             if has_error:
                 continue
+            lookup[role][mscid].append(i)
             clean_relation = {
                 "id": mscid,
                 "role": role,
                 "predicate": self.rolemap[role]["predicate"],
                 "direction": self.rolemap[role]["direction"],
             }
+            valid[i] = clean_relation
             result["value"].append(clean_relation)
+
+        for roles in nonreciprocal.values():
+            error_indexes = list()
+            assert len(roles) == 2
+            for mscid, indexes in lookup[roles[0]].items():
+                more_indexes = lookup[roles[1]].get(mscid)
+                if more_indexes:
+                    error_indexes.extend(indexes)
+                    error_indexes.extend(more_indexes)
+            error_indexes.sort()
+            for i in error_indexes:
+                result["errors"].append(
+                    {
+                        "message": f"One record cannot be both {roles[0]} and"
+                        f" {roles[1]} of another.",
+                        "location": f"[{i}]",
+                    }
+                )
+                result["value"].remove(valid[i])
+
         return result
 
     def _do_series(self, value: t.List[str]) -> t.Dict[str, list]:
@@ -2079,11 +2118,13 @@ class Scheme(Record):
             "predicate": "parent schemes",
             "direction": Relation.FORWARD,
             "accepts": "m",
+            "nonreciprocal": True,
         },
         "child scheme": {
             "predicate": "parent schemes",
             "direction": Relation.INVERSE,
             "accepts": "m",
+            "nonreciprocal": True,
         },
         "input to mapping": {
             "predicate": "input schemes",

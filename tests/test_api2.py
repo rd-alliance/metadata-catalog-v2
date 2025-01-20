@@ -1577,19 +1577,20 @@ def test_main_write(client: FlaskClient, auth_api: AuthAPIActions, data_db: Data
 
     # Test relation validator:
     record = data_db.get_apidata('m2')
-    record['relatedEntities'] = [
+    record["relatedEntities"] = [
         # Missing role
-        {'id': 'msc:m1'},
+        {"id": "msc:m1"},
         # Invalid role
-        {'id': 'msc:m1', 'role': 'originator'},
+        {"id": "msc:m1", "role": "originator"},
         # Missing MSC ID
-        {'role': 'parent scheme'},
+        {"role": "parent scheme"},
         # Invalid MSC ID
-        {'id': '10.1234/56', 'role': 'parent scheme'},
+        {"id": "10.1234/56", "role": "parent scheme"},
         # Non-existent MSC ID
-        {'id': 'msc:m3', 'role': 'parent scheme'},
+        {"id": "msc:m3", "role": "parent scheme"},
         # Existent but wrong type of MSC ID
-        {'id': 'msc:g1', 'role': 'parent scheme'}]
+        {"id": "msc:g1", "role": "parent scheme"},
+    ]
     credentials = f"Bearer {auth_api.get_token()}"
     response = client.post(
         '/api2/m',
@@ -1625,6 +1626,41 @@ def test_main_write(client: FlaskClient, auth_api: AuthAPIActions, data_db: Data
                 'location': '$.relatedEntities[5]'
             }]}
     }, sort_keys=True)
+    actual = json.dumps(response.get_json(), sort_keys=True)
+    assert ideal == actual
+
+    record["relatedEntities"] = [
+        # Circular relation
+        {"id": "msc:m1", "role": "parent scheme"},
+        {"id": "msc:m1", "role": "child scheme"},
+    ]
+    credentials = f"Bearer {auth_api.get_token()}"
+    response = client.post(
+        "/api2/m",
+        headers={"Authorization": credentials},
+        json=record,
+        follow_redirects=True,
+    )
+    assert response.status_code == 400
+    ideal = json.dumps(
+        {
+            "apiVersion": api_version,
+            "error": {
+                "message": "One record cannot be both parent scheme and child scheme of another.",
+                "errors": [
+                    {
+                        "message": "One record cannot be both parent scheme and child scheme of another.",
+                        "location": "$.relatedEntities[0]",
+                    },
+                    {
+                        "message": "One record cannot be both parent scheme and child scheme of another.",
+                        "location": "$.relatedEntities[1]",
+                    },
+                ],
+            },
+        },
+        sort_keys=True,
+    )
     actual = json.dumps(response.get_json(), sort_keys=True)
     assert ideal == actual
 
