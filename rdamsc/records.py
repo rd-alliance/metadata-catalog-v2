@@ -8,7 +8,6 @@ import json
 import os
 import re
 import typing as t
-import sys
 
 # Non-standard
 # ------------
@@ -1502,14 +1501,16 @@ class Record(Document, metaclass=ABCMeta):
         for info in self.rolemap.values():
             if info["direction"] == Relation.FORWARD:
                 continue
-            if info["predicate"] in ["maintainers", "funders"]:
-                series = rel.series_map.get(info["accepts"])
-                acceptable[rel.inversions.get(info["predicate"]).format(series)] = info[
-                    "accepts"
-                ]
-            else:
-                acceptable[rel.inversions.get(info["predicate"])] = info["accepts"]
-            one_way[info["predicate"]] = info.get("one_way", False)
+            predicate = info["predicate"]
+            inv_predicate = (
+                rel.inversions.get(predicate).format(
+                    rel.series_map.get(info["accepts"])
+                )
+                if predicate in ["maintainers", "funders"]
+                else rel.inversions.get(predicate)
+            )
+            acceptable[inv_predicate] = info["accepts"]
+            one_way[inv_predicate] = info.get("one_way", False)
 
         result = {"@id": self.mscid}
         result.update(rel.related(self.mscid, direction=rel.INVERSE))
@@ -1584,11 +1585,12 @@ class Record(Document, metaclass=ABCMeta):
 
         acceptable = dict()
         one_way = dict()
-        for role, info in self.rolemap.items():
+        for info in self.rolemap.values():
             if info["direction"] == Relation.INVERSE:
                 continue
-            acceptable[info["predicate"]] = info["accepts"]
-            one_way[info["predicate"]] = info.get("one_way", False)
+            predicate = info["predicate"]
+            acceptable[predicate] = info["accepts"]
+            one_way[predicate] = info.get("one_way", False)
 
         rel = Relation()
         rel_record = rel.tb.get(Query()["@id"] == self.mscid)
@@ -1795,7 +1797,6 @@ class Record(Document, metaclass=ABCMeta):
 
             if reverse_rel:
                 rel_relations = rel_record.get_related_entities()
-                print(f"{reverse_rel} {rel_relations}", file=sys.stderr)
                 if reverse_rel in rel_relations:
                     errors.append(
                         {
