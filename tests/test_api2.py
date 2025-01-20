@@ -2270,23 +2270,29 @@ def test_rel_patch(client: FlaskClient, auth_api: AuthAPIActions, data_db: DataD
     assert result['error']['errors'][5]['location'] == r'$[5].path'
 
     # Test for errors in relation values
-    patch = [{
-        'op': 'add',
-        'path': '/funders',
-        'value': ['msc:m1'],
-    }, {
-        'op': 'add',
-        'path': '/funders/-',
-        'value': 'foobar',
-    }, {
-        'op': 'replace',
-        'path': '/funders',
-        'value': ['msc:g42'],
-    }, {
-        'op': 'replace',
-        'path': '/funders/-',
-        'value': 'msc:m2',
-    }]
+    patch = [
+        {
+            "op": "add",
+            "path": "/funders",
+            "value": ["msc:m1"],
+        },
+        {
+            "op": "add",
+            "path": "/funders/-",
+            "value": "foobar",
+        },
+        {
+            "op": "replace",
+            "path": "/funders",
+            "value": ["msc:g42"],
+        },
+        {
+            "op": "replace",
+            "path": "/funders/-",
+            "value": "msc:m2",
+        },
+        {"op": "add", "path": "/parent schemes", "value": ["msc:m2"]},
+    ]
     credentials = f"Bearer {auth_api.get_token()}"
     response = client.patch(
         '/api2/rel/m1',
@@ -2313,6 +2319,12 @@ def test_rel_patch(client: FlaskClient, auth_api: AuthAPIActions, data_db: DataD
     assert result['error']['errors'][3]['message'] == (
         "The record msc:m2 cannot be used with the predicate funders.")
     assert result['error']['errors'][3]['location'] == r'$[3].value'
+
+    assert result["error"]["errors"][4]["message"] == (
+        "The record msc:m2 cannot be in parent schemes of msc:m1"
+        " while the reverse is true."
+    )
+    assert result["error"]["errors"][4]["location"] == r"$[4].value[0]"
 
     # Test adding first relation with a patch
     patch = [{

@@ -8,6 +8,7 @@ import json
 import os
 import re
 import typing as t
+import sys
 
 # Non-standard
 # ------------
@@ -816,10 +817,10 @@ class Record(Document, metaclass=ABCMeta):
             raise NotImplementedError
 
         # predicate to [role]:
-        nonreciprocal: t.DefaultDict[str, t.List[str]] = defaultdict(list)
+        one_way: t.DefaultDict[str, t.List[str]] = defaultdict(list)
         for role, attrs in self.rolemap.items():
-            if attrs.get("nonreciprocal"):
-                nonreciprocal[attrs["predicate"]].append(role)
+            if attrs.get("one_way"):
+                one_way[attrs["predicate"]].append(role)
 
         result = {"errors": list(), "value": list()}
 
@@ -906,7 +907,7 @@ class Record(Document, metaclass=ABCMeta):
             valid[i] = clean_relation
             result["value"].append(clean_relation)
 
-        for roles in nonreciprocal.values():
+        for roles in one_way.values():
             error_indexes = list()
             assert len(roles) == 2
             for mscid, indexes in lookup[roles[0]].items():
@@ -1191,11 +1192,11 @@ class Record(Document, metaclass=ABCMeta):
         related_entities = list()
         rel = Relation()
         relations = rel.related(mscid=self.mscid)
-        for role in sorted(relations.keys()):
-            for mscid in relations[role]:
+        for predicate in sorted(relations.keys()):
+            for mscid in relations[predicate]:
                 related_entity = {
                     "id": mscid,
-                    "role": role[:-1],  # convert to singular
+                    "role": predicate[:-1],  # convert to singular
                 }
                 related_entities.append(related_entity)
         return related_entities
@@ -1497,7 +1498,8 @@ class Record(Document, metaclass=ABCMeta):
         rel = Relation()
 
         acceptable = dict()
-        for role, info in self.rolemap.items():
+        one_way = dict()
+        for info in self.rolemap.values():
             if info["direction"] == Relation.FORWARD:
                 continue
             if info["predicate"] in ["maintainers", "funders"]:
@@ -1507,6 +1509,7 @@ class Record(Document, metaclass=ABCMeta):
                 ]
             else:
                 acceptable[rel.inversions.get(info["predicate"])] = info["accepts"]
+            one_way[info["predicate"]] = info.get("one_way", False)
 
         result = {"@id": self.mscid}
         result.update(rel.related(self.mscid, direction=rel.INVERSE))
@@ -1527,7 +1530,7 @@ class Record(Document, metaclass=ABCMeta):
             if not isinstance(patch, dict):
                 errors.append({"message": "Not a JSON object.", "location": f"$[{i}]"})
                 continue
-            err, result = self.validate_rel_patch(result, patch, acceptable)
+            err, result = self.validate_rel_patch(result, patch, acceptable, one_way)
             for e in err:
                 errors.append(
                     {
@@ -1580,10 +1583,12 @@ class Record(Document, metaclass=ABCMeta):
             raise NotImplementedError
 
         acceptable = dict()
+        one_way = dict()
         for role, info in self.rolemap.items():
             if info["direction"] == Relation.INVERSE:
                 continue
             acceptable[info["predicate"]] = info["accepts"]
+            one_way[info["predicate"]] = info.get("one_way", False)
 
         rel = Relation()
         rel_record = rel.tb.get(Query()["@id"] == self.mscid)
@@ -1610,7 +1615,7 @@ class Record(Document, metaclass=ABCMeta):
             if not isinstance(patch, dict):
                 errors.append({"message": "Not a JSON object.", "location": f"$[{i}]"})
                 continue
-            err, result = self.validate_rel_patch(result, patch, acceptable)
+            err, result = self.validate_rel_patch(result, patch, acceptable, one_way)
             for e in err:
                 errors.append(
                     {
@@ -1738,7 +1743,7 @@ class Record(Document, metaclass=ABCMeta):
         return (errors, clean_data)
 
     def validate_rel_list(
-        self, mscids: t.List[str], predicate: str, table: str
+        self, mscids: t.List[str], predicate: str, table: str, check_reverse: bool
     ) -> t.Tuple[t.List[t.Dict[str, str]], dict]:
         """Checks if any mscids in the list are invalid or do not belong
         to the given table. Returns a list of errors (dicts where
@@ -1748,6 +1753,11 @@ class Record(Document, metaclass=ABCMeta):
         """
         errors = list()
         clean_list = list()
+
+        reverse_rel = (
+            {"id": self.mscid, "role": predicate[:-1]} if check_reverse else None
+        )
+
         for i, mscid in enumerate(mscids):
             if mscid in clean_list:
                 continue
@@ -1782,6 +1792,20 @@ class Record(Document, metaclass=ABCMeta):
                     }
                 )
                 continue
+
+            if reverse_rel:
+                rel_relations = rel_record.get_related_entities()
+                print(f"{reverse_rel} {rel_relations}", file=sys.stderr)
+                if reverse_rel in rel_relations:
+                    errors.append(
+                        {
+                            "message": f"The record {mscid} cannot be in {predicate} of"
+                            f" {self.mscid} while the reverse is true.",
+                            "location": f"[{i}]",
+                        }
+                    )
+                    continue
+
             clean_list.append(mscid)
 
         return (errors, clean_list)
@@ -1791,6 +1815,7 @@ class Record(Document, metaclass=ABCMeta):
         input_data: t.Mapping,
         patch: t.Mapping[str, str],
         acceptable: t.Mapping[str, str],
+        one_way: t.Mapping[str, bool],
     ) -> t.Tuple[t.List[t.Dict[str, str]], dict]:
         """Parses a patch, and (if possible) applies it to the input data.
         Returns a tuple consisting of a list of errors (dicts where
@@ -1923,7 +1948,7 @@ class Record(Document, metaclass=ABCMeta):
                     )
                 else:
                     list_errors, clean_list = self.validate_rel_list(
-                        value, predicate, acceptable[predicate]
+                        value, predicate, acceptable[predicate], one_way[predicate]
                     )
                     for error in list_errors:
                         errors.append(
@@ -1944,7 +1969,7 @@ class Record(Document, metaclass=ABCMeta):
                     )
                 else:
                     list_errors, clean_list = self.validate_rel_list(
-                        [value], predicate, acceptable[predicate]
+                        [value], predicate, acceptable[predicate], one_way[predicate]
                     )
                     for error in list_errors:
                         errors.append(
@@ -1976,7 +2001,7 @@ class Record(Document, metaclass=ABCMeta):
                     )
                 else:
                     list_errors, clean_list = self.validate_rel_list(
-                        value, predicate, acceptable[predicate]
+                        value, predicate, acceptable[predicate], one_way[predicate]
                     )
                     for error in list_errors:
                         errors.append(
@@ -1997,7 +2022,7 @@ class Record(Document, metaclass=ABCMeta):
                     )
                 else:
                     list_errors, clean_list = self.validate_rel_list(
-                        [value], predicate, acceptable[predicate]
+                        [value], predicate, acceptable[predicate], one_way[predicate]
                     )
                     for error in list_errors:
                         errors.append(
@@ -2022,10 +2047,12 @@ class Record(Document, metaclass=ABCMeta):
             raise NotImplementedError
 
         acceptable = dict()
+        one_way = dict()
         for role, info in self.rolemap.items():
             if info["direction"] == Relation.INVERSE:
                 continue
             acceptable[info["predicate"]] = info["accepts"]
+            one_way[info["predicate"]] = info.get("one_way", False)
 
         v_errors = list()
         output = {"@id": self.mscid}
@@ -2057,7 +2084,9 @@ class Record(Document, metaclass=ABCMeta):
             if not accepts:
                 continue
 
-            list_errors, clean_list = self.validate_rel_list(mscids, predicate, accepts)
+            list_errors, clean_list = self.validate_rel_list(
+                mscids, predicate, accepts, one_way[predicate]
+            )
             if list_errors:
                 for error in list_errors:
                     v_errors.append(
@@ -2118,13 +2147,13 @@ class Scheme(Record):
             "predicate": "parent schemes",
             "direction": Relation.FORWARD,
             "accepts": "m",
-            "nonreciprocal": True,
+            "one_way": True,
         },
         "child scheme": {
             "predicate": "parent schemes",
             "direction": Relation.INVERSE,
             "accepts": "m",
-            "nonreciprocal": True,
+            "one_way": True,
         },
         "input to mapping": {
             "predicate": "input schemes",
