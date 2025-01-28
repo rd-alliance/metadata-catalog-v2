@@ -15,3 +15,5 @@ build/
 /test_coverage_report/
 /.kdev4/
 /metadata-catalog-v2.kdev4
+
+/my-rdamsc-init.yaml

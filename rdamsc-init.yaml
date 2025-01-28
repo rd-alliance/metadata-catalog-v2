@@ -11,7 +11,7 @@ write_files:
     WSGIPassAuthorization On
 
     <VirtualHost *:80>
-        ServerName rdamsc.example.com
+        ServerName rdamsc.internal
 
         Alias /maintenance.html /srv/rdamsc/maintenance.html
 

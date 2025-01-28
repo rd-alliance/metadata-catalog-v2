@@ -58,30 +58,40 @@ with [Incus].
 [LXD]: https://canonical.com/lxd
 [Incus]: https://linuxcontainers.org/incus/
 [linuxcontainers public image server]: https://images.linuxcontainers.org
+[hosts file]: https://en.wikipedia.org/wiki/Hosts_(file)
+[backup of the live data]: https://github.com/rd-alliance/metadata-catalog-data/tree/master/backup
 
- 1. Create a new container using an image that is Debian-based and supports
-    `cloud-init`. (If you are choosing from the [linuxcontainers public image
-    server], the ‘cloud’ variants support `cloud-init`.) An Ubuntu one is given
-    here as an example:
+ 1. By default with these instructions, the Web GUI will be served from the
+    domain `rdamsc.internal`. If you want to use a different domain name, copy
+    `rdamsc-init.yaml` to `my-rdamsc-init.yaml` (this will be ignored by Git)
+    and change the `Server Name` directive at around line 14 to use your chosen
+    domain.
+
+ 2. Create a new container using an image that is Debian-based and supports
+    `cloud-init`. (The Ubuntu images provided by Canonical are suitable. If you
+    are choosing from the [linuxcontainers public image server], the ‘cloud’
+    variants support `cloud-init`.) An Ubuntu one is given here as an example:
 
     ```bash
-    lxc image list ubuntu:24.04
+    lxc init ubuntu:24.04 rdamsc
     ```
 
- 2. Configure the container using the [YAML configuration]:
+ 3. Configure the container using the YAML configuration, either
+    `rdamsc-init.yaml` or `my-rdamsc-init.yaml` depending on what you decided in
+    step 1:
 
     ```bash
     cat rdamsc-init.yaml | lxc config set rdamsc user.user-data -
     ```
 
- 3. Start the image, then log into it:
+ 4. Start the image, then log into it:
 
     ```bash
     lxc start rdamsc
     lxc shell rdamsc
     ```
 
- 4. In the container's shell, check that the setup completed successfully:
+ 5. In the container's shell, check that the setup completed successfully:
 
     ```bash
     cloud-init status --wait
@@ -92,7 +102,11 @@ with [Incus].
     the steps given below for running in production and implementing
     maintenance mode.
 
- 5. The testing apparatus is not automatically installed. To install it,
+ 6. If you want to view the Web GUI, add its domain (`rdamsc.internal` by
+    default) and the container's IP address to your computer's
+    [hosts file].
+
+ 7. The testing apparatus is not automatically installed. To install it,
     you will need to do a few final steps in the container's shell:
 
     ```bash
@@ -105,7 +119,17 @@ with [Incus].
     exit
     ```
 
- 6. To remove the container, run these commands outside the container:
+ 8. Take a snapshot so you can revert to a clean state after trying a
+    few things out:
+
+    ```bash
+    lxc snapshot rdamsc clean
+    ```
+
+    Depending on your use case, you may want to copy over the latest
+    [backup of the live data] and take another snapshot.
+
+ 9. To remove the container, run these commands outside the container:
 
     ```bash
     lxc stop rdamsc
@@ -417,10 +441,8 @@ on localhost (127.0.0.1) for testing purposes.
 
 The Catalog uses multiple NoSQL databases, which are saved to disk in the form
 of JSON files. You can either supply pre-populated versions of these files,
-(for example, using the occasional [backups of the live data]) or let the
+(for example, using the latest [backup of the live data]) or let the
 Catalog create them for you:
-
-[backups of the live data]: https://github.com/rd-alliance/metadata-catalog-data/tree/master/backup
 
 - **Main database** contains the tables for the schemes, tools, organisations,
   mappings, endorsements and the relationships between them.
