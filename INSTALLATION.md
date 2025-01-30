@@ -91,6 +91,8 @@ with [Incus].
     lxc shell rdamsc
     ```
 
+    (If using Incus, try `incus shell` as `incus console` is different.)
+
  5. In the container's shell, check that the setup completed successfully:
 
     ```bash
