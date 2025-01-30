@@ -115,7 +115,7 @@ with [Incus].
     cd ~rdamsc
     sudo -su rdamsc
     . venv/bin/activate
-    pip install -e ".[dev]"
+    pip install -r requirements.txt -e ".[dev]"
     # This would be a good point to run the test suite. When finished...
     deactivate
     exit
@@ -174,13 +174,13 @@ Install the Catalog and its dependencies to your virtual environment. In a
 development context:
 
 ```bash
-pip install -e ".[dev]"
+pip install -r requirements.txt -e ".[dev]"
 ```
 
 In production, you don't need the unit testing apparatus:
 
 ```bash
-pip install -e .
+pip install -r requirements.txt -e .
 ```
 
 
@@ -493,6 +493,7 @@ putting the respective paths in one of your configuration files:
 MAIN_DATABASE_PATH = os.path.join('path', 'to', 'file.json')
 ```
 
+
 ## Things to watch out for
 
 The Dulwich library for working with Git is quite sensitive, and will not stage
@@ -501,6 +502,32 @@ solely of space characters.
 
 If you have problems with authenticating through a proxy, you may need to
 install the `pycurl` library as well.
+
+
+## Updating the installation
+
+To update the installed code, navigate to the working directory and pull in the
+changes:
+
+```bash
+sudo -Hsu rdamsc
+git pull --rebase
+```
+
+It is a good idea to update dependencies periodically as well:
+
+```bash
+. venv/bin/activate
+pip install -U --upgrade-strategy eager -r requirements.txt
+deactivate
+```
+
+Finally, reload the site:
+
+```bash
+touch /srv/rdamsc/rdamsc.wsgi
+exit
+```
 
 
 ## Implementing maintenance mode in Apache (Debian-based style)

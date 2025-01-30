@@ -59,7 +59,7 @@ write_files:
     . venv/bin/activate
     pip install --upgrade pip
     pip install wheel
-    pip install -e .
+    pip install -r requirements.txt -e .
   path: /tmp/install-rdamsc.sh
   permissions: '0755'
 runcmd:

@@ -88,7 +88,7 @@ In the virtual environment, you can upgrade the requirements file as follows.
 
 ```bash
 sed -i 's/[~=]=/>=/' requirements.txt
-pip install -U -r requirements.txt
+pip install -U --upgrade-strategy eager -r requirements.txt
 pip freeze | sed 's/==/~=/' | grep -vEe "^-e" > requirements.txt
 ```
 
