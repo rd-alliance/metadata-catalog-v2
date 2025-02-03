@@ -2,6 +2,7 @@
 {% from "macros-forms.html" import state, errors with context %}
 {% block title %}Sign in{% endblock %}
 {% block main %}
+  <p>The Metadata Standards Catalog relies on community contributions like yours to stay up to date and comprehensive.</p>
   <p>In order to contribute changes to the Catalog, you must sign in.</p>
   {% if main_providers %}
   <ul class="list-inline d-flex justify-content-around align-content-center flex-wrap">
@@ -18,34 +19,8 @@
     {% endfor %}
   </ul>
   {% endif %}
-  <p>{% if providers %}Alternatively, you can{% else %}Please{% endif %} sign in through the archived Research Data Alliance website.
-    To find the URL for your OpenID v2 account, log in to the archived website and
-    view your own profile. Take the URL of that page and add
-    <code>/openid</code>.</p>
-  <div class="alert alert-msg alert-warning alert-dismissible fade show" role="alert">
-    <p class="mb-0">Signing in via OpenID v2 is deprecated and will be removed soon.</p>
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-  </div>
-  <p>
-    <form action="{{ url_for('auth.login') }}" method=post>
-      {{ form.hidden_tag() }}
-      <div class="row{{ state(form.openid) }}">
-        {{ form.openid.label(class="col-md-3 text-md-end col-form-label") }}
-        <div class="col-md-9">
-          <div class="input-group">
-            {{ form.openid(placeholder="https://...", class="form-control") }}
-            <button class="btn btn-success" type="submit">Sign in</button>
-          </div>
-        </div>
-        <input type="hidden" name="next" value="{{ next }}">
-      </div>
-      {{ errors(form.openid) }}
-    </form>
-  </p>
-  <dl class="dl-striped">
-    <div class="row">
-      <dt class="col-md-5 col-lg-4">Example</dt>
-      <dd class="col-md-7 col-lg-8"><code>https://archive.rd-alliance.org/users/</code>(username)<code>/openid</code></dd>
-    </div>
-  </dl>
+  {% if not (main_providers or providers) %}
+  <p>This instance of the Catalog has not been registered with any identity providers, so you cannot sign in at the moment.
+    Please contact the system administrator for assistance.</p>
+  {% endif %}
 {% endblock %}
