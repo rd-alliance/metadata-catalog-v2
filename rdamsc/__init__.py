@@ -143,16 +143,43 @@ def create_app(test_config: t.Mapping[str, t.Any] = None) -> Flask:
 
     # Webhook:
     webhook = Webhook(app, secret=app.config["WEBHOOK_SECRET"])
-    script_dir = os.path.dirname(__file__)
+    git_work_dir = os.path.dirname(os.path.dirname(__file__))
 
     @webhook.hook()
     def on_push(data):
+        # Check mod time of requirements.txt:
+        req_path = os.path.join(git_work_dir, "requirements.txt")
+        req_mtime = os.stat(req_path).st_mtime
+
+        # Run git pull
         print("INFO: Upstream code repository has been updated.")
         print("INFO: Initiating git pull to update codebase.")
         call = subprocess.run(
-            ["git", "-C", script_dir, "pull", "--rebase"], stderr=subprocess.STDOUT
+            ["git", *["-C", git_work_dir], "pull", "--rebase"], capture_output=True
         )
-        print(f"INFO: Git pull completed with exit code {call.returncode}.")
+        msg = f"INFO: Git pull completed with exit code {call.returncode}."
+        if call.returncode:
+            msg += f"\n{call.stderr.decode()}"
+        print(msg)
+
+        # Update dependencies if changed:
+        if req_mtime != os.stat(req_path).st_mtime:
+            print("INFO: Requirements have changed. Updating.")
+            call = subprocess.run(
+                [
+                    os.path.join(git_work_dir, "venv", "bin", "pip"),
+                    "install",
+                    "-U",
+                    *["--upgrade-strategy", "eager"],
+                    *["-r", req_path],
+                ],
+                capture_output=True,
+            )
+            msg = f"INFO: Update completed with exit code {call.returncode}."
+            if call.returncode:
+                msg += f"\n{call.stderr.decode()}"
+            print(msg)
+
         wsgi_path = app.config.get("WSGI_PATH")
         if wsgi_path:  # pragma: no cover
             if os.path.isfile(wsgi_path):
