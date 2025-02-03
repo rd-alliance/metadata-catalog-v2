@@ -6,7 +6,7 @@ import typing as t
 
 # Non-standard
 # ------------
-from flask import Blueprint, abort, render_template, url_for
+from flask import Blueprint, abort, current_app, render_template, url_for
 
 # Local
 # -----
@@ -57,8 +57,8 @@ def get_scheme_tree(
     records.sort(key=lambda k: k.name.lower())
     for record in records:
         if record.mscid in seen_so_far:
-            print(
-                "WARNING: parent/child recursion error detected for" f" {record.mscid}."
+            current_app.logger.warning(
+                f"parent/child recursion error detected for {record.mscid}."
             )
             return tree
         children = rel.subject_records("parent schemes", record.mscid)

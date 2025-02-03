@@ -1390,9 +1390,8 @@ class Record(Document, metaclass=ABCMeta):
             try:
                 old_relations = json.loads(old_relation_json)
             except json.JSONDecodeError:
-                print(
-                    "WARNING Record.save_gui_input: ignoring bad JSON in"
-                    " old_relations."
+                current_app.logger.warning(
+                    "Record.save_gui_input() ignoring bad JSON in old_relations."
                 )
 
         for field in fields:
@@ -4121,7 +4120,9 @@ def display(table: MainTableID, number: int, field: str = None):
             if keyword:
                 keywords.append(keyword)
             else:
-                print(f"WARNING display: No keyword for {keyword_uri}.")
+                current_app.logger.error(
+                    f"display() found no keyword for {keyword_uri}."
+                )
         record["keywords"] = keywords
 
     # Objectify data types:
@@ -4167,7 +4168,7 @@ def display(table: MainTableID, number: int, field: str = None):
         try:
             versions.sort(key=lambda k: k["date"], reverse=True)
         except KeyError:
-            print(f"WARNING: Record {mscid} is missing a version date.")
+            current_app.logger.warning(f"Record {mscid} is missing a version date.")
             try:
                 versions.sort(key=lambda k: k["number"], reverse=True)
             except KeyError:

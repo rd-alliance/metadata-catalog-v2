@@ -159,7 +159,7 @@ class ApiUser(User):
         new_hash = pwd_context.hash(password)
         error = self._save({"password_hash": new_hash})
         if error:  # pragma: no cover
-            print(f"ApiUser: could not save hash: {error}.")
+            current_app.logger.error(f"ApiUser could not save hash: {error}.")
             return False
         return True
 
@@ -174,7 +174,9 @@ class ApiUser(User):
         if new_hash:
             error = self._save({"password_hash": new_hash})
             if error:  # pragma: no cover
-                print(f"ApiUser: could not save hash: {error}.")
+                current_app.logger.error(
+                    f"ApiUser could not save hash on verify: {error}."
+                )
                 return False
         return is_verified
 

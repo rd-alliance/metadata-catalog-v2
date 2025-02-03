@@ -11,7 +11,7 @@ import typing as t
 from dulwich.repo import Repo
 from dulwich.errors import NotGitRepository
 import dulwich.porcelain as git
-from flask import g
+from flask import current_app, g
 from flask_login import current_user
 from tinydb.storages import Storage, touch
 
@@ -77,12 +77,12 @@ class JSONStorageWithGit(Storage):
 
         # Avoid empty commits
         if not added:
-            print(
-                "WARNING JSONStorageWithGit.write: "
-                f"Failed to stage changes to {self.filename}."
+            current_app.logger.error(
+                "JSONStorageWithGit.write() failed to stage changes to"
+                f" {self.filename}."
             )
             if ignored:
-                print("WARNING: Operation blocked by gitignore pattern.")
+                current_app.logger.error("Operation blocked by gitignore pattern.")
             return
         changes = 0
         for groupname, group in git.status(repo=self.repo)[0].items():

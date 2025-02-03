@@ -69,10 +69,10 @@ class OAuthSignIn(object):
         self.provider_name = provider_name
         self.main = False
         if "OAUTH_CREDENTIALS" not in current_app.config:
-            print(
-                "WARNING: OAuth authentication will not work without secret"
-                " application keys. Please run your tests with a different"
-                " authentication method."
+            current_app.logger.error(
+                "OAuth authentication will not work without secret"
+                " application keys. Please register this instance with"
+                " a provider."
             )
             self.consumer_id: str = None
             self.consumer_secret: str = None
@@ -168,10 +168,9 @@ class GoogleSignIn(OAuthSignIn):  # pragma: no cover
                 discovery["timestamp"] = expiry_timestamp
                 oauth_db.insert(discovery)
             except Exception as e:
-                print(
-                    f"WARNING: could not retrieve URLs for {self.provider_name}."
+                current_app.logger.exception(
+                    f"Could not retrieve URLs for {self.provider_name}.", exc_info=e
                 )
-                print(e)
                 discovery = dict()
         elif datetime.now(timezone.utc).timestamp() > discovery["timestamp"]:
             try:
@@ -190,10 +189,9 @@ class GoogleSignIn(OAuthSignIn):  # pragma: no cover
                 discovery["timestamp"] = expiry_timestamp
                 oauth_db.update(discovery, doc_ids=[discovery.doc_id])
             except Exception as e:
-                print(
-                    f"WARNING: could not update URLs for {self.provider_name}."
+                current_app.logger.exception(
+                    f"Could not update URLs for {self.provider_name}.", exc_info=e
                 )
-                print(e)
 
         self.service = OAuth2Service(
             name=self.provider_name,
@@ -236,7 +234,9 @@ class GoogleSignIn(OAuthSignIn):  # pragma: no cover
         try:
             idinfo = google_id_token.verify_oauth2_token(id_token, r, self.consumer_id)
         except google_exceptions.GoogleAuthError as e:
-            print(e)
+            current_app.logger.exception(
+                f"Could not authenticate to {self.provider_name}.", exc_info=e
+            )
             return (None, None, None)
         return (
             self.provider_name + "$" + idinfo["sub"],
@@ -398,10 +398,9 @@ class GitlabSignIn(OAuthSignIn):  # pragma: no cover
                 discovery["timestamp"] = expiry_timestamp
                 oauth_db.insert(discovery)
             except Exception as e:
-                print(
-                    f"WARNING: could not retrieve URLs for {self.provider_name}."
+                current_app.logger.exception(
+                    f"Could not retrieve URLs for {self.provider_name}.", exc_info=e
                 )
-                print(e)
                 discovery = dict()
         elif datetime.now(timezone.utc).timestamp() > discovery["timestamp"]:
             try:
@@ -420,10 +419,9 @@ class GitlabSignIn(OAuthSignIn):  # pragma: no cover
                 discovery["timestamp"] = expiry_timestamp
                 oauth_db.update(discovery, doc_ids=[discovery.doc_id])
             except Exception as e:
-                print(
-                    f"WARNING: could not update URLs for {self.provider_name}."
+                current_app.logger.exception(
+                    f"Could not update URLs for {self.provider_name}.", exc_info=e
                 )
-                print(e)
 
         self.userinfo = discovery.get(
             "userinfo_endpoint", "https://gitlab.com/oauth/userinfo"

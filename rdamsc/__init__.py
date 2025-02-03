@@ -5,6 +5,7 @@
 # Standard
 # --------
 from datetime import datetime, timezone
+import logging.config
 import os
 import subprocess
 import typing as t
@@ -18,6 +19,26 @@ from github_webhook import Webhook
 # -----
 from .records import VocabTerm
 from .utils import from_url_slug, has_day, is_list, to_url_slug, url_for_subject
+
+
+logging.config.dictConfig(
+    {
+        "version": 1,
+        "formatters": {
+            "default": {
+                "format": "%(name)s - %(levelname)s: %(message)s",
+            }
+        },
+        "handlers": {
+            "wsgi": {
+                "class": "logging.StreamHandler",
+                "stream": "ext://flask.logging.wsgi_errors_stream",
+                "formatter": "default",
+            }
+        },
+        "root": {"level": "WARNING", "handlers": ["wsgi"]},
+    }
+)
 
 
 def create_app(test_config: t.Mapping[str, t.Any] = None) -> Flask:
@@ -152,19 +173,21 @@ def create_app(test_config: t.Mapping[str, t.Any] = None) -> Flask:
         req_mtime = os.stat(req_path).st_mtime
 
         # Run git pull
-        print("INFO: Upstream code repository has been updated.")
-        print("INFO: Initiating git pull to update codebase.")
+        app.logger.warning("Upstream code repository has been updated.")
+        app.logger.warning("Initiating git pull to update codebase.")
         call = subprocess.run(
             ["git", *["-C", git_work_dir], "pull", "--rebase"], capture_output=True
         )
-        msg = f"INFO: Git pull completed with exit code {call.returncode}."
+        msg = f"Git pull completed with exit code {call.returncode}."
         if call.returncode:
             msg += f"\n{call.stderr.decode()}"
-        print(msg)
+            app.logger.error(msg)
+        else:
+            app.logger.warning(msg)
 
         # Update dependencies if changed:
         if req_mtime != os.stat(req_path).st_mtime:
-            print("INFO: Requirements have changed. Updating.")
+            app.logger.warning("Requirements have changed. Updating.")
             call = subprocess.run(
                 [
                     os.path.join(git_work_dir, "venv", "bin", "pip"),
@@ -175,19 +198,21 @@ def create_app(test_config: t.Mapping[str, t.Any] = None) -> Flask:
                 ],
                 capture_output=True,
             )
-            msg = f"INFO: Update completed with exit code {call.returncode}."
+            msg = f"Update completed with exit code {call.returncode}."
             if call.returncode:
                 msg += f"\n{call.stderr.decode()}"
-            print(msg)
+                app.logger.error(msg)
+            else:
+                app.logger.warning(msg)
 
         wsgi_path = app.config.get("WSGI_PATH")
         if wsgi_path:  # pragma: no cover
             if os.path.isfile(wsgi_path):
                 os.utime(wsgi_path, None)
-                print("INFO: Application reloaded.")
+                app.logger.warning("Application reloaded.")
             else:
-                print(
-                    f"WARNING: Value of WSGI_PATH ({wsgi_path}) is not a valid file."
+                app.logger.error(
+                    f"Value of WSGI_PATH ({wsgi_path}) is not a valid file."
                 )
 
     # Utility functions used in templates:
