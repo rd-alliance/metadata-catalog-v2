@@ -35,3 +35,8 @@ dev = [
 
 [tool.setuptools]
 packages = ["rdamsc"]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore:'crypt' is deprecated:DeprecationWarning"
+]
