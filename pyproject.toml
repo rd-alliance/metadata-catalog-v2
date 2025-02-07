@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rdamsc"
-version = "2.1.0"
+version = "2.2.0"
 description = "RDA Metadata Standards Catalog"
 readme = "README.md"
-requires-python = ">= 3.8"
+requires-python = ">=3.10"
 dependencies = [
     "authlib",
     "dulwich",
