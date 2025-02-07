@@ -27,13 +27,6 @@ from flask_login import (
     current_user,
     login_required,
 )
-
-# The following two statements remove a DeprecationWarning
-import openid.oidutil
-
-openid.oidutil.xxe_safe_elementtree_modules = ["defusedxml.ElementTree"]
-
-from flask_openid import OpenID, OpenIDResponse
 from flask_wtf import FlaskForm
 import google.auth.transport.requests as google_requests
 import google.auth.exceptions as google_exceptions
@@ -49,7 +42,6 @@ from .users import User, get_user_db
 from .utils import Pluralizer
 
 bp = Blueprint("auth", __name__)
-oid = OpenID()
 lm = LoginManager()
 lm.login_view = "auth.login"
 lm.login_message = "Please sign in to access this page."
@@ -640,25 +632,15 @@ def load_user(id: t.Union[str, int]) -> t.Optional[User]:
 
 # Routes
 # ======
-@bp.route("/login", methods=["GET", "POST"])
-@oid.loginhandler
+@bp.route("/login", methods=["GET"])
 def login():
-    """This login view can handle both OpenID v2 and OpenID Connect
-    authentication. The POST method begins the OpenID v2 process. The
-    OpenID Connect links route to oauth_authorize() instead.
+    """This login view formerly handled both OpenID v2 and OAuth 2.0
+    (OpenID Connect) authentication: the POST method was used to begin
+    the OpenID v2 process.
+
+    Now this page simply provides a series of OAuth 2.0 links that route
+    to oauth_authorize().
     """
-    if current_user.is_authenticated:
-        return redirect(oid.get_next_url())
-    form = LoginForm(request.form)
-    if request.method == "POST" and form.validate():  # pragma: no cover
-        openid = form.openid.data
-        if openid:
-            return oid.try_login(
-                openid, ask_for=["email", "nickname"], ask_for_optional=["fullname"]
-            )
-    error = oid.fetch_error()
-    if error:  # pragma: no cover
-        flash(error, "error")
     main_providers = list()
     providers = list()
     if "OAUTH_CREDENTIALS" in current_app.config:
@@ -681,32 +663,8 @@ def login():
         providers.sort(key=lambda k: k["slug"])
     return render_template(
         "login.html",
-        form=form,
         main_providers=main_providers,
         providers=providers,
-        next=oid.get_next_url(),
-    )
-
-
-@oid.after_login
-def create_or_login(resp: OpenIDResponse):  # pragma: no cover
-    """This function handles the response from an OpenID v2 provider."""
-    session["openid"] = resp.identity_url
-    user_db = get_user_db()
-    User = Query()
-    profile = user_db.get(User.userid == resp.identity_url)
-    if profile:
-        flash("Successfully signed in.")
-        user = load_user(profile.doc_id)
-        login_user(user)
-        return redirect(oid.get_next_url())
-    return redirect(
-        url_for(
-            "auth.create_profile",
-            next=oid.get_next_url(),
-            name=resp.fullname or resp.nickname,
-            email=resp.email,
-        )
     )
 
 
@@ -773,7 +731,7 @@ def create_profile():
         flash("Profile successfully created.")
         user = User(value=data, doc_id=user_doc_id)
         login_user(user)
-        return redirect(oid.get_next_url() or url_for("hello"))
+        return redirect(url_for("hello"))
     if form.errors:
         if "csrf_token" in form.errors:
             msg = (
@@ -786,9 +744,7 @@ def create_profile():
                 " errors}. See below for details.".format(Pluralizer(len(form.errors)))
             )
         flash(msg, "error")
-    return render_template(
-        "create-profile.html", form=form, next=oid.get_next_url() or url_for("hello")
-    )
+    return render_template("create-profile.html", form=form, next=url_for("hello"))
 
 
 @bp.route("/edit-profile", methods=["GET", "POST"])
@@ -798,20 +754,15 @@ def edit_profile():
     user_db = get_user_db()
     openid_formatted = "unknown profile"
     openid_tuple = current_user["userid"].partition("$")
-    if openid_tuple[2]:
-        # OpenID Connect profile
-        openid_format = "{} profile for "
-        for provider_class in OAuthSignIn.__subclasses__():
-            provider = provider_class()
-            if openid_tuple[0] == provider.provider_name:
-                openid_formatted = openid_format.format(provider.formatted_name)
-                break
-        else:  # pragma: no cover
-            openid_formatted = openid_format.format(openid_tuple[0])
-        openid_formatted += current_user["name"]
+    openid_format = "{} profile for "
+    for provider_class in OAuthSignIn.__subclasses__():
+        provider = provider_class()
+        if openid_tuple[0] == provider.provider_name:
+            openid_formatted = openid_format.format(provider.formatted_name)
+            break
     else:  # pragma: no cover
-        # OpenID v2 profile
-        openid_formatted = current_user["userid"]
+        openid_formatted = openid_format.format(openid_tuple[0])
+    openid_formatted += current_user["name"]
     form = ProfileForm(request.values, data=current_user)
     if request.method == "POST" and form.validate():
         data = {
