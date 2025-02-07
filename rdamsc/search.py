@@ -106,7 +106,7 @@ def scheme_search():
                 for m in Scheme.search(Q.keywords.any(term_set)):
                     sub_results_by_id[m.mscid] = m
             flash_result(
-                len(sub_results_by_id), f'related to {" and ".join(term_list)}'
+                len(sub_results_by_id), f"related to {' and '.join(term_list)}"
             )
             results_by_id.update(sub_results_by_id)
 
@@ -290,7 +290,7 @@ def dataType(number: int):
         results.sort(key=lambda k: k.name.lower())
     else:
         flash(
-            "No schemes have been reported to be used for this type of" " data.",
+            "No schemes have been reported to be used for this type of data.",
             "error",
         )
     return render_template("search-results.html", title=datatype.name, results=results)

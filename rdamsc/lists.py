@@ -26,6 +26,7 @@ RoleLabel = t.Literal[
     "originators",
 ]
 
+
 def noop(*args) -> None:
     """Null operation."""
     pass

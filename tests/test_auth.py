@@ -9,28 +9,28 @@ from .conftest import AuthActions, PageActions
 
 def test_bad_provider(client: FlaskClient):
     # Unsupported provider:
-    response = client.get('/authorize/null')
+    response = client.get("/authorize/null")
     assert response.status_code == 404
 
-    response = client.get('/callback/null')
+    response = client.get("/callback/null")
     assert response.status_code == 404
 
     # Supported provider with missing key
-    response = client.get('/authorize/linkedin')
+    response = client.get("/authorize/linkedin")
     assert response.status_code == 404
 
-    response = client.get('/callback/linkedin')
+    response = client.get("/callback/linkedin")
     assert response.status_code == 404
 
 
 def test_oauth_login(
     client: FlaskClient, auth: AuthActions, app: Flask, page: PageActions
 ):
-    base = 'http://localhost'
-    scope = 'read:user'
-    callback = f'{base}/callback/test'
-    appid = app.config['OAUTH_CREDENTIALS']['test']['id']
-    assert appid == 'test-oauth-app-id'
+    base = "http://localhost"
+    scope = "read:user"
+    callback = f"{base}/callback/test"
+    appid = app.config["OAUTH_CREDENTIALS"]["test"]["id"]
+    assert appid == "test-oauth-app-id"
     userid = "test$testuser"
     username = "Test User"
     useremail = "test@localhost.test"
@@ -40,20 +40,20 @@ def test_oauth_login(
 
     # Test profile creation via new OAuth login
 
-    response = client.get('/authorize/test')
+    response = client.get("/authorize/test")
     assert response.status_code == 302
-    url = 'https://localhost/login/oauth/authorize?' + urlencode(
-        {'scope': scope, 'redirect_uri': callback, 'client_id': appid}
+    url = "https://localhost/login/oauth/authorize?" + urlencode(
+        {"scope": scope, "redirect_uri": callback, "client_id": appid}
     )
-    assert response.headers['Location'] == url
+    assert response.headers["Location"] == url
 
-    response = client.get('/callback/test')
+    response = client.get("/callback/test")
     assert response.status_code == 302
     # safe characters should match werkzeug.urls.iri_to_uri()
-    url = '/create-profile?' + urlencode(
-        {'next': '/', 'name': username, 'email': useremail}, safe="%!$&'()*+,/:;=?@"
+    url = "/create-profile?" + urlencode(
+        {"next": "/", "name": username, "email": useremail}, safe="%!$&'()*+,/:;=?@"
     )
-    redirection = response.headers['Location']
+    redirection = response.headers["Location"]
     assert redirection.endswith(url)
 
     response = client.get(url)
@@ -64,9 +64,10 @@ def test_oauth_login(
 
     # Missing username
     response = client.post(
-        '/create-profile',
-        data={'csrf_token': csrf, 'email': useremail},
-        follow_redirects=True)
+        "/create-profile",
+        data={"csrf_token": csrf, "email": useremail},
+        follow_redirects=True,
+    )
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     page.read(html)
@@ -76,9 +77,10 @@ def test_oauth_login(
 
     # Missing email
     response = client.post(
-        '/create-profile',
-        data={'csrf_token': csrf, 'name': username},
-        follow_redirects=True)
+        "/create-profile",
+        data={"csrf_token": csrf, "name": username},
+        follow_redirects=True,
+    )
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     page.read(html)
@@ -88,9 +90,10 @@ def test_oauth_login(
 
     # Bad email
     response = client.post(
-        '/create-profile',
-        data={'csrf_token': csrf, 'name': username, 'email': 'bad_address'},
-        follow_redirects=True)
+        "/create-profile",
+        data={"csrf_token": csrf, "name": username, "email": "bad_address"},
+        follow_redirects=True,
+    )
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     page.read(html)
@@ -99,39 +102,37 @@ def test_oauth_login(
 
     # Missing CSRF
     response = client.post(
-        '/create-profile',
-        data={'name': username, 'email': useremail},
-        follow_redirects=True)
+        "/create-profile",
+        data={"name": username, "email": useremail},
+        follow_redirects=True,
+    )
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     page.read(html)
-    page.assert_contains(
-        "Could not save changes as your form session has expired.")
+    page.assert_contains("Could not save changes as your form session has expired.")
     csrf = page.get_csrf()
 
     # All good
     response = client.post(
-        '/create-profile',
-        data={'csrf_token': csrf, 'name': username, 'email': useremail},
-        follow_redirects=True)
+        "/create-profile",
+        data={"csrf_token": csrf, "name": username, "email": useremail},
+        follow_redirects=True,
+    )
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     msg = "Profile successfully created."
     page.assert_contains(msg, html)
     page.assert_contains(auth_only)
 
-    with open(app.config['USER_DATABASE_PATH']) as f:
+    with open(app.config["USER_DATABASE_PATH"]) as f:
         users = json.load(f)
-        assert users.get('_default', dict()).get('1', dict()).get(
-            'userid') == userid
-        assert users.get('_default', dict()).get('1', dict()).get(
-            'name') == username
-        assert users.get('_default', dict()).get('1', dict()).get(
-            'email') == useremail
+        assert users.get("_default", dict()).get("1", dict()).get("userid") == userid
+        assert users.get("_default", dict()).get("1", dict()).get("name") == username
+        assert users.get("_default", dict()).get("1", dict()).get("email") == useremail
 
     newemail = "test@example.com"
 
-    response = client.get('/edit-profile')
+    response = client.get("/edit-profile")
     html = response.get_data(as_text=True)
     csrf = page.get_csrf(html)
     assert csrf
@@ -140,9 +141,10 @@ def test_oauth_login(
 
     # Missing username
     response = client.post(
-        '/edit-profile',
-        data={'csrf_token': csrf, 'email': newemail},
-        follow_redirects=True)
+        "/edit-profile",
+        data={"csrf_token": csrf, "email": newemail},
+        follow_redirects=True,
+    )
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     page.read(html)
@@ -151,52 +153,52 @@ def test_oauth_login(
 
     # Missing CSRF
     response = client.post(
-        '/edit-profile',
-        data={'name': username, 'email': newemail},
-        follow_redirects=True)
+        "/edit-profile",
+        data={"name": username, "email": newemail},
+        follow_redirects=True,
+    )
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     page.read(html)
-    page.assert_contains(
-        "Could not save changes as your form session has expired.")
+    page.assert_contains("Could not save changes as your form session has expired.")
     csrf = page.get_csrf()
 
     # All good
     response = client.post(
-        '/edit-profile',
-        data={'csrf_token': csrf, 'name': username, 'email': newemail},
-        follow_redirects=True)
+        "/edit-profile",
+        data={"csrf_token": csrf, "name": username, "email": newemail},
+        follow_redirects=True,
+    )
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     msg = "Profile successfully updated."
     page.assert_contains(msg, html)
 
-    with open(app.config['USER_DATABASE_PATH']) as f:
+    with open(app.config["USER_DATABASE_PATH"]) as f:
         users = json.load(f)
-        assert users.get('_default', dict()).get('1', dict()).get(
-            'email') == newemail
+        assert users.get("_default", dict()).get("1", dict()).get("email") == newemail
 
     # Test redirection when logged in user visits login page:
 
-    response = client.get('/login', follow_redirects=True)
+    response = client.get("/login", follow_redirects=True)
     html = response.get_data(as_text=True)
     page.assert_contains(auth_only, html)
 
-    response = client.get('/authorize/test', follow_redirects=True)
+    response = client.get("/authorize/test", follow_redirects=True)
     html = response.get_data(as_text=True)
     page.assert_contains(auth_only, html)
 
-    response = client.get('/callback/test', follow_redirects=True)
+    response = client.get("/callback/test", follow_redirects=True)
     html = response.get_data(as_text=True)
     page.assert_contains(auth_only, html)
 
-    response = client.get('/create-profile', follow_redirects=True)
+    response = client.get("/create-profile", follow_redirects=True)
     html = response.get_data(as_text=True)
     page.assert_contains(auth_only, html)
 
     # Test regular logout
 
-    response = client.get('/logout', follow_redirects=True)
+    response = client.get("/logout", follow_redirects=True)
     html = response.get_data(as_text=True)
     msg = "You were signed out."
     page.assert_contains(msg, html)
@@ -212,13 +214,12 @@ def test_oauth_login(
 
     # Test logout via profile deletion
 
-    response = client.get('/remove-profile', follow_redirects=True)
+    response = client.get("/remove-profile", follow_redirects=True)
     html = response.get_data(as_text=True)
     msg = "Your profile was successfully deleted."
     page.assert_contains(msg, html)
     page.assert_lacks(auth_only)
 
-    with open(app.config['USER_DATABASE_PATH']) as f:
+    with open(app.config["USER_DATABASE_PATH"]) as f:
         users = json.load(f)
-        assert users.get('_default', dict()).get('1', dict()).get(
-            'userid') is None
+        assert users.get("_default", dict()).get("1", dict()).get("userid") is None

@@ -164,7 +164,7 @@ def get_records(table: MainTableID):
     )
 
 
-@bp.route("/<any(m, g, t, c, e):table>" "<int:number>", methods=["GET"])
+@bp.route("/<any(m, g, t, c, e):table><int:number>", methods=["GET"])
 def get_record(table: MainTableID, number: int):
     """Returns given record."""
     record = Record.load(number, table)

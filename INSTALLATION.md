@@ -217,26 +217,22 @@ These instructions are one way to go about using the Catalog in production.
 For other options, please refer to the [deployment options] documented by the
 Flask developers.
 
-[deployment options]: https://flask.palletsprojects.com/en/2.0.x/deploying/
+[deployment options]: https://flask.palletsprojects.com/en/stable/deploying/
 
 On the Web server, let's assume for example that you have installed the
 application using the above instructions in `/opt/rdamsc`.
 
-These instructions are for mod_wsgi on Apache, so these need to be installed. On
-Debian or a derivative like Ubuntu, you'd do this:
+These instructions are for `mod_wsgi` on Apache, so these need to be installed.
+On Debian or a derivative like Ubuntu, you'd do this:
 
 ```bash
 sudo apt install apache2 libapache2-mod-wsgi-py3
 ```
 
-If you need to use an upgraded Python alongside the system version and a
-pre-compiled mod_wsgi is not available for it (as is the case on Ubuntu 18.04),
-you will need something like this instead, assuming you already have (say)
-`python3.8` and `python3.8-venv`:
-
-```bash
-sudo apt install apache2 apache2-dev python3.8-dev
-```
+If you need to use a version of Python that is not the system default, and a
+pre-compiled `mod_wsgi` is not available for it, then as well as the `python3.x`
+and `python3.x-venv` you'd need to get this far, you will also need to install
+`python3.x-dev` and `apache2-dev`.
 
 It is recommended that you set up a non-privileged system user to run the
 Catalog (say, `rdamsc`) and that this user and the Apache user (`www-data` on

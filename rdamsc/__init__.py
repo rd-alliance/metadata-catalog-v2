@@ -239,9 +239,9 @@ def create_app(test_config: t.Mapping[str, t.Any] = None) -> Flask:
                 m_start = datetime.fromisoformat(m_start_iso).replace(
                     tzinfo=timezone.utc
                 )
-                vars[
-                    "maintenance_start"
-                ] = f"on {m_start.day} {m_start.strftime('%B %Y from %H:%M')}"
+                vars["maintenance_start"] = (
+                    f"on {m_start.day} {m_start.strftime('%B %Y from %H:%M')}"
+                )
                 if now > m_start:
                     vars["maintenance_ongoing"] = True
                 if m_end_iso := app.config.get("MAINTENANCE_END"):

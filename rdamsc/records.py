@@ -601,7 +601,7 @@ class Record(Document, metaclass=ABCMeta):
             result["value"] = value
         else:
             result["errors"].append(
-                {"message": "Date must be in yyyy or yyyy-mm or yyyy-mm-dd " "format."}
+                {"message": "Date must be in yyyy or yyyy-mm or yyyy-mm-dd format."}
             )
         return result
 
@@ -1023,7 +1023,7 @@ class Record(Document, metaclass=ABCMeta):
         uv = NamespaceURI()
         if not uv.gen_regex.match(value):
             result["errors"].append(
-                {"message": "Value must include protocol:" " http, https."}
+                {"message": "Value must include protocol: http, https."}
             )
         elif not value.endswith(("/", "#")):
             result["errors"].append({"message": "Value must end with / or #."})
@@ -1044,7 +1044,7 @@ class Record(Document, metaclass=ABCMeta):
         uv = EmailOrURL()
         if not uv.gen_regex.match(value):
             result["errors"].append(
-                {"message": "Value must include protocol:" " http, https, mailto."}
+                {"message": "Value must include protocol: http, https, mailto."}
             )
         elif value.startswith("mailto:"):
             if not uv.email_regex.match(value):
@@ -1471,8 +1471,7 @@ class Record(Document, metaclass=ABCMeta):
             alldata["versions"].append(formdata)
         elif index < 0 or index >= len(self["versions"]):
             return (
-                "You tried to edit a version that does not exist in the"
-                " database yet."
+                "You tried to edit a version that does not exist in the database yet."
             )
         else:
             alldata["versions"][index] = formdata
@@ -3219,6 +3218,7 @@ class RequiredIf(object):
                 field.errors[:] = []
                 raise validators.StopValidation(message)
 
+
 class ValuesDistinctFrom(object):
     """A validator for SelectMultipleField that requires that all values
     are distinct from the values in another SelectMultipleField."""
@@ -4019,9 +4019,7 @@ def edit_version(table: MainTableID, number: int, index: int = None):
     methods=["GET", "POST"],
 )
 @login_required
-def edit_vocabterm(
-    vocab: TermTableID, number: int
-):
+def edit_vocabterm(vocab: TermTableID, number: int):
     """Editing form for a VocabTerm."""
     # Look up record to edit, or get new:
     record = Record.load(number, vocab)

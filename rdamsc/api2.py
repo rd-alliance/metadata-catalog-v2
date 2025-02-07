@@ -182,28 +182,28 @@ def as_response_page(
 
     if page and not start:
         if page_index < response["data"]["totalPages"]:
-            response["data"][
-                "nextLink"
-            ] = f"{link}?page={page + 1}&pageSize={page_size}"
+            response["data"]["nextLink"] = (
+                f"{link}?page={page + 1}&pageSize={page_size}"
+            )
         if page_index > 1:
-            response["data"][
-                "previousLink"
-            ] = f"{link}?page={page - 1}&pageSize={page_size}"
+            response["data"]["previousLink"] = (
+                f"{link}?page={page - 1}&pageSize={page_size}"
+            )
     else:
         if start_index + page_size <= len(mappings):
-            response["data"][
-                "nextLink"
-            ] = f"{link}?start={start_index + page_size}&pageSize={page_size}"
+            response["data"]["nextLink"] = (
+                f"{link}?start={start_index + page_size}&pageSize={page_size}"
+            )
         if start_index > 1:
             prev_start = start_index - page_size
             if prev_start < 1:
-                response["data"][
-                    "previousLink"
-                ] = f"{link}?start=1&pageSize={start_index - 1}"
+                response["data"]["previousLink"] = (
+                    f"{link}?start=1&pageSize={start_index - 1}"
+                )
             else:
-                response["data"][
-                    "previousLink"
-                ] = f"{link}?start={prev_start}&pageSize={page_size}"
+                response["data"]["previousLink"] = (
+                    f"{link}?start={prev_start}&pageSize={page_size}"
+                )
 
     response["data"]["items"] = items
     return response
@@ -1095,7 +1095,7 @@ def set_record(table: TableID, number: int = 0):
 
 
 @bp.route(
-    "/<any(m, g, t, c, e, datatype, location, type, id_scheme):table>" "<int:number>",
+    "/<any(m, g, t, c, e, datatype, location, type, id_scheme):table><int:number>",
     methods=["DELETE"],
 )
 @multi_auth.login_required

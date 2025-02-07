@@ -11,14 +11,37 @@ recommended you make the changes in the following order.
 
  2. Make the corresponding changes to the entity classes in `rdamsc/records.py`.
 
-    If you are adding a new relationship between entities, update the `rolemap`
-    properties of each affected entity and `Relation._inversions`. If there is
-    a name collision between several pairwise relationships (as with
-    `maintainers`), update `Relation.inversion_map()`. If an entity would not be
-    considered useful without having that relationship, add the relationship
-    role name to a list at `schema['relatedEntities']['useful']` for the entity.
+    If you are adding a **new relationship** between entities, update the
+    `rolemap` properties of each affected entity. A `rolemap` entry maps from a
+    role (singular) to a dictionary with the following keys:
 
-    If you are adding a new property to an entity, update the `schema` property
+    - `predicate`: the forward version of the role; it should be plural if
+      multiple objects can play this role for the subject of the predicate
+      (which is usually the case).
+    - `direction`: either `Relation.FORWARD` or `Relation.INVERSE`. For example,
+      the role ‘child scheme’ is the predicate ‘parent schemes’ in the inverse
+      direction.
+    - `accepts`: the table name for the (object) record playing this role for the
+      current (subject) record; for example `m` or `g`.
+    - `one_way`: if the role is between two records of the same type (with the
+      same table name), and cannot be mutual, include this key with the value
+      `True`; otherwise omit it. For example, *A* cannot be both a parent and
+      child scheme of *B*.
+
+    You should also update `Relation._inversions` to give the proper inversion
+    of the predicate name (probably the plural of the inverted role).
+
+    - If there is a name collision between several pairwise relationships (as
+      with `maintainers`), update `Relation.inversion_map()`. Note the technique
+      for replacing `{}` in the `Relation._inversions` value with the right
+      string.
+
+    If an entity would not be considered useful without having that
+    relationship, add the relationship role name to a list at
+    `schema['relatedEntities']['useful']` for the entity (see the example for
+    `Crosswalk.schema`).
+
+    If you are adding a **new property** to an entity, update the `schema` property
     of the entity class. You should see a close correspondence with the schemas
     in `openapi.yaml`. There are some special keys in the `schema` relating to
     validation and conformance level calculation:
@@ -66,21 +89,14 @@ recommended you make the changes in the following order.
 
 ## Testing
 
-You should have your Python virtual environment set up as described in the
-[Installation Guide](INSTALLATION.md).
-
-Having activated the virtual environment, use the following command to run all
-the functional tests:
+The recommended technique for running tests is with the `tox` tool:
 
 ```bash
-venv/bin/coverage run -m pytest
+tox
 ```
 
-To generate the coverage report, run the following command:
-
-```bash
-venv/bin/coverage html -d "test_coverage_report"
-```
+This should generate an HTML coverage report at `htmlcov/index.html` and will
+also normalize the formatting of the source code and unit tests.
 
 ## Upgrading dependencies
 
@@ -112,28 +128,28 @@ deactivate
 rm -r venv
 python3 -m venv venv
 . venv/bin/activate
-pip install wheel  # optional
 pip install -e .
 pip freeze | sed 's/==/~=/' | grep -vEe "^-e" > requirements.txt
 ```
 
 Once you have recreated the requirements file, reinstall any helper packages you
-need (e.g. `pycodestyle`), then install the testing apparatus:
+need, such as those needed for linting the unit tests:
 
 ```bash
 pip install -e ".[dev]"
 ```
 
-Run unit tests and ensure that all tests pass by doing one of the following:
+Run the unit tests as described above. If you encounter any errors or warnings
+triggered by the updated requirements, fix them in one of these ways:
 
 - updating the code;
+- suppressing temporary or superfluous warnings in `pyproject.toml`;
 - reverting individual requirements;
 - reverting the whole requirements file.
 
 Once all tests pass successfully, commit any changes to the requirements file.
-If you needed to update code, the live server must be put into maintenance mode
-before the change is pushed to the live branch so that the installed
-requirements can be updated immediately afterwards.
+If you needed to update code, the live server should be put into maintenance mode
+before the change is pushed to the live branch so any problems can be addressed.
 
 ### Dependency notes
 

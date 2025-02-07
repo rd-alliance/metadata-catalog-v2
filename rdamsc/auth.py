@@ -156,9 +156,7 @@ class GoogleSignIn(OAuthSignIn):  # pragma: no cover
         self.icon = "fab fa-google"
         oauth_db = get_oauth_db()
         discovery = oauth_db.get(Query().provider == self.provider_name)
-        discovery_url = (
-            "https://accounts.google.com/.well-known/" "openid-configuration"
-        )
+        discovery_url = "https://accounts.google.com/.well-known/openid-configuration"
         if not discovery:
             try:
                 r = requests.get(discovery_url)
@@ -388,7 +386,7 @@ class GitlabSignIn(OAuthSignIn):  # pragma: no cover
         self.icon = "fab fa-gitlab"
         oauth_db = get_oauth_db()
         discovery = oauth_db.get(Query().provider == self.provider_name)
-        discovery_url = "https://gitlab.com/.well-known/" "openid-configuration"
+        discovery_url = "https://gitlab.com/.well-known/openid-configuration"
         if not discovery:
             try:
                 r = requests.get(discovery_url)

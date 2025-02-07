@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -29,8 +29,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "coverage",
-    "pytest",
+    "pytest>=6",
 ]
 
 [tool.setuptools]
@@ -38,5 +37,6 @@ packages = ["rdamsc"]
 
 [tool.pytest.ini_options]
 filterwarnings = [
-    "ignore:'crypt' is deprecated:DeprecationWarning"
+    "ignore:'crypt':DeprecationWarning:passlib",
+    "ignore:defusedxml.cElementTree:DeprecationWarning:openid",
 ]
