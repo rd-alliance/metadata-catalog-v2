@@ -2,47 +2,14 @@
 
 ## Pre-requisite software
 
-The Metadata Standards Catalog is written in [Python 3].8+, so as a first step
-this will need to be installed on your machine. (It should work with Python 3.7
-as well, but this has not been tested recently. It will not work on earlier
-versions.)
+The Metadata Standards Catalog is written in [Python 3], requiring version 3.10
+or newer, so as a first step this will need to be installed on your machine.
 
-You will also need quite a few non-standard packages; the instructions below
-will install these for you in an isolated virtual environment, but here they
-are if you want to look up the documentation:
-
-  - [Flask], [Flask-WTF] (and hence [WTForms]), and [Flask-Login] are needed for
-    the actual rendering of the pages.
-  - [Email validator] is used for email address validation in forms.
-  - [Flask-OpenID] provides Open ID v2.x login support.
-  - [RAuth] (which depends on [Requests]), and Google's [oauth2client] are used
-    for Open ID Connect (OAuth) support.
-  - [Flask-HTTPAuth] and [PassLib] are used for API authentication.
-  - The database is implemented using [TinyDB] v4+ and [tinyrecord].
-  - The subject thesaurus is converted from RDF to JSON via [RDFLib].
-  - [Dulwich] is used to apply version control to the database.
-  - [GitHub-Webhook] allows the Catalog to update itself.
-  - [Flask-CORS] is used to allow requests from JavaScript.
+You will also need quite a few additional packages from PyPI, so it is strongly
+recommended that you install the Catalog into an isolated virtual environment.
+The methods below make this especially quick and easy.
 
 [Python 3]: https://www.python.org/
-[Flask]: http://flask.pocoo.org/
-[Flask-WTF]: https://flask-wtf.readthedocs.io/
-[WTForms]: https://wtforms.readthedocs.io/
-[Flask-Login]: https://flask-login.readthedocs.io/
-[Email validator]: https://pypi.org/project/email-validator/
-[Flask-OpenID]: https://pythonhosted.org/Flask-OpenID/
-[RAuth]: https://rauth.readthedocs.io/
-[Requests]: http://docs.python-requests.org/
-[oauth2client]: https://developers.google.com/api-client-library/python/guide/aaa_oauth
-[Flask-HTTPAuth]: https://flask-httpauth.readthedocs.io/
-[PassLib]: https://passlib.readthedocs.io/
-[TinyDB]: http://tinydb.readthedocs.io/
-[tinyrecord]: https://pypi.org/project/tinyrecord/
-[RDFLib]: http://rdflib.readthedocs.io/
-[Dulwich]: https://www.dulwich.io/
-[GitHub-Webhook]: https://bloomberg.github.io/python-github-webhook/
-[Flask-CORS]: http://flask-cors.readthedocs.io/
-
 
 ## Installation
 

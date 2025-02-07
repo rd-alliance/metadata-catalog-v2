@@ -275,6 +275,7 @@ def subject(subject: str):
 
 @bp.route("/datatype/datatype<int:number>")
 def dataType(number: int):
+    """Show search results for a given datatype."""
     datatype = Datatype.load(number)
     if not datatype:
         abort(404)
@@ -298,6 +299,9 @@ def dataType(number: int):
 
 @bp.route("/<any(funder, maintainer, user):role>/g<int:number>")
 def group(role: t.Literal["funder", "maintainer", "user"], number: int):
+    """Show search results for funders, maintainers, known users of
+    schemes.
+    """
     group = Group.load(number)
     if not group:
         abort(404)

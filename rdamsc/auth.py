@@ -641,6 +641,8 @@ def login():
     Now this page simply provides a series of OAuth 2.0 links that route
     to oauth_authorize().
     """
+    if current_user.is_authenticated:
+        return redirect(url_for("hello"))
     main_providers = list()
     providers = list()
     if "OAUTH_CREDENTIALS" in current_app.config:

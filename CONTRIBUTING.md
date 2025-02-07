@@ -1,5 +1,23 @@
 # Contributing code
 
+## Navigating the source code
+
+The following table should help locate which bits of code do what, and where to
+write the corresponding tests.
+
+| `rdamsc/` | `tests/` | Contents |
+| --- | --- | --- |
+| `__init__.py` | `test_factory.py`, `test_webhook.py` | Main app routing, webhook |
+| `api1.py` | `test_api1.py` | Version 1 API emulation |
+| `api2.py` | `test_api2.py` | Version 2 API |
+| `auth.py` | `test.auth.py`, `test_z_auth.py` | OAuth 2.0 authentication and user profile pages |
+| `db_utils.py` | `test_records.py` | Version-controlled JSON database |
+| `lists.py` | `test-lists.py` | Index pages for main record types |
+| `records.py` | `test_records.py` | Display and editing pages for main record types and folksonomies |
+| `search.py` | `test_search.py` | Search form and results pages |
+| `users.py` | `test_auth.py` | Website and API user classes and functions |
+| `vocab.py` | `test_api2.py` | Subject thesaurus class and functions |
+
 ## Data model
 
 The data model for the Catalog is (unfortunately but unavoidably) expressed in
@@ -153,10 +171,36 @@ before the change is pushed to the live branch so any problems can be addressed.
 
 ### Dependency notes
 
-Python3-openid <= v3.2.0 uses an ElementTree implementation from defusedxml that
-has since been deprecated. There is a workaround in `rdamsc/auth.py` to use the
-non-deprecated implementation instead.
+Here are the direct dependencies of the main code, with links to the
+corresponding documentation for each of them:
 
-There is also a pull request to solve this issue upstream
-(necaris/python3-openid#64); if and when this makes it into a new release,
-the workaround can be removed.
+  - [Flask], [WTForms] (with help from [Flask-WTF]), and [MarkupSafe] are needed
+    for the actual rendering of the pages, with [Werkzeug] doing the routing.
+  - [Flask-Login] is used for user authorization and session management.
+  - [Flask-CORS] is used to allow requests from JavaScript.
+  - [Flask-HTTPAuth] and [PassLib] are used for API authentication.
+  - [Authlib], [RAuth] (which depends on [Requests]), and [Google-Auth] are used
+    for OAuth 2.0 (and OpenID Connect) support.
+  - The database is implemented using [TinyDB] v4+ and [TinyRecord].
+  - The subject thesaurus is converted from RDF to JSON via [RDFLib].
+  - [Dulwich] is used to apply version control to the database.
+  - [GitHub-Webhook] allows the Catalog to update itself.
+
+[Authlib]: https://docs.authlib.org/en/stable/
+[Dulwich]: https://www.dulwich.io/
+[Flask]: http://flask.pocoo.org/
+[Flask-CORS]: http://flask-cors.readthedocs.io/
+[Flask-HTTPAuth]: https://flask-httpauth.readthedocs.io/
+[Flask-Login]: https://flask-login.readthedocs.io/
+[Flask-WTF]: https://flask-wtf.readthedocs.io/
+[GitHub-Webhook]: https://bloomberg.github.io/python-github-webhook/
+[Google-Auth]: https://github.com/googleapis/google-auth-library-python
+[MarkupSafe]: https://markupsafe.palletsprojects.com/
+[PassLib]: https://passlib.readthedocs.io/
+[RAuth]: https://rauth.readthedocs.io/
+[RDFLib]: http://rdflib.readthedocs.io/
+[Requests]: http://docs.python-requests.org/
+[TinyDB]: http://tinydb.readthedocs.io/
+[TinyRecord]: https://pypi.org/project/tinyrecord/
+[Werkzeug]: https://werkzeug.palletsprojects.com/
+[WTForms]: https://wtforms.readthedocs.io/

@@ -7,7 +7,6 @@ import typing as t
 
 # Non-standard
 # ------------
-# See https://docs.authlib.org/en/stable/
 from authlib.jose import jwt
 from authlib.jose.errors import (
     BadSignatureError,
@@ -15,14 +14,8 @@ from authlib.jose.errors import (
     ExpiredTokenError,
     InvalidClaimError,
 )
-
-# See https://flask.palletsprojects.com/en/2.0.x/
 from flask import current_app, g
-
-# See https://passlib.readthedocs.io/
 from passlib.apps import custom_app_context as pwd_context
-
-# See http://tinydb.readthedocs.io/
 from tinydb import TinyDB, Query
 from tinydb.database import Document
 from tinydb.operations import delete

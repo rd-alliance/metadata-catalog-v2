@@ -11,20 +11,22 @@ requires-python = ">=3.10"
 dependencies = [
     "authlib",
     "dulwich",
-    "email_validator",
     "flask",
     "flask-cors",
     "flask-httpauth",
     "flask-login",
-    "Flask-OpenID",
-    "Flask-WTF",
+    "flask-wtf",
     "github-webhook",
     "google-auth",
+    "markupsafe",
     "passlib",
     "rauth",
     "rdflib",
+    "requests",
     "tinydb>=4",
     "tinyrecord>=0.2.0",
+    "werkzeug",
+    "wtforms[email]",
 ]
 
 [project.optional-dependencies]
@@ -38,5 +40,4 @@ packages = ["rdamsc"]
 [tool.pytest.ini_options]
 filterwarnings = [
     "ignore:'crypt':DeprecationWarning:passlib",
-    "ignore:defusedxml.cElementTree:DeprecationWarning:openid",
 ]

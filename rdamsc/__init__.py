@@ -127,7 +127,6 @@ def create_app(test_config: t.Mapping[str, t.Any] = None) -> Flask:
     # Dynamic pages:
     from . import auth
 
-    auth.oid.init_app(app)
     auth.lm.init_app(app)
     app.register_blueprint(auth.bp)
 
