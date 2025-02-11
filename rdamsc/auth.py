@@ -81,7 +81,7 @@ class OAuthClient:
 
     def authorize_redirect(self) -> Response:
         """Returns Flask redirect to the provider login."""
-        raise NotImplementedError  # pragma: no cover
+        return self.app.authorize_redirect(redirect_uri=self.callback_url)
 
     def get_profile_data(self) -> ProfileData:
         """Returns a user ID (based off the provider name and the user
@@ -96,7 +96,8 @@ class OAuthClient:
     def callback_url(self) -> str:
         return url_for("auth.oauth_callback", provider=self.slug, _external=True)
 
-class GitHubClient(OAuthClient):
+class GitHubClient(OAuthClient):  # pragma: no cover
+    """GitHub using OAuth 2.0."""
     slug = "github"
     name = "GitHub"
     icon = "fab fa-github"
@@ -107,15 +108,13 @@ class GitHubClient(OAuthClient):
         client_kwargs={"scope": "read:user user:email"},
     )
 
-    def authorize_redirect(self) -> Response:
-        return self.app.authorize_redirect(redirect_uri=self.callback_url)
-
     def get_profile_data(self) -> ProfileData:
         self.app.authorize_access_token()
         try:
-            r = self.app.get("user")
+            r: requests.Response = self.app.get("user")
             r.raise_for_status()
-            id_info = r.json()
+            id_info: dict = r.json()
+            current_app.logger.debug(f"id_info = {id_info}")
             id = id_info["login"]
         except requests.HTTPError or ValueError:
             return ProfileData()
@@ -127,9 +126,10 @@ class GitHubClient(OAuthClient):
         if profile_data.email is None:
             email = ""
             try:
-                r = self.app.get("user/emails")
+                r: requests.Response = self.app.get("user/emails")
                 r.raise_for_status()
-                contacts = r.json()
+                contacts: list[dict] = r.json()
+                current_app.logger.debug(f"contacts = {contacts}")
                 for contact in contacts:
                     email = contact.get("email")
                     if contact.get("primary", False):
@@ -138,7 +138,95 @@ class GitHubClient(OAuthClient):
                 pass
             if email:
                 profile_data = profile_data._replace(email=email)
-        current_app.logger.debug(f"{profile_data}")
+        current_app.logger.debug(f"parsed as {profile_data}")
+        return profile_data
+
+
+class OrcidClient(OAuthClient):  # pragma: no cover
+    """ORCID using OpenID Connect."""
+
+    slug = "orcid"
+    name = "ORCID"
+    icon = "fab fa-orcid"
+    app_kwargs = dict(
+        api_base_url="https://pub.orcid.org/v2.0/",
+        client_kwargs={"scope": "openid"},
+        server_metadata_url="https://orcid.org/.well-known/openid-configuration",
+    )
+
+    def get_profile_data(self) -> ProfileData:
+        self.app.authorize_access_token()
+        try:
+            user_info = self.app.userinfo()
+            current_app.logger.debug(f"user_info = {user_info}")
+            id = user_info.get("sub")
+        except requests.HTTPError or ValueError:
+            return ProfileData()
+        profile_data = ProfileData(
+            userid=f"{self.slug}${id}",
+            username=user_info.get("name"),
+            email=user_info.get("email"),
+        )
+        if profile_data.email is None:
+            email = ""
+            try:
+                r: requests.Response = self.app.get(
+                    f"{id}/record",
+                    headers={"Content-type": "application/vnd.orcid+json"},
+                )
+                r.raise_for_status()
+                id_info: dict = r.json()
+                current_app.logger.debug(f"id_info = {id_info}")
+                contacts = (
+                    id_info.get("person", dict())
+                    .get("emails", dict())
+                    .get("email", list())
+                )
+                for contact in contacts:
+                    email = contact.get("email") or email
+                    if contact.get("primary", False):
+                        break
+            except requests.HTTPError or ValueError:
+                pass
+            if email:
+                profile_data = profile_data._replace(email=email)
+        current_app.logger.debug(f"parsed as {profile_data}")
+        return profile_data
+
+
+class WicketClient(OAuthClient):  # pragma: no cover
+    """Wicket using OAuth 2.0."""
+
+    slug = "wicket"
+    name = "RDA"
+    main = True
+    app_kwargs = dict(
+        access_token_url="https://rda-login.wicketcloud.com/oauth2.0/accessToken",
+        authorize_url="https://rda-login.wicketcloud.com/oauth2.0/authorize",
+        api_base_url="https://rda-login.wicketcloud.com/oauth2.0/",
+    )
+
+    def get_profile_data(self) -> ProfileData:
+        self.app.authorize_access_token()
+        try:
+            r: requests.Response = self.app.get("profile")
+            r.raise_for_status()
+            id_info: dict = r.json()
+            current_app.logger.debug(f"id_info = {id_info}")
+            id = id_info["id"]
+        except requests.HTTPError or ValueError:
+            return ProfileData()
+        user_attr: dict = id_info.get("attributes", dict())
+        name_parts = list()
+        for part in ["givenName", "familyName"]:
+            if name_part := user_attr.get(part):
+                name_parts.append(name_part)
+        profile_data = ProfileData(
+            userid=f"{self.slug}${id}",
+            username=" ".join(name_parts) if name_parts else None,
+            email=user_attr.get("email"),
+        )
+        current_app.logger.debug(f"parsed as {profile_data}")
         return profile_data
 
 
