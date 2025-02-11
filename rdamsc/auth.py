@@ -4,11 +4,13 @@
 # --------
 from datetime import datetime, timezone
 from email.utils import parsedate_tz, mktime_tz
+from sys import api_version
 import typing as t
 
 # Non-standard
 # ------------
 from flask import (
+    Response,
     abort,
     Blueprint,
     current_app,
@@ -31,7 +33,9 @@ from flask_wtf import FlaskForm
 import google.auth.transport.requests as google_requests
 import google.auth.exceptions as google_exceptions
 from google.oauth2 import id_token as google_id_token
-from rauth import OAuth1Service, OAuth2Service
+from authlib.oauth2.client import OAuth2Client
+from authlib.integrations.flask_client.apps import FlaskOAuth1App, FlaskOAuth2App
+from authlib.integrations.flask_client.integration import FlaskIntegration
 import requests
 from tinydb import TinyDB, Query
 from wtforms import validators, StringField
@@ -50,542 +54,92 @@ lm.login_message_category = "error"
 
 # Auth provider classes
 # =====================
-class OAuthSignIn(object):
-    """Abstraction layer for RAuth. Source:
-    https://blog.miguelgrinberg.com/post/oauth-authentication-with-flask
-    """
+class ProfileData(t.NamedTuple):
+    userid: t.Optional[str] = None
+    username: t.Optional[str] = None
+    email: t.Optional[str] = None
 
-    providers: t.Dict[str, t.Type["OAuthSignIn"]] = None
+class OAuthClient:
+    """Wrapper around authlib's FlaskOAuth1App and FlaskOAuth2App."""
 
-    def __init__(self, provider_name: str):
-        self.provider_name = provider_name
-        self.main = False
-        if "OAUTH_CREDENTIALS" not in current_app.config:
-            current_app.logger.error(
-                "OAuth authentication will not work without secret"
-                " application keys. Please register this instance with"
-                " a provider."
-            )
-            self.consumer_id: str = None
-            self.consumer_secret: str = None
-        elif provider_name not in current_app.config["OAUTH_CREDENTIALS"]:
-            self.consumer_id: str = None
-            self.consumer_secret: str = None
-        else:
-            credentials: t.Dict[str, str] = current_app.config["OAUTH_CREDENTIALS"][
-                provider_name
-            ]
-            self.consumer_id: str = credentials["id"]
-            self.consumer_secret: str = credentials["secret"]
+    framework_integration_cls = FlaskIntegration
+    app_cls = FlaskOAuth2App
+    slug = ""
+    name = ""
+    icon = "fas fa-key"
+    main = False
+    app_kwargs = dict()
 
-    def authorize(self):
+    def __init__(self, client_id: str, client_secret: str):
+        self.app = self.app_cls(
+            framework=self.framework_integration_cls(self.slug),
+            name=self.slug,
+            client_id=client_id,
+            client_secret=client_secret,
+            **self.app_kwargs,
+        )
+
+    def authorize_redirect(self) -> Response:
+        """Returns Flask redirect to the provider login."""
         raise NotImplementedError  # pragma: no cover
 
-    def callback(self) -> t.Tuple[t.Optional[str], t.Optional[str], t.Optional[str]]:
+    def get_profile_data(self) -> ProfileData:
         """Returns a user ID (based off the provider name and the user
         ID held by the provider), name, and email address for the user.
+
+        If the user did not authenticate or is otherwise unauthorized,
+        will return None for all three values
         """
         raise NotImplementedError  # pragma: no cover
 
-    def get_callback_url(self) -> str:
-        return url_for(
-            "auth.oauth_callback", provider=self.provider_name, _external=True
-        )
+    @property
+    def callback_url(self) -> str:
+        return url_for("auth.oauth_callback", provider=self.slug, _external=True)
 
-    @classmethod
-    def get_provider(cls, provider_name: str) -> t.Optional["OAuthSignIn"]:
-        """Returns instance of subclass corresponding to the given
-        provider name.
-        """
-        if cls.providers is None:
-            cls.providers = dict()
-            for provider_class in cls.__subclasses__():
-                provider = provider_class()
-                cls.providers[provider.provider_name] = provider
-        return cls.providers.get(provider_name)
+class GitHubClient(OAuthClient):
+    slug = "github"
+    name = "GitHub"
+    icon = "fab fa-github"
+    app_kwargs = dict(
+        access_token_url="https://github.com/login/oauth/access_token",
+        authorize_url="https://github.com/login/oauth/authorize",
+        api_base_url="https://api.github.com/",
+        client_kwargs={"scope": "read:user user:email"},
+    )
 
+    def authorize_redirect(self) -> Response:
+        return self.app.authorize_redirect(redirect_uri=self.callback_url)
 
-class TestSignIn(OAuthSignIn):
-    """For testing authorization flow, and authorized-only content. Disabled
-    unless TESTING is True."""
-
-    def __init__(self):
-        super(TestSignIn, self).__init__("test")
-        self.formatted_name = "Test"
-        self.icon = "fas fa-key"
-        self.service = OAuth2Service(
-            name=self.provider_name,
-            client_id=self.consumer_id,
-            client_secret=self.consumer_secret,
-            authorize_url="https://localhost/login/oauth/authorize",
-            access_token_url="https://localhost/login/oauth/access_token",
-            base_url="https://localhost/",
-        )
-
-    def authorize(self):
-        if current_app.config["TESTING"]:
-            return redirect(
-                self.service.get_authorize_url(
-                    scope="read:user", redirect_uri=self.get_callback_url()
-                )
-            )
-        abort(404)
-
-    def callback(self) -> t.Tuple[t.Optional[str], t.Optional[str], t.Optional[str]]:
-        if current_app.config["TESTING"]:
-            return (
-                self.provider_name + "$testuser",
-                "Test User",
-                "test@localhost.test",
-            )
-        return (None, None, None)
-
-
-class GoogleSignIn(OAuthSignIn):  # pragma: no cover
-    def __init__(self):
-        super(GoogleSignIn, self).__init__("google")
-        self.formatted_name = "Google"
-        self.icon = "fab fa-google"
-        oauth_db = get_oauth_db()
-        discovery = oauth_db.get(Query().provider == self.provider_name)
-        discovery_url = "https://accounts.google.com/.well-known/openid-configuration"
-        if not discovery:
-            try:
-                r = requests.get(discovery_url)
-                discovery = r.json()
-                discovery["provider"] = self.provider_name
-                expiry_timestamp = mktime_tz(parsedate_tz(r.headers["expires"]))
-                discovery["timestamp"] = expiry_timestamp
-                oauth_db.insert(discovery)
-            except Exception as e:
-                current_app.logger.exception(
-                    f"Could not retrieve URLs for {self.provider_name}.", exc_info=e
-                )
-                discovery = dict()
-        elif datetime.now(timezone.utc).timestamp() > discovery["timestamp"]:
-            try:
-                last_expiry_date = datetime.fromtimestamp(
-                    discovery["timestamp"], timezone.utc
-                )
-                headers = {
-                    "If-Modified-Since": last_expiry_date.strftime(
-                        "%a, %d %b %Y %H:%M:%S %Z"
-                    )
-                }
-                r = requests.get(discovery_url, headers=headers)
-                if r.status_code != requests.codes.not_modified:
-                    discovery.update(r.json())
-                expiry_timestamp = mktime_tz(parsedate_tz(r.headers["expires"]))
-                discovery["timestamp"] = expiry_timestamp
-                oauth_db.update(discovery, doc_ids=[discovery.doc_id])
-            except Exception as e:
-                current_app.logger.exception(
-                    f"Could not update URLs for {self.provider_name}.", exc_info=e
-                )
-
-        self.service = OAuth2Service(
-            name=self.provider_name,
-            client_id=self.consumer_id,
-            client_secret=self.consumer_secret,
-            authorize_url=discovery.get(
-                "authorization_endpoint", "https://accounts.google.com/o/oauth2/v2/auth"
-            ),
-            access_token_url=discovery.get(
-                "token_endpoint", "https://www.googleapis.com/oauth2/v4/token"
-            ),
-            base_url=discovery.get("issuer", "https://accounts.google.com"),
-        )
-
-    def authorize(self):
-        return redirect(
-            self.service.get_authorize_url(
-                scope="profile email",
-                response_type="code",
-                redirect_uri=self.get_callback_url(),
-            )
-        )
-
-    def callback(self) -> t.Tuple[t.Optional[str], t.Optional[str], t.Optional[str]]:
-        if "code" not in request.args:
-            return (None, None, None)
-        r = self.service.get_raw_access_token(
-            method="POST",
-            data={
-                "code": request.args["code"],
-                "grant_type": "authorization_code",
-                "redirect_uri": self.get_callback_url(),
-            },
-        )
-        oauth_info = r.json()
-        access_token = oauth_info["access_token"]
-        id_token = oauth_info["id_token"]
-        oauth_session = self.service.get_session(access_token)
-        r = google_requests.Request(oauth_session)
+    def get_profile_data(self) -> ProfileData:
+        self.app.authorize_access_token()
         try:
-            idinfo = google_id_token.verify_oauth2_token(id_token, r, self.consumer_id)
-        except google_exceptions.GoogleAuthError as e:
-            current_app.logger.exception(
-                f"Could not authenticate to {self.provider_name}.", exc_info=e
-            )
-            return (None, None, None)
-        return (
-            self.provider_name + "$" + idinfo["sub"],
-            idinfo.get("name"),
-            idinfo.get("email"),
+            r = self.app.get("user")
+            r.raise_for_status()
+            id_info = r.json()
+            id = id_info["login"]
+        except requests.HTTPError or ValueError:
+            return ProfileData()
+        profile_data = ProfileData(
+            userid=f"{self.slug}${id}",
+            username=id_info.get("name"),
+            email=id_info.get("email"),
         )
-
-
-class LinkedinSignIn(OAuthSignIn):  # pragma: no cover
-    def __init__(self):
-        super(LinkedinSignIn, self).__init__("linkedin")
-        self.formatted_name = "LinkedIn"
-        self.icon = "fab fa-linkedin"
-        self.service = OAuth2Service(
-            name=self.provider_name,
-            client_id=self.consumer_id,
-            client_secret=self.consumer_secret,
-            authorize_url="https://www.linkedin.com/oauth/v2/authorization",
-            access_token_url="https://www.linkedin.com/oauth/v2/accessToken",
-            base_url="https://api.linkedin.com/v1/people/",
-        )
-
-    def authorize(self):
-        return redirect(
-            self.service.get_authorize_url(
-                scope="r_basicprofile r_emailaddress",
-                response_type="code",
-                redirect_uri=self.get_callback_url(),
-            )
-        )
-
-    def callback(self) -> t.Tuple[t.Optional[str], t.Optional[str], t.Optional[str]]:
-        if "code" not in request.args:
-            return (None, None, None)
-        r = self.service.get_raw_access_token(
-            method="POST",
-            data={
-                "code": request.args["code"],
-                "grant_type": "authorization_code",
-                "redirect_uri": self.get_callback_url(),
-            },
-        )
-        oauth_info = r.json()
-        access_token = oauth_info["access_token"]
-        oauth_session = self.service.get_session(access_token)
-        idinfo = oauth_session.get(
-            "~:(id,formatted-name,email-address)?format=json"
-        ).json()
-        return (
-            self.provider_name + "$" + idinfo["id"],
-            idinfo.get("formattedName"),
-            idinfo.get("emailAddress"),
-        )
-
-
-class TwitterSignIn(OAuthSignIn):  # pragma: no cover
-    def __init__(self):
-        super(TwitterSignIn, self).__init__("twitter")
-        self.formatted_name = "Twitter"
-        self.icon = "fab fa-twitter"
-        self.service = OAuth1Service(
-            name=self.provider_name,
-            consumer_key=self.consumer_id,
-            consumer_secret=self.consumer_secret,
-            request_token_url="https://api.twitter.com/oauth/request_token",
-            authorize_url="https://api.twitter.com/oauth/authorize",
-            access_token_url="https://api.twitter.com/oauth/access_token",
-            base_url="https://api.twitter.com/1.1/",
-        )
-
-    def authorize(self):
-        request_token = self.service.get_request_token(
-            params={"oauth_callback": self.get_callback_url()}
-        )
-        session["request_token"] = request_token
-        return redirect(self.service.get_authorize_url(request_token[0]))
-
-    def callback(self) -> t.Tuple[t.Optional[str], t.Optional[str], t.Optional[str]]:
-        request_token = session.pop("request_token")
-        if "oauth_verifier" not in request.args:
-            return (None, None, None)
-        oauth_session = self.service.get_auth_session(
-            request_token[0],
-            request_token[1],
-            data={"oauth_verifier": request.args["oauth_verifier"]},
-        )
-        idinfo = oauth_session.get("account/verify_credentials.json").json()
-        return (
-            self.provider_name + "$" + str(idinfo.get("id")),
-            idinfo.get("name"),
-            # Need to write policy pages before retrieving email addresses
-            None,
-        )
-
-
-class GithubSignIn(OAuthSignIn):  # pragma: no cover
-    def __init__(self):
-        super(GithubSignIn, self).__init__("github")
-        self.formatted_name = "GitHub"
-        self.icon = "fab fa-github"
-        self.service = OAuth2Service(
-            name=self.provider_name,
-            client_id=self.consumer_id,
-            client_secret=self.consumer_secret,
-            authorize_url="https://github.com/login/oauth/authorize",
-            access_token_url="https://github.com/login/oauth/access_token",
-            base_url="https://api.github.com/",
-        )
-
-    def authorize(self):
-        return redirect(
-            self.service.get_authorize_url(
-                scope="read:user user:email", redirect_uri=self.get_callback_url()
-            )
-        )
-
-    def callback(self) -> t.Tuple[t.Optional[str], t.Optional[str], t.Optional[str]]:
-        if "code" not in request.args:
-            return (None, None, None)
-        access_token = self.service.get_access_token(
-            method="POST",
-            data={
-                "code": request.args["code"],
-                "redirect_uri": self.get_callback_url(),
-            },
-        )
-        oauth_session = self.service.get_session(access_token)
-        idinfo = oauth_session.get("user").json()
-        if not idinfo.get("email"):
-            email_address = ""
-            emailinfo = oauth_session.get("user/emails").json()
-            for email_object in emailinfo:
-                email_address = email_object.get("email")
-                if email_object.get("primary", False):
-                    break
-            if email_address:
-                idinfo["email"] = email_address
-        return (
-            self.provider_name + "$" + idinfo["login"],
-            idinfo.get("name"),
-            idinfo.get("email"),
-        )
-
-
-class GitlabSignIn(OAuthSignIn):  # pragma: no cover
-    def __init__(self):
-        super(GitlabSignIn, self).__init__("gitlab")
-        self.formatted_name = "GitLab"
-        self.icon = "fab fa-gitlab"
-        oauth_db = get_oauth_db()
-        discovery = oauth_db.get(Query().provider == self.provider_name)
-        discovery_url = "https://gitlab.com/.well-known/openid-configuration"
-        if not discovery:
+        if profile_data.email is None:
+            email = ""
             try:
-                r = requests.get(discovery_url)
-                discovery = r.json()
-                discovery["provider"] = self.provider_name
-                expiry_timestamp = mktime_tz(parsedate_tz(r.headers["date"])) + 3600
-                discovery["timestamp"] = expiry_timestamp
-                oauth_db.insert(discovery)
-            except Exception as e:
-                current_app.logger.exception(
-                    f"Could not retrieve URLs for {self.provider_name}.", exc_info=e
-                )
-                discovery = dict()
-        elif datetime.now(timezone.utc).timestamp() > discovery["timestamp"]:
-            try:
-                last_expiry_date = datetime.fromtimestamp(
-                    discovery["timestamp"], timezone.utc
-                )
-                headers = {
-                    "If-Modified-Since": last_expiry_date.strftime(
-                        "%a, %d %b %Y %H:%M:%S %Z"
-                    )
-                }
-                r = requests.get(discovery_url, headers=headers)
-                if r.status_code != requests.codes.not_modified:
-                    discovery.update(r.json())
-                expiry_timestamp = mktime_tz(parsedate_tz(r.headers["date"])) + 3600
-                discovery["timestamp"] = expiry_timestamp
-                oauth_db.update(discovery, doc_ids=[discovery.doc_id])
-            except Exception as e:
-                current_app.logger.exception(
-                    f"Could not update URLs for {self.provider_name}.", exc_info=e
-                )
-
-        self.userinfo = discovery.get(
-            "userinfo_endpoint", "https://gitlab.com/oauth/userinfo"
-        )
-        self.service = OAuth2Service(
-            name=self.provider_name,
-            client_id=self.consumer_id,
-            client_secret=self.consumer_secret,
-            authorize_url=discovery.get(
-                "authorization_endpoint", "https://gitlab.com/oauth/authorize"
-            ),
-            access_token_url=discovery.get(
-                "token_endpoint", "https://gitlab.com/oauth/token"
-            ),
-            base_url=discovery.get("issuer", "https://gitlab.com"),
-        )
-
-    def authorize(self):
-        return redirect(
-            self.service.get_authorize_url(
-                scope="openid email",
-                response_type="code",
-                redirect_uri=self.get_callback_url(),
-            )
-        )
-
-    def callback(self) -> t.Tuple[t.Optional[str], t.Optional[str], t.Optional[str]]:
-        if "code" not in request.args:
-            return (None, None, None)
-        r = self.service.get_raw_access_token(
-            method="POST",
-            data={
-                "code": request.args["code"],
-                "grant_type": "authorization_code",
-                "redirect_uri": self.get_callback_url(),
-            },
-        )
-        oauth_info = r.json()
-        access_token = oauth_info["access_token"]
-        oauth_session = self.service.get_session(access_token)
-        idinfo = oauth_session.get(self.userinfo).json()
-        return (
-            self.provider_name + "$" + idinfo["sub"],
-            idinfo.get("name"),
-            idinfo.get("email"),
-        )
-
-
-class OrcidSignIn(OAuthSignIn):  # pragma: no cover
-    def __init__(self):
-        super(OrcidSignIn, self).__init__("orcid")
-        self.formatted_name = "ORCID"
-        self.icon = "fab fa-orcid"
-        self.service = OAuth2Service(
-            name=self.provider_name,
-            client_id=self.consumer_id,
-            client_secret=self.consumer_secret,
-            authorize_url="https://orcid.org/oauth/authorize",
-            access_token_url="https://orcid.org/oauth/token",
-            base_url="https://pub.orcid.org/v2.0/",
-        )
-
-    def authorize(self):
-        return redirect(
-            self.service.get_authorize_url(
-                scope="/authenticate",
-                response_type="code",
-                redirect_uri=self.get_callback_url(),
-            )
-        )
-
-    def callback(self) -> t.Tuple[t.Optional[str], t.Optional[str], t.Optional[str]]:
-        if "code" not in request.args:
-            return (None, None, None)
-        r = self.service.get_raw_access_token(
-            method="POST",
-            data={
-                "code": request.args["code"],
-                "grant_type": "authorization_code",
-                "redirect_uri": self.get_callback_url(),
-            },
-        )
-        oauth_info = r.json()
-        access_token = oauth_info["access_token"]
-        orcid = oauth_info["orcid"]
-        oauth_session = self.service.get_session(access_token)
-        idinfo = oauth_session.get(
-            f"{orcid}/record",
-            headers={"Content-type": "application/vnd.orcid+json"},
-        ).json()
-        email = None
-        emails = idinfo.get("person", dict()).get("emails", dict()).get("email", list())
-        for email_obj in emails:
-            this_email = email_obj.get("email")
-            if this_email and email_obj.get("primary"):
-                email = this_email
-                break
-            elif email:
-                continue
-            email = this_email
-        return (self.provider_name + "$" + orcid, oauth_info.get("name"), email)
-
-
-class WicketSignIn(OAuthSignIn):  # pragma: no cover
-    def __init__(self):
-        super(WicketSignIn, self).__init__("wicket")
-        self.formatted_name = "RDA"
-        self.main = True
-        self.icon = "fas fa-key"
-        self.service = OAuth2Service(
-            name=self.provider_name,
-            client_id=self.consumer_id,
-            client_secret=self.consumer_secret,
-            authorize_url="https://rda-login.wicketcloud.com/oauth2.0/authorize",
-            access_token_url="https://rda-login.wicketcloud.com/oauth2.0/accessToken",
-            base_url="https://rda-login.wicketcloud.com/oauth2.0/",
-        )
-
-    def authorize(self):
-        return redirect(
-            self.service.get_authorize_url(
-                response_type="code", redirect_uri=self.get_callback_url()
-            )
-        )
-
-    def callback(self) -> t.Tuple[t.Optional[str], t.Optional[str], t.Optional[str]]:
-        if "code" not in request.args:
-            return (None, None, None)
-        r = self.service.get_raw_access_token(
-            method="POST",
-            data={
-                "code": request.args["code"],
-                "grant_type": "authorization_code",
-                "redirect_uri": self.get_callback_url(),
-            },
-        )
-        oauth_info = r.json()
-        access_token = oauth_info["access_token"]
-        oauth_session = self.service.get_session(access_token)
-        idinfo: dict = oauth_session.get("profile").json()
-        user_attr: dict = idinfo.get("attributes", dict())
-
-        # Sense check for debugging:
-        if user_attr:
-            missing = list()
-            for field in ["givenName", "familyName", "email"]:
-                if field not in user_attr:
-                    missing.append(field)
-            if missing:
-                current_app.logger.warn(
-                    "Wicket idinfo missing '"
-                    + "', '".join([f"attributes.{v}" for v in missing])
-                    + "' key; found '"
-                    + "', '".join([f"attributes.{k}" for k in user_attr.keys()])
-                    + "'"
-                )
-        else:
-            current_app.logger.warn(
-                "Wicket idinfo missing 'attributes' key; found '"
-                + "', '".join(idinfo.keys())
-                + "'"
-            )
-
-        name_parts = list()
-        for part in ["givenName", "familyName"]:
-            if name_part := user_attr.get(part):
-                name_parts.append(name_part)
-        name = " ".join(name_parts) if name_parts else None
-        email = user_attr.get("email")
-        return (
-            self.provider_name + "$" + idinfo["id"],
-            name,
-            email,
-        )
+                r = self.app.get("user/emails")
+                r.raise_for_status()
+                contacts = r.json()
+                for contact in contacts:
+                    email = contact.get("email")
+                    if contact.get("primary", False):
+                        break
+            except requests.HTTPError or ValueError:
+                pass
+            if email:
+                profile_data = profile_data._replace(email=email)
+        current_app.logger.debug(f"{profile_data}")
+        return profile_data
 
 
 # Form components
@@ -610,6 +164,35 @@ class ProfileForm(FlaskForm):
 
 # Utility functions
 # =================
+def get_oauth_clients() -> dict[str, OAuthClient]:
+    """Returns cached mapping to OAuthClient instances from their
+    identifying slugs.
+    """
+    if "oauth_clients" not in g:
+        g.oauth_clients = dict()
+        cls_lookup = {cls.slug: cls for cls in OAuthClient.__subclasses__()}
+        credential_store = current_app.config.get("OAUTH_CREDENTIALS")
+        if not isinstance(credential_store, dict):
+            return g.oauth_clients
+        for slug, credentials in credential_store.items():
+            cls = cls_lookup.get(slug)
+            if not cls:
+                current_app.logger.error(f"Unhandled OAuth provider '{slug}'.")
+                continue
+            client_id = credentials.get("id")
+            if not client_id:
+                current_app.logger.error(f"No client ID for OAuth provider '{slug}'.")
+                continue
+            client_secret = credentials.get("secret")
+            if not client_secret:
+                current_app.logger.error(f"No client ID for OAuth provider '{slug}'.")
+                continue
+            g.oauth_clients[slug] = cls(
+                client_id=client_id, client_secret=client_secret
+            )
+    return g.oauth_clients
+
+
 def get_oauth_db() -> TinyDB:
     """Returns the oauth database as a TinyDB object. The object is
     cached so further calls return the same one.
@@ -645,24 +228,12 @@ def login():
         return redirect(url_for("hello"))
     main_providers = list()
     providers = list()
-    if "OAUTH_CREDENTIALS" in current_app.config:
-        for provider_class in OAuthSignIn.__subclasses__():
-            provider = provider_class()
-            if provider.provider_name not in current_app.config.get(
-                "OAUTH_CREDENTIALS"
-            ):
-                continue
-            provider_details = {
-                "name": provider.formatted_name,
-                "slug": provider.provider_name,
-            }
-            if hasattr(provider, "icon"):
-                provider_details["icon"] = provider.icon
-            if provider.main:
-                main_providers.append(provider_details)
-            else:
-                providers.append(provider_details)
-        providers.sort(key=lambda k: k["slug"])
+    clients = get_oauth_clients()
+    for client in sorted(clients.values(), key=lambda v: v.slug):
+        if client.main:
+            main_providers.append(client)
+        else:
+            providers.append(client)
     return render_template(
         "login.html",
         main_providers=main_providers,
@@ -672,33 +243,35 @@ def login():
 
 @bp.route("/authorize/<provider>")
 def oauth_authorize(provider: str):
-    """This function calls out to the OpenID Connect provider."""
+    """This function calls out to the OAuth provider."""
     if not current_user.is_anonymous:
         return redirect(url_for("hello"))
-    oauth = OAuthSignIn.get_provider(provider)
-    if oauth is None or oauth.consumer_id is None:
+    clients = get_oauth_clients()
+    client = clients.get(provider)
+    if client is None:
         abort(404)
-    return oauth.authorize()
+    return client.authorize_redirect()
 
 
 @bp.route("/callback/<provider>")
 def oauth_callback(provider: str):
-    """The OpenID Connect provider sends information back to this URL,
+    """The OAuth provider sends information back to this URL,
     where we use it to extract a unique ID, user name and email address.
     """
     user_db = get_user_db()
     if not current_user.is_anonymous:
         return redirect(url_for("hello"))
-    oauth = OAuthSignIn.get_provider(provider)
-    if oauth is None or oauth.consumer_id is None:
+    clients = get_oauth_clients()
+    client = clients.get(provider)
+    if client is None:
         abort(404)
-    openid, username, email = oauth.callback()
-    session["openid"] = openid
-    if openid is None:
+    userid, username, email = client.get_profile_data()
+    session["openid"] = userid
+    if userid is None:
         flash("Authentication failed.")
         return redirect(url_for("hello"))
     User = Query()
-    profile = user_db.get(User.userid == openid)
+    profile = user_db.get(User.userid == userid)
     if profile:
         flash("Successfully signed in.")
         user = load_user(profile.doc_id)
@@ -720,7 +293,7 @@ def create_profile():
     if current_user.is_authenticated:
         return redirect(url_for("hello"))
     if "openid" not in session or session["openid"] is None:
-        flash("OpenID sign-in failed, sorry.", "error")
+        flash("OAuth sign-in failed, sorry.", "error")
         return redirect(url_for("hello"))
     form = ProfileForm(request.values)
     if request.method == "POST" and form.validate():
@@ -754,17 +327,11 @@ def create_profile():
 def edit_profile():
     """Allows users to change their displayed username and email address."""
     user_db = get_user_db()
-    openid_formatted = "unknown profile"
-    openid_tuple = current_user["userid"].partition("$")
-    openid_format = "{} profile for "
-    for provider_class in OAuthSignIn.__subclasses__():
-        provider = provider_class()
-        if openid_tuple[0] == provider.provider_name:
-            openid_formatted = openid_format.format(provider.formatted_name)
-            break
-    else:  # pragma: no cover
-        openid_formatted = openid_format.format(openid_tuple[0])
-    openid_formatted += current_user["name"]
+    userid_tuple = current_user["userid"].partition("$")
+    clients = get_oauth_clients()
+    client = clients.get(userid_tuple[0])
+    client_name = client.name if client else userid_tuple[0]
+    openid_formatted = f"{client_name} profile for {current_user['name']}"
     form = ProfileForm(request.values, data=current_user)
     if request.method == "POST" and form.validate():
         data = {

@@ -7,7 +7,7 @@
   {% if main_providers %}
   <ul class="list-inline d-flex justify-content-around align-content-center flex-wrap">
     {% for p in main_providers %}
-    <li class="list-inline-item my-1"><a class="btn btn-outline-primary" href="{{ url_for('auth.oauth_authorize', provider=p['slug']) }}">{% if p['icon'] %}<span class="{{ p['icon'] }}"></span>&ensp;{% endif %}Sign in with {{ p['name'] }}</a></li>
+    <li class="list-inline-item my-1"><a class="btn btn-outline-primary" href="{{ url_for('auth.oauth_authorize', provider=p.slug) }}"><span class="{{ p.icon }}"></span>&ensp;Sign in with {{ p.name }}</a></li>
     {% endfor %}
   </ul>
   {% endif %}
@@ -15,7 +15,7 @@
   <p>You can {% if main_providers %}also {% endif %}sign in with one of these identity providers:</p>
   <ul class="list-inline d-flex justify-content-around align-content-center flex-wrap">
     {% for p in providers %}
-    <li class="list-inline-item my-1"><a class="btn btn-outline-primary" href="{{ url_for('auth.oauth_authorize', provider=p['slug']) }}">{% if p['icon'] %}<span class="{{ p['icon'] }}"></span>&ensp;{% endif %}Sign in with {{ p['name'] }}</a></li>
+    <li class="list-inline-item my-1"><a class="btn btn-outline-primary" href="{{ url_for('auth.oauth_authorize', provider=p.slug) }}"><span class="{{ p.icon }}"></span>&ensp;Sign in with {{ p.name }}</a></li>
     {% endfor %}
   </ul>
   {% endif %}
