@@ -7,26 +7,60 @@ import time
 import typing as t
 
 import email_validator
-from flask import Flask
+from flask import Flask, request
 from flask.testing import FlaskCliRunner, FlaskClient
 from passlib.apps import custom_app_context as pwd_context
 import pytest
+from responses import RequestsMock
 from requests.auth import _basic_auth_str
 from werkzeug.datastructures import MultiDict
 from werkzeug.test import TestResponse
 
 from rdamsc import create_app
+from rdamsc.auth import DummyAuthClient
+
 
 email_validator.TEST_ENVIRONMENT = True
 
 
 class AuthActions(object):
-    def __init__(self, client: FlaskClient, page: "PageActions"):
+    authorize_url = DummyAuthClient.app_kwargs.get("authorize_url")
+    access_token_url = DummyAuthClient.app_kwargs.get("access_token_url")
+    api_base_url = DummyAuthClient.app_kwargs.get("api_base_url")
+    scope = DummyAuthClient.app_kwargs.get("client_kwargs", {}).get("scope")
+    provider = DummyAuthClient.slug
+    usersub = "testuser"
+    username = "Test User"
+    useremail = "test@localhost.test"
+    userid = f"{provider}${usersub}"
+
+    def __init__(self, client: FlaskClient, page: "PageActions", server: RequestsMock):
         self._client: FlaskClient = client
         self._page: PageActions = page
+        self._server: RequestsMock = server
+        self._server.post(
+            url=f"{self.access_token_url}",
+            json={"access_token": "test-token-value"},
+        )
+        self._server.get(
+            url=f"{self.api_base_url}user",
+            json=dict(id=self.usersub, name=self.username, email=self.useremail),
+        )
+        with client.application.test_request_context("/"):
+            self._app_host = request.url_root
 
     def login(self) -> TestResponse:
-        r = self._client.get("/callback/test", follow_redirects=True)
+        r = self._client.get(f"/authorize/{self.provider}")
+        m = re.search(r"&state=(?P<state>.+)$", r.headers["Location"])
+        if m:
+            state = m.group("state")
+        else:
+            raise RuntimeError("State not provided in AuthActions redirect.")
+        code = "not-a-great-code-value"
+        r = self._client.get(
+            f"/callback/{self.provider}?state={state}&code={code}",
+            follow_redirects=True,
+        )
         html = r.get_data(as_text=True)
         if "<h1>Create Profile</h1>" in html:
             csrf = self._page.get_csrf(html)
@@ -752,9 +786,15 @@ def app() -> t.Generator[Flask, None, None]:
 
 
 @pytest.fixture
-def client(app: Flask) -> t.Generator[FlaskClient, None, None]:
+def client(app: Flask) -> t.Iterator[FlaskClient]:
     with app.test_client() as client:
         yield client
+
+
+@pytest.fixture
+def server() -> t.Iterator[RequestsMock]:
+    with RequestsMock() as server:
+        yield server
 
 
 @pytest.fixture
@@ -763,8 +803,8 @@ def runner(app: Flask) -> FlaskCliRunner:
 
 
 @pytest.fixture
-def auth(client: FlaskClient, page: PageActions):
-    return AuthActions(client, page)
+def auth(client: FlaskClient, page: PageActions, server: RequestsMock):
+    return AuthActions(client, page, server)
 
 
 @pytest.fixture

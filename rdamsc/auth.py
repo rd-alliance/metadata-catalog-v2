@@ -93,35 +93,44 @@ class OAuthClient:
         return url_for("auth.oauth_callback", provider=self.slug, _external=True)
 
 
-class TestAuthClient(OAuthClient):
+class DummyAuthClient(OAuthClient):
     """Dummy OAuth 2.0 implementation for testing authorization flow
-    and authorized-only content. Disabled unless TESTING is true,
+    and authorized-only content. Disabled unless TESTING is True,
     to avoid accidental activation in config."""
 
     slug = "test"
     name = "Test"
     app_kwargs = dict(
-        authorize_url="https://localhost/login/oauth/authorize",
-        access_token_url="https://localhost/login/oauth/access_token",
-        api_base_url="https://localhost/",
-        client_kwargs=dict(scope="read:user"),
+        authorize_url="http://example.org/login/oauth/authorize",
+        access_token_url="http://example.org/login/oauth/access_token",
+        api_base_url="http://example.org/",
+        client_kwargs=dict(scope="user"),
     )
 
     def authorize_redirect(self) -> Response:
-        if current_app.config["TESTING"]:
-            return self.app.authorize_redirect(redirect_uri=self.callback_url)
-        abort(404)
+        if current_app.config["TESTING"] is not True:
+            abort(404)
+        return self.app.authorize_redirect(redirect_uri=self.callback_url)
 
     def get_profile_data(self) -> ProfileData:
-        profile_data = (
-            ProfileData(
-                userid=f"{self.slug}$testuser",
-                username="Test User",
-                email="test@localhost.test",
-            )
-            if current_app.config["TESTING"]
-            else ProfileData()
+        if current_app.config["TESTING"] is not True:
+            return ProfileData()
+        current_app.logger.debug(f"Login with {self.name}.")
+        self.app.authorize_access_token()
+        try:
+            r: requests.Response = self.app.get("user")
+            r.raise_for_status()
+            id_info: dict = r.json()
+            current_app.logger.debug(f"id_info = {id_info}")
+            id = id_info["id"]
+        except requests.HTTPError or ValueError:
+            return ProfileData()
+        profile_data = ProfileData(
+            userid=f"{self.slug}${id}",
+            username=id_info.get("name"),
+            email=id_info.get("email"),
         )
+        current_app.logger.debug(f"parsed as {profile_data}")
         return profile_data
 
 

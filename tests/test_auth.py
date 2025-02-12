@@ -1,7 +1,8 @@
 import json
+import logging
 from urllib.parse import urlencode
 
-from flask import Flask
+from flask import Flask, request
 from flask.testing import FlaskClient
 
 from .conftest import AuthActions, PageActions
@@ -24,44 +25,50 @@ def test_bad_provider(client: FlaskClient):
 
 
 def test_oauth_login(
-    client: FlaskClient, auth: AuthActions, app: Flask, page: PageActions
+    client: FlaskClient,
+    auth: AuthActions,
+    app: Flask,
+    page: PageActions,
+    caplog,
 ):
-    base = "http://localhost"
-    scope = "read:user"
-    callback = f"{base}/callback/test"
+    caplog.set_level(logging.DEBUG)
+
     appid = app.config["OAUTH_CREDENTIALS"]["test"]["id"]
     assert appid == "test-oauth-app-id"
-    userid = "test$testuser"
-    username = "Test User"
-    useremail = "test@localhost.test"
 
-    # The following only appears on the home page when the user is logged in:
-    auth_only = "<h2>Make changes</h2>"
-
-    # Test profile creation via new OAuth login
-
-    r = client.get("/authorize/test")
-    assert r.status_code == 302
-    url = "https://localhost/login/oauth/authorize?" + urlencode(
+    full_auth_url = f"{auth.authorize_url}?" + urlencode(
         {
             "response_type": "code",
             "client_id": appid,
-            "redirect_uri": callback,
-            "scope": scope,
+            "redirect_uri": f"{auth._app_host}callback/{auth.provider}",
+            "scope": auth.scope,
         }
     )
-    assert r.headers["Location"].startswith(url)
 
-    r = client.get("/callback/test")
+    # 1. "Sign in with" should point to a local authorize URL, which redirects:
+
+    r = client.get(f"/authorize/{auth.provider}")
     assert r.status_code == 302
-    # safe characters should match werkzeug.urls.iri_to_uri()
-    url = "/create-profile?" + urlencode(
-        {"next": "/", "name": username, "email": useremail}, safe="%!$&'()*+,/:;=?@"
-    )
-    redirection = r.headers["Location"]
-    assert redirection.endswith(url)
+    assert r.headers["Location"].startswith(full_auth_url)
+    state = r.headers["Location"].replace(f"{full_auth_url}&state=", "")
+    code = "test-code-value"
 
-    r = client.get(url)
+    # 2. On success, provider would ping the callback. The app then gets a token
+    #    and uses it to obtain profile data.
+
+    # safe characters should match werkzeug.urls.iri_to_uri()
+    create_profile_url = "/create-profile?" + urlencode(
+        {"next": "/", "name": auth.username, "email": auth.useremail},
+        safe="%!$&'()*+,/:;=?@",
+    )
+
+    r = client.get(f"/callback/test?state={state}&code={code}")
+    assert r.status_code == 302
+    redirection = r.headers["Location"]
+    assert redirection.endswith(create_profile_url)
+
+    # Test profile creation via new OAuth login
+    r = client.get(create_profile_url)
     assert r.status_code == 200
     html = r.get_data(as_text=True)
     csrf = page.get_csrf(html)
@@ -70,7 +77,7 @@ def test_oauth_login(
     # Missing username
     r = client.post(
         "/create-profile",
-        data={"csrf_token": csrf, "email": useremail},
+        data={"csrf_token": csrf, "email": auth.useremail},
         follow_redirects=True,
     )
     assert r.status_code == 200
@@ -83,7 +90,7 @@ def test_oauth_login(
     # Missing email
     r = client.post(
         "/create-profile",
-        data={"csrf_token": csrf, "name": username},
+        data={"csrf_token": csrf, "name": auth.username},
         follow_redirects=True,
     )
     assert r.status_code == 200
@@ -96,7 +103,7 @@ def test_oauth_login(
     # Bad email
     r = client.post(
         "/create-profile",
-        data={"csrf_token": csrf, "name": username, "email": "bad_address"},
+        data={"csrf_token": csrf, "name": auth.username, "email": "bad_address"},
         follow_redirects=True,
     )
     assert r.status_code == 200
@@ -108,7 +115,7 @@ def test_oauth_login(
     # Missing CSRF
     r = client.post(
         "/create-profile",
-        data={"name": username, "email": useremail},
+        data={"name": auth.username, "email": auth.useremail},
         follow_redirects=True,
     )
     assert r.status_code == 200
@@ -120,20 +127,30 @@ def test_oauth_login(
     # All good
     r = client.post(
         "/create-profile",
-        data={"csrf_token": csrf, "name": username, "email": useremail},
+        data={"csrf_token": csrf, "name": auth.username, "email": auth.useremail},
         follow_redirects=True,
     )
     assert r.status_code == 200
     html = r.get_data(as_text=True)
     msg = "Profile successfully created."
     page.assert_contains(msg, html)
+
+    # The following only appears on the home page when the user is logged in:
+    auth_only = "<h2>Make changes</h2>"
     page.assert_contains(auth_only)
 
     with open(app.config["USER_DATABASE_PATH"]) as f:
         users = json.load(f)
-        assert users.get("_default", dict()).get("1", dict()).get("userid") == userid
-        assert users.get("_default", dict()).get("1", dict()).get("name") == username
-        assert users.get("_default", dict()).get("1", dict()).get("email") == useremail
+        assert (
+            users.get("_default", dict()).get("1", dict()).get("userid") == auth.userid
+        )
+        assert (
+            users.get("_default", dict()).get("1", dict()).get("name") == auth.username
+        )
+        assert (
+            users.get("_default", dict()).get("1", dict()).get("email")
+            == auth.useremail
+        )
 
     newemail = "test@example.com"
 
@@ -159,7 +176,7 @@ def test_oauth_login(
     # Missing CSRF
     r = client.post(
         "/edit-profile",
-        data={"name": username, "email": newemail},
+        data={"name": auth.username, "email": newemail},
         follow_redirects=True,
     )
     assert r.status_code == 200
@@ -171,7 +188,7 @@ def test_oauth_login(
     # All good
     r = client.post(
         "/edit-profile",
-        data={"csrf_token": csrf, "name": username, "email": newemail},
+        data={"csrf_token": csrf, "name": auth.username, "email": newemail},
         follow_redirects=True,
     )
     assert r.status_code == 200

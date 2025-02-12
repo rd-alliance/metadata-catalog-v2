@@ -2,7 +2,6 @@ import os
 import tempfile
 
 from rdamsc import create_app
-from rdamsc.auth import OAuthSignIn
 from tests.conftest import PageActions
 
 
@@ -39,7 +38,7 @@ def test_back_door(page: PageActions):
             response = live_client.get("/create-profile", follow_redirects=True)
             assert response.status_code == 200
             html = response.get_data(as_text=True)
-            page.assert_contains("OpenID sign-in failed, sorry.", html)
+            page.assert_contains("OAuth sign-in failed, sorry.", html)
 
     with tempfile.TemporaryDirectory() as inst_path:
         live_app = create_app(
@@ -56,7 +55,6 @@ def test_back_door(page: PageActions):
 
         with live_app.test_client() as live_client:
             # Reset class property
-            OAuthSignIn.providers = None
 
             response = live_client.get("/login")
             assert response.status_code == 200

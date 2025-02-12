@@ -32,6 +32,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=6",
+    "responses",
 ]
 
 [tool.setuptools]
