@@ -62,7 +62,7 @@ class OAuthClient:
     app_cls = FlaskOAuth2App
     slug = ""
     name = ""
-    icon = "fas fa-key"
+    icon = "fa-solid fa-key"
     main = False
     app_kwargs = dict()
 
@@ -139,7 +139,7 @@ class GitHubClient(OAuthClient):  # pragma: no cover
 
     slug = "github"
     name = "GitHub"
-    icon = "fab fa-github"
+    icon = "fa-brands fa-github"
     app_kwargs = dict(
         authorize_url="https://github.com/login/oauth/authorize",
         access_token_url="https://github.com/login/oauth/access_token",
@@ -187,7 +187,7 @@ class GitLabClient(OAuthClient):  # pragma: no cover
 
     slug = "gitlab"
     name = "GitLab"
-    icon = "fab fa-gitlab"
+    icon = "fa-brands fa-gitlab"
     app_kwargs = dict(
         client_kwargs=dict(scope="openid email"),
         server_metadata_url="https://gitlab.com/.well-known/openid-configuration",
@@ -219,7 +219,7 @@ class GoogleClient(OAuthClient):  # pragma: no cover
 
     slug = "google"
     name = "Google"
-    icon = "fab fa-google"
+    icon = "fa-brands fa-google"
     app_kwargs = dict(
         client_kwargs=dict(scope="openid name email"),
         server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
@@ -251,7 +251,7 @@ class LinkedInClient(OAuthClient):  # pragma: no cover
 
     slug = "linkedin"
     name = "LinkedIn"
-    icon = "fab fa-linkedin"
+    icon = "fa-brands fa-linkedin"
     app_kwargs = dict(
         authorize_url="https://www.linkedin.com/oauth/v2/authorization",
         access_token_url="https://www.linkedin.com/oauth/v2/accessToken",
@@ -286,7 +286,7 @@ class OrcidClient(OAuthClient):  # pragma: no cover
 
     slug = "orcid"
     name = "ORCID"
-    icon = "fab fa-orcid"
+    icon = "fa-brands fa-orcid"
     app_kwargs = dict(
         api_base_url="https://pub.orcid.org/v2.0/",
         client_kwargs=dict(scope="openid"),
@@ -343,7 +343,7 @@ class TwitterClient(OAuthClient):  # pragma: no cover
     app_cls = FlaskOAuth1App
     slug = "twitter"
     name = "X"
-    icon = "fab fa-twitter"
+    icon = "fa-brands fa-twitter"
     app_kwargs = dict(
         request_token_url="https://api.x.com/oauth/request_token",
         authorize_url="https://api.x.com/oauth/authorize",
@@ -417,7 +417,7 @@ class XClient(OAuthClient):  # pragma: no cover
 
     slug = "x"
     name = "X"
-    icon = "fab fa-twitter"
+    icon = "fa-brands fa-x-twitter"
     app_kwargs = dict(
         authorize_url="https://x.com/i/oauth2/authorize",
         access_token_url="https://api.x.com/2/oauth2/token",
