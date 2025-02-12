@@ -2,9 +2,6 @@
 # ============
 # Standard
 # --------
-from datetime import datetime, timezone
-from email.utils import parsedate_tz, mktime_tz
-from sys import api_version
 import typing as t
 
 # Non-standard
@@ -30,10 +27,6 @@ from flask_login import (
     login_required,
 )
 from flask_wtf import FlaskForm
-import google.auth.transport.requests as google_requests
-import google.auth.exceptions as google_exceptions
-from google.oauth2 import id_token as google_id_token
-from authlib.oauth2.client import OAuth2Client
 from authlib.integrations.flask_client.apps import FlaskOAuth1App, FlaskOAuth2App
 from authlib.integrations.flask_client.integration import FlaskIntegration
 import requests
@@ -59,8 +52,11 @@ class ProfileData(t.NamedTuple):
     username: t.Optional[str] = None
     email: t.Optional[str] = None
 
+
 class OAuthClient:
-    """Wrapper around authlib's FlaskOAuth1App and FlaskOAuth2App."""
+    """Wrapper around authlib's FlaskOAuth1App and FlaskOAuth2App.
+    Supports OAuth 1.0, OAuth 2.0 and OpenID Connect.
+    """
 
     framework_integration_cls = FlaskIntegration
     app_cls = FlaskOAuth2App
@@ -96,19 +92,22 @@ class OAuthClient:
     def callback_url(self) -> str:
         return url_for("auth.oauth_callback", provider=self.slug, _external=True)
 
+
 class GitHubClient(OAuthClient):  # pragma: no cover
     """GitHub using OAuth 2.0."""
+
     slug = "github"
     name = "GitHub"
     icon = "fab fa-github"
     app_kwargs = dict(
-        access_token_url="https://github.com/login/oauth/access_token",
         authorize_url="https://github.com/login/oauth/authorize",
+        access_token_url="https://github.com/login/oauth/access_token",
         api_base_url="https://api.github.com/",
-        client_kwargs={"scope": "read:user user:email"},
+        client_kwargs=dict(scope="read:user user:email"),
     )
 
     def get_profile_data(self) -> ProfileData:
+        current_app.logger.debug(f"Login with {self.name}.")
         self.app.authorize_access_token()
         try:
             r: requests.Response = self.app.get("user")
@@ -142,6 +141,105 @@ class GitHubClient(OAuthClient):  # pragma: no cover
         return profile_data
 
 
+class GitLabClient(OAuthClient):  # pragma: no cover
+    """GitLab using OpenID Connect."""
+
+    slug = "gitlab"
+    name = "GitLab"
+    icon = "fab fa-gitlab"
+    app_kwargs = dict(
+        client_kwargs=dict(scope="openid email"),
+        server_metadata_url="https://gitlab.com/.well-known/openid-configuration",
+    )
+
+    def get_profile_data(self) -> ProfileData:
+        current_app.logger.debug(f"Login with {self.name}.")
+        self.app.authorize_access_token()
+        try:
+            user_info = self.app.userinfo()
+            current_app.logger.debug(f"user_info = {user_info}")
+            id = user_info["sub"]
+        except requests.HTTPError or ValueError:
+            return ProfileData()
+        profile_data = ProfileData(
+            userid=f"{self.slug}${id}",
+            username=user_info.get("name"),
+            email=user_info.get("email"),
+        )
+        current_app.logger.debug(f"parsed as {profile_data}")
+        return profile_data
+
+
+class GoogleClient(OAuthClient):  # pragma: no cover
+    """Google using OpenID Connect.
+
+    Not actively supported.
+    """
+
+    slug = "google"
+    name = "Google"
+    icon = "fab fa-google"
+    app_kwargs = dict(
+        client_kwargs=dict(scope="openid name email"),
+        server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+    )
+
+    def get_profile_data(self) -> ProfileData:
+        current_app.logger.debug(f"Login with {self.name}.")
+        self.app.authorize_access_token()
+        try:
+            user_info = self.app.userinfo()
+            current_app.logger.debug(f"user_info = {user_info}")
+            id = user_info["sub"]
+        except requests.HTTPError or ValueError:
+            return ProfileData()
+        profile_data = ProfileData(
+            userid=f"{self.slug}${id}",
+            username=user_info.get("name"),
+            email=user_info.get("email"),
+        )
+        current_app.logger.debug(f"parsed as {profile_data}")
+        return profile_data
+
+
+class LinkedInClient(OAuthClient):  # pragma: no cover
+    """LinkedIn using OAuth 2.0.
+
+    Not actively supported.
+    """
+
+    slug = "linkedin"
+    name = "LinkedIn"
+    icon = "fab fa-linkedin"
+    app_kwargs = dict(
+        authorize_url="https://www.linkedin.com/oauth/v2/authorization",
+        access_token_url="https://www.linkedin.com/oauth/v2/accessToken",
+        api_base_url="https://api.linkedin.com/v1/people/",
+        client_kwargs={"scope": "r_basicprofile r_emailaddress"},
+    )
+
+    def get_profile_data(self) -> ProfileData:
+        current_app.logger.debug(f"Login with {self.name}.")
+        self.app.authorize_access_token()
+        try:
+            r: requests.Response = self.app.get(
+                "~:(id,formatted-name,email-address)?format=json"
+            )
+            r.raise_for_status()
+            id_info: dict = r.json()
+            current_app.logger.debug(f"id_info = {id_info}")
+            id = id_info["id"]
+        except requests.HTTPError or ValueError:
+            return ProfileData()
+        profile_data = ProfileData(
+            userid=f"{self.slug}${id}",
+            username=id_info.get("formattedName"),
+            email=id_info.get("emailAddress"),
+        )
+        current_app.logger.debug(f"parsed as {profile_data}")
+        return profile_data
+
+
 class OrcidClient(OAuthClient):  # pragma: no cover
     """ORCID using OpenID Connect."""
 
@@ -150,16 +248,17 @@ class OrcidClient(OAuthClient):  # pragma: no cover
     icon = "fab fa-orcid"
     app_kwargs = dict(
         api_base_url="https://pub.orcid.org/v2.0/",
-        client_kwargs={"scope": "openid"},
+        client_kwargs=dict(scope="openid"),
         server_metadata_url="https://orcid.org/.well-known/openid-configuration",
     )
 
     def get_profile_data(self) -> ProfileData:
+        current_app.logger.debug(f"Login with {self.name}.")
         self.app.authorize_access_token()
         try:
             user_info = self.app.userinfo()
             current_app.logger.debug(f"user_info = {user_info}")
-            id = user_info.get("sub")
+            id = user_info["sub"]
         except requests.HTTPError or ValueError:
             return ProfileData()
         profile_data = ProfileData(
@@ -194,6 +293,44 @@ class OrcidClient(OAuthClient):  # pragma: no cover
         return profile_data
 
 
+class TwitterClient(OAuthClient):  # pragma: no cover
+    """X (formerly Twitter) using OAuth 1.0a.
+
+    Not actively supported. Do not configure alongside XClient.
+    """
+
+    app_cls = FlaskOAuth1App
+    slug = "twitter"
+    name = "X"
+    icon = "fab fa-twitter"
+    app_kwargs = dict(
+        request_token_url="https://api.x.com/oauth/request_token",
+        authorize_url="https://api.x.com/oauth/authorize",
+        access_token_url="https://api.x.com/oauth/access_token",
+        api_base_url="https://api.x.com/1.1/",
+    )
+
+    def get_profile_data(self) -> ProfileData:
+        current_app.logger.debug(f"Login with {self.name}.")
+        self.app.authorize_access_token()
+        try:
+            r: requests.Response = self.app.get("account/verify_credentials.json")
+            r.raise_for_status()
+            id_info: dict = r.json()
+            current_app.logger.debug(f"id_info = {id_info}")
+            id = id_info["id"]
+        except requests.HTTPError or ValueError:
+            return ProfileData()
+        profile_data = ProfileData(
+            userid=f"{self.slug}${id}",
+            username=id_info.get("name"),
+            # Need to write policy pages before retrieving email addresses
+            email=None,
+        )
+        current_app.logger.debug(f"parsed as {profile_data}")
+        return profile_data
+
+
 class WicketClient(OAuthClient):  # pragma: no cover
     """Wicket using OAuth 2.0."""
 
@@ -201,12 +338,13 @@ class WicketClient(OAuthClient):  # pragma: no cover
     name = "RDA"
     main = True
     app_kwargs = dict(
-        access_token_url="https://rda-login.wicketcloud.com/oauth2.0/accessToken",
         authorize_url="https://rda-login.wicketcloud.com/oauth2.0/authorize",
+        access_token_url="https://rda-login.wicketcloud.com/oauth2.0/accessToken",
         api_base_url="https://rda-login.wicketcloud.com/oauth2.0/",
     )
 
     def get_profile_data(self) -> ProfileData:
+        current_app.logger.debug(f"Login with {self.name}.")
         self.app.authorize_access_token()
         try:
             r: requests.Response = self.app.get("profile")
@@ -226,6 +364,57 @@ class WicketClient(OAuthClient):  # pragma: no cover
             username=" ".join(name_parts) if name_parts else None,
             email=user_attr.get("email"),
         )
+        current_app.logger.debug(f"parsed as {profile_data}")
+        return profile_data
+
+
+class XClient(OAuthClient):  # pragma: no cover
+    """X (formerly Twitter) using OAuth 2.0.
+
+    Not actively supported. Do not configure alongside TwitterClient.
+    """
+
+    slug = "x"
+    name = "X"
+    icon = "fab fa-twitter"
+    app_kwargs = dict(
+        authorize_url="https://x.com/i/oauth2/authorize",
+        access_token_url="https://api.x.com/2/oauth2/token",
+        api_base_url="https://api.x.com/2/",
+        client_kwargs=dict(scope="users.read"),
+    )
+
+    def get_profile_data(self) -> ProfileData:
+        current_app.logger.debug(f"Login with {self.name}.")
+        self.app.authorize_access_token()
+        try:
+            r: requests.Response = self.app.get("account/verify_credentials.json")
+            r.raise_for_status()
+            id_info: dict = r.json()
+            current_app.logger.debug(f"id_info = {id_info}")
+            id = id_info["id"]  # not tested
+        except requests.HTTPError or ValueError:
+            return ProfileData()
+        profile_data = ProfileData(
+            userid=f"{self.slug}${id}",
+            username=id_info.get("name"),  # not tested
+            email=id_info.get("email"),  # not tested
+        )
+        if profile_data.username is None:
+            # Email not available by this method
+            name = ""
+            try:
+                r: requests.Response = self.app.get(
+                    "users/me", params={"user.fields": "name"}
+                )
+                r.raise_for_status()
+                user_info: dict = r.json()
+                current_app.logger.debug(f"user_info = {user_info}")
+                name = id_info.get("data", dict()).get("name")
+            except requests.HTTPError or ValueError:
+                pass
+            if name:
+                profile_data = profile_data._replace(username=name)
         current_app.logger.debug(f"parsed as {profile_data}")
         return profile_data
 
