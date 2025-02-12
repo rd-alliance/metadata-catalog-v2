@@ -93,6 +93,38 @@ class OAuthClient:
         return url_for("auth.oauth_callback", provider=self.slug, _external=True)
 
 
+class TestAuthClient(OAuthClient):
+    """Dummy OAuth 2.0 implementation for testing authorization flow
+    and authorized-only content. Disabled unless TESTING is true,
+    to avoid accidental activation in config."""
+
+    slug = "test"
+    name = "Test"
+    app_kwargs = dict(
+        authorize_url="https://localhost/login/oauth/authorize",
+        access_token_url="https://localhost/login/oauth/access_token",
+        api_base_url="https://localhost/",
+        client_kwargs=dict(scope="read:user"),
+    )
+
+    def authorize_redirect(self) -> Response:
+        if current_app.config["TESTING"]:
+            return self.app.authorize_redirect(redirect_uri=self.callback_url)
+        abort(404)
+
+    def get_profile_data(self) -> ProfileData:
+        profile_data = (
+            ProfileData(
+                userid=f"{self.slug}$testuser",
+                username="Test User",
+                email="test@localhost.test",
+            )
+            if current_app.config["TESTING"]
+            else ProfileData()
+        )
+        return profile_data
+
+
 class GitHubClient(OAuthClient):  # pragma: no cover
     """GitHub using OAuth 2.0."""
 
