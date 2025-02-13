@@ -30,7 +30,7 @@ from flask_wtf import FlaskForm
 from authlib.integrations.flask_client.apps import FlaskOAuth1App, FlaskOAuth2App
 from authlib.integrations.flask_client.integration import FlaskIntegration
 import requests
-from tinydb import TinyDB, Query
+from tinydb import Query
 from wtforms import validators, StringField
 
 # Local
@@ -509,16 +509,6 @@ def get_oauth_clients() -> dict[str, OAuthClient]:
                 client_id=client_id, client_secret=client_secret
             )
     return g.oauth_clients
-
-
-def get_oauth_db() -> TinyDB:
-    """Returns the oauth database as a TinyDB object. The object is
-    cached so further calls return the same one.
-    """
-    if "oauth_db" not in g:
-        g.oauth_db = TinyDB(current_app.config["OAUTH_DATABASE_PATH"])
-
-    return g.oauth_db
 
 
 @lm.user_loader

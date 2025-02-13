@@ -55,7 +55,6 @@ def create_app(test_config: t.Mapping[str, t.Any] = None) -> Flask:
         VOCAB_DATABASE_PATH=os.path.join(app.instance_path, "data", "vocab.json"),
         TERM_DATABASE_PATH=os.path.join(app.instance_path, "data", "terms.json"),
         USER_DATABASE_PATH=os.path.join(app.instance_path, "users", "db.json"),
-        OAUTH_DATABASE_PATH=os.path.join(app.instance_path, "oauth", "db.json"),
         DEBUG=False,
         TESTING=False,
     )
@@ -78,7 +77,6 @@ def create_app(test_config: t.Mapping[str, t.Any] = None) -> Flask:
         os.path.dirname(app.config["VOCAB_DATABASE_PATH"]),
         os.path.dirname(app.config["TERM_DATABASE_PATH"]),
         os.path.dirname(app.config["USER_DATABASE_PATH"]),
-        os.path.dirname(app.config["OAUTH_DATABASE_PATH"]),
     ]:
         if not os.path.isdir(path):
             try:

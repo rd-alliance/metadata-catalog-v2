@@ -32,7 +32,6 @@ def test_bad_config():
                 "VOCAB_DATABASE_PATH": os.path.join(inst_path, "data", "vocab.json"),
                 "TERM_DATABASE_PATH": os.path.join(inst_path, "data", "terms.json"),
                 "USER_DATABASE_PATH": os.path.join(inst_path, "users", "db.json"),
-                "OAUTH_DATABASE_PATH": os.path.join(inst_path, "oauth", "db.json"),
                 "OAUTH_CREDENTIALS": {
                     "test": {
                         "id": "test-oauth-app-id",

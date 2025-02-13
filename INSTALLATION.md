@@ -436,13 +436,6 @@ Catalog create them for you:
 
   *Default location:* `instance/users/db.json`
 
-- **OpenID Connect database** contains cached details for OpenID Connect
-  providers.
-
-  *Configuration key:* `OAUTH_DATABASE_PATH`
-
-  *Default location:* `instance/oauth/db.json`
-
 You can configure the names and locations of these files and the folder by
 putting the respective paths in one of your configuration files:
 
