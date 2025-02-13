@@ -130,11 +130,10 @@ Activate it:
 venv\Scripts\activate
 ```
 
-Optionally, upgrade your sandboxed copy of `pip` and install `wheel`:
+Upgrade your sandboxed copy of `pip` and install `wheel`:
 
 ```bash
-pip install --upgrade pip
-pip install wheel
+pip install -U pip wheel
 ```
 
 Install the Catalog and its dependencies to your virtual environment. In a
@@ -580,6 +579,9 @@ MAINTENANCE_END = "2020-02-02T22:20:20"
 
 This will add some detail to the warning message and remove it once the
 specified time has passed.
+
+If your holding page (`/srv/rdamsc/maintenance.html` in the above settings)
+displays a date, update it to reflect the start and end dates you just set.
 
 Force a reload of the application for these settings to take effect by doing
 *one* of the following:

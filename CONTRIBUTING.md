@@ -10,7 +10,7 @@ write the corresponding tests.
 | `__init__.py` | `test_factory.py`, `test_webhook.py` | Main app routing, webhook |
 | `api1.py` | `test_api1.py` | Version 1 API emulation |
 | `api2.py` | `test_api2.py` | Version 2 API |
-| `auth.py` | `test.auth.py`, `test_z_auth.py` | OAuth 2.0 authentication and user profile pages |
+| `auth.py` | `test.auth.py`, `test_z_auth.py` | OAuth authentication and user profile pages |
 | `db_utils.py` | `test_records.py` | Version-controlled JSON database |
 | `lists.py` | `test-lists.py` | Index pages for main record types |
 | `records.py` | `test_records.py` | Display and editing pages for main record types and folksonomies |
@@ -146,6 +146,7 @@ deactivate
 rm -r venv
 python3 -m venv venv
 . venv/bin/activate
+pip install -U pip wheel
 pip install -e .
 pip freeze | sed 's/==/~=/' | grep -vEe "^-e" > requirements.txt
 ```
@@ -179,8 +180,8 @@ corresponding documentation for each of them:
   - [Flask-Login] is used for user authorization and session management.
   - [Flask-CORS] is used to allow requests from JavaScript.
   - [Flask-HTTPAuth] and [PassLib] are used for API authentication.
-  - [Authlib], [RAuth] (which depends on [Requests]), and [Google-Auth] are used
-    for OAuth 2.0 (and OpenID Connect) support.
+  - [Authlib] (with help from [Requests]) is used for OAuth 1.0, OAuth 2.0, and
+    OpenID Connect support.
   - The database is implemented using [TinyDB] v4+ and [TinyRecord].
   - The subject thesaurus is converted from RDF to JSON via [RDFLib].
   - [Dulwich] is used to apply version control to the database.
@@ -194,10 +195,8 @@ corresponding documentation for each of them:
 [Flask-Login]: https://flask-login.readthedocs.io/
 [Flask-WTF]: https://flask-wtf.readthedocs.io/
 [GitHub-Webhook]: https://bloomberg.github.io/python-github-webhook/
-[Google-Auth]: https://github.com/googleapis/google-auth-library-python
 [MarkupSafe]: https://markupsafe.palletsprojects.com/
 [PassLib]: https://passlib.readthedocs.io/
-[RAuth]: https://rauth.readthedocs.io/
 [RDFLib]: http://rdflib.readthedocs.io/
 [Requests]: http://docs.python-requests.org/
 [TinyDB]: http://tinydb.readthedocs.io/
