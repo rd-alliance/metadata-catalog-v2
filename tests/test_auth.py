@@ -1,14 +1,24 @@
+from calendar import c
 import json
 import logging
 from urllib.parse import urlencode
 
-from flask import Flask, request
+from flask import Flask
 from flask.testing import FlaskClient
 
 from .conftest import AuthActions, PageActions
 
 
-def test_bad_provider(client: FlaskClient):
+def test_bad_provider(client: FlaskClient, caplog):
+    # Add bad credentials:
+    client.application.config["OAUTH_CREDENTIALS"].update(
+        {
+            "null": {"id": "test", "secret": "test"},
+            "twitter": {"secret": "test"},
+            "x": {"id": "test"},
+        }
+    )
+
     # Unsupported provider:
     r = client.get("/authorize/null")
     assert r.status_code == 404
@@ -22,6 +32,13 @@ def test_bad_provider(client: FlaskClient):
 
     r = client.get("/callback/linkedin")
     assert r.status_code == 404
+
+    for msg in [
+        "Unhandled OAuth provider 'null'.",
+        "No client ID for OAuth provider 'twitter'.",
+        "No client secret for OAuth provider 'x'.",
+    ]:
+        assert msg in caplog.messages
 
 
 def test_oauth_login(

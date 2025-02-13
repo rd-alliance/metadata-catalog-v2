@@ -503,7 +503,9 @@ def get_oauth_clients() -> dict[str, OAuthClient]:
                 continue
             client_secret = credentials.get("secret")
             if not client_secret:
-                current_app.logger.error(f"No client ID for OAuth provider '{slug}'.")
+                current_app.logger.error(
+                    f"No client secret for OAuth provider '{slug}'."
+                )
                 continue
             g.oauth_clients[slug] = cls(
                 client_id=client_id, client_secret=client_secret
