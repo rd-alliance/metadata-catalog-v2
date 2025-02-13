@@ -772,7 +772,6 @@ def app() -> t.Generator[Flask, None, None]:
                 "TERM_DATABASE_PATH": os.path.join(inst_path, "data", "terms.json"),
                 "USER_DATABASE_PATH": os.path.join(inst_path, "users", "db.json"),
                 "OAUTH_DATABASE_PATH": os.path.join(inst_path, "oauth", "db.json"),
-                "OPENID_FS_STORE_PATH": os.path.join(inst_path, "open-id"),
                 "OAUTH_CREDENTIALS": {
                     "test": {
                         "id": "test-oauth-app-id",

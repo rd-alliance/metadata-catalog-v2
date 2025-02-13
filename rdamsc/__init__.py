@@ -56,7 +56,6 @@ def create_app(test_config: t.Mapping[str, t.Any] = None) -> Flask:
         TERM_DATABASE_PATH=os.path.join(app.instance_path, "data", "terms.json"),
         USER_DATABASE_PATH=os.path.join(app.instance_path, "users", "db.json"),
         OAUTH_DATABASE_PATH=os.path.join(app.instance_path, "oauth", "db.json"),
-        OPENID_FS_STORE_PATH=os.path.join(app.instance_path, "open-id"),
         DEBUG=False,
         TESTING=False,
     )
@@ -80,7 +79,6 @@ def create_app(test_config: t.Mapping[str, t.Any] = None) -> Flask:
         os.path.dirname(app.config["TERM_DATABASE_PATH"]),
         os.path.dirname(app.config["USER_DATABASE_PATH"]),
         os.path.dirname(app.config["OAUTH_DATABASE_PATH"]),
-        app.config["OPENID_FS_STORE_PATH"],
     ]:
         if not os.path.isdir(path):
             try:

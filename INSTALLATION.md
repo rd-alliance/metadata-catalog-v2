@@ -379,8 +379,14 @@ WSGI_PATH = '/srv/rdamsc/rdamsc.wsgi'
 WEBHOOK_SECRET = 'another secret string'
 ```
 
-To be able to use Open ID Connect (OAuth), you will need to include IDs and
-secret codes from the Open ID providers in your configuration like this:
+To be able to log into the HTML interface, you will need to register your
+instance with one or more identity providers. Support has been written for a
+selection of OAuth 1.0, OAuth 2.0, and OpenID Connect providers. (Not all of
+these are currently used; the unused ones have not been tested recently.) Please
+raise an issue or pull request if you need additional options, or if the
+existing ones aren't functioning correctly. To activate a given provider, add
+the client ID and secret for it to your configuration, using the ‘slug’ value of
+the `OAuthClient` class that corresponds with the provider:
 
 ```python
 OAUTH_CREDENTIALS = {
@@ -394,12 +400,6 @@ OAUTH_CREDENTIALS = {
         'id': 'id string',
         'secret': 'secret string'}}
 ```
-
-I have registered a set of these for use in the official instance at
-<https://rdamsc.bath.ac.uk>. If you want to be able to log into an instance
-hosted elsewhere, you will have to register that instance separately with one
-of the supported providers. You should be able to register instances running
-on localhost (127.0.0.1) for testing purposes.
 
 
 ### Database files
@@ -436,18 +436,12 @@ Catalog create them for you:
 
   *Default location:* `instance/users/db.json`
 
-- **Open ID Connect database** contains cached details for Open ID Connect
+- **OpenID Connect database** contains cached details for OpenID Connect
   providers.
 
   *Configuration key:* `OAUTH_DATABASE_PATH`
 
   *Default location:* `instance/oauth/db.json`
-
-- **Open ID v2 folder** contains cached files for Open ID v2 authentication.
-
-  *Configuration key:* `OPENID_FS_STORE_PATH`
-
-  *Default location:* `instance/open-id/`
 
 You can configure the names and locations of these files and the folder by
 putting the respective paths in one of your configuration files:
