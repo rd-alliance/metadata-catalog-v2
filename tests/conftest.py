@@ -765,7 +765,7 @@ class AuthAPIActions(object):
 def app() -> t.Generator[Flask, None, None]:
     with tempfile.TemporaryDirectory() as inst_path:
         app = create_app(
-            {
+            test_config={
                 "TESTING": True,
                 "MAIN_DATABASE_PATH": os.path.join(inst_path, "data", "db.json"),
                 "VOCAB_DATABASE_PATH": os.path.join(inst_path, "data", "vocab.json"),
@@ -777,7 +777,8 @@ def app() -> t.Generator[Flask, None, None]:
                         "secret": "test-oauth-app-secret",
                     }
                 },
-            }
+            },
+            instance_path=inst_path,
         )
 
         yield app

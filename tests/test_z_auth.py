@@ -9,7 +9,7 @@ def test_back_door(page: PageActions):
     """This test must be run last as it disables the test login credentials."""
     with tempfile.TemporaryDirectory() as inst_path:
         live_app = create_app(
-            {
+            test_config={
                 "TESTING": False,
                 "MAIN_DATABASE_PATH": os.path.join(inst_path, "data", "db.json"),
                 "VOCAB_DATABASE_PATH": os.path.join(inst_path, "data", "vocab.json"),
@@ -21,7 +21,8 @@ def test_back_door(page: PageActions):
                         "secret": "test-oauth-app-secret",
                     }
                 },
-            }
+            },
+            instance_path=inst_path,
         )
 
         with live_app.test_client() as live_client:
@@ -40,13 +41,14 @@ def test_back_door(page: PageActions):
 
     with tempfile.TemporaryDirectory() as inst_path:
         live_app = create_app(
-            {
+            test_config={
                 "TESTING": False,
                 "MAIN_DATABASE_PATH": os.path.join(inst_path, "data", "db.json"),
                 "VOCAB_DATABASE_PATH": os.path.join(inst_path, "data", "vocab.json"),
                 "TERM_DATABASE_PATH": os.path.join(inst_path, "data", "terms.json"),
                 "USER_DATABASE_PATH": os.path.join(inst_path, "users", "db.json"),
-            }
+            },
+            instance_path=inst_path,
         )
 
         with live_app.test_client() as live_client:
