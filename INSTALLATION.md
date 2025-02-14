@@ -18,8 +18,8 @@ The methods below make this especially quick and easy.
 A [YAML configuration] is provided to automate the process of initializing the
 Catalog in a Linux container. This is especially useful if you want to test how
 the code runs under a version of Python different from the one you have
-installed. These instructions use [LXD] but the equivalent steps should work
-with [Incus].
+installed. These instructions use [LXD] but the equivalent steps work with
+[Incus].
 
 [YAML configuration]: rdamsc-init.yaml
 [LXD]: https://canonical.com/lxd
@@ -37,10 +37,11 @@ with [Incus].
  2. Create a new container using an image that is Debian-based and supports
     `cloud-init`. (The Ubuntu images provided by Canonical are suitable. If you
     are choosing from the [linuxcontainers public image server], the ‘cloud’
-    variants support `cloud-init`.) An Ubuntu one is given here as an example:
+    variants support `cloud-init`.) The following example would install the
+    most recent Ubuntu LTS release:
 
     ```bash
-    lxc init ubuntu:24.04 rdamsc
+    lxc init ubuntu:lts rdamsc
     ```
 
  3. Configure the container using the YAML configuration, either
@@ -70,6 +71,9 @@ with [Incus].
     The automated installation simulates a production instance, including
     the steps given below for running in production and implementing
     maintenance mode.
+
+    You will still need to complete some configuration manually, such
+    as adding OAuth provider secrets and a Font Awesome kit.
 
  6. If you want to view the Web GUI, add its domain (`rdamsc.internal` by
     default) and the container's IP address to your computer's
@@ -226,23 +230,14 @@ You can now switch to the `rdamsc` user:
 sudo -Hsu rdamsc
 ```
 
-Configure the Catalog to use this folder explicitly by changing the `app`
-assignment line in `rdamsc/__init__.py` to include the information:
-
-```python
-# Create the app:
-app = Flask(__name__, instance_relative_config=True, instance_path='/var/opt/rdamsc')
-```
-
-Commit this change so Git can reapply it over any other code changes. Doing
-this as your newly created user, you will need to configure Git at the same
-time:
+If you need to make any local changes to the code, it is best to commit
+them so you can still `git pull` upstream changes with the `--rebase` option.
+In order to do this, you will need to configure Git with at least these
+settings (change the values as suits you):
 
 ```bash
 git config --global user.name "RDA MSCWG"
 git config --global user.email "rdamsc@localhost"
-git add rdamsc/__init__.py
-git commit -m "Update production instance path"
 ```
 
 If a pre-compiled WSGI mod is not available for the Python you used in the
@@ -267,13 +262,15 @@ sudo chown rdamsc:www-data /srv/rdamsc
 ```
 
 The `srv` folder in this repository has a ready-made `rdamsc.wsgi` file you can
-copy to the directory you just created. Ensure that it is writeable by the
-`rdamsc` user. Alternatively, as the `rdamsc` user, create the file
-`/srv/rdamsc/rdamsc.wsgi` with this content:
+copy to the directory you just created. Switch to the `rdamsc` user, copy it
+across and then edit it to include the path to the instance folder you created
+above (or just create the file `/srv/rdamsc/rdamsc.wsgi`and write it directly).
+It should end up looking like this:
 
 ```python
 from rdamsc import create_app
-application = create_app()
+
+application = create_app(instance_path="/var/opt/rdamsc")
 ```
 
 If you are behind an HTTP proxy, you may need to add (or uncomment) these lines
@@ -400,6 +397,15 @@ OAUTH_CREDENTIALS = {
         'secret': 'secret string'}}
 ```
 
+### Font Awesome
+
+The Catalog is configured to use Font Awesome for various icons and logos.
+In order for these to show up properly, you will need to register a kit.
+Add the URL of the kit's JavaScript file to the configuration:
+
+```python
+FA_KIT = 'https://kit.fontawesome.com/<something>.js'
+```
 
 ### Database files
 

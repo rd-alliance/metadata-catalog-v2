@@ -41,11 +41,13 @@ logging.config.dictConfig(
 )
 
 
-def create_app(test_config: t.Mapping[str, t.Any] = None) -> Flask:
+def create_app(
+    test_config: t.Mapping[str, t.Any] = None, instance_path: t.Optional[str] = None
+) -> Flask:
     """Factory for initialising the Flask application."""
 
     # Create the app:
-    app = Flask(__name__, instance_relative_config=True)
+    app = Flask(__name__, instance_path=instance_path, instance_relative_config=True)
 
     # Set default configuration:
     app.config.from_mapping(
@@ -157,6 +159,10 @@ def create_app(test_config: t.Mapping[str, t.Any] = None) -> Flask:
             url_for("api2.get_thesaurus_concept", level=level, number=number)
         )
 
+    @app.route("/favicon.ico")
+    def redirect_favicon():
+        return redirect(url_for("static", filename="favicon.ico"))
+
     # Webhook:
     webhook = Webhook(app, secret=app.config["WEBHOOK_SECRET"])
     git_work_dir = os.path.dirname(os.path.dirname(__file__))
@@ -220,6 +226,10 @@ def create_app(test_config: t.Mapping[str, t.Any] = None) -> Flask:
             "hasDay": has_day,
             "isList": is_list,
         }
+
+    @app.context_processor
+    def activate_fontawesome():
+        return {"fa_kit": app.config.get("FA_KIT")}
 
     @app.context_processor
     def inject_maintenance():

@@ -57,8 +57,7 @@ write_files:
     #!/usr/bin/env bash
     cd ~rdamsc
     . venv/bin/activate
-    pip install --upgrade pip
-    pip install wheel
+    pip install -U pip wheel
     pip install -r requirements.txt -e .
   path: /tmp/install-rdamsc.sh
   permissions: '0755'
@@ -72,19 +71,18 @@ runcmd:
 - echo "SECRET_KEY = '$(uuid)'" >> /var/opt/rdamsc/config.py
 - echo "WSGI_PATH = '/srv/rdamsc/rdamsc.wsgi'" >> /var/opt/rdamsc/config.py
 - echo "WEBHOOK_SECRET = '$(uuid)'" >> /var/opt/rdamsc/config.py
+- echo "# FA_KIT = 'https://kit.fontawesome.com/*.js'" >> /var/opt/rdamsc/config.py
 - chown rdamsc:www-data /var/opt/rdamsc/config.py
 - cd ~rdamsc
 - sudo -u rdamsc git clone https://github.com/rd-alliance/metadata-catalog-v2.git .
 - sudo -u rdamsc git config --global user.name "RDA MSCWG"
 - sudo -u rdamsc git config --global user.email "rdamsc@localhost"
-- sudo -u rdamsc sed -i -E 's/instance_relative_config=True/instance_relative_config=True, instance_path="\/var\/opt\/rdamsc"/' rdamsc/__init__.py
-- sudo -u rdamsc git add rdamsc/__init__.py
-- sudo -u rdamsc git commit -m "Update production instance path"
 - sudo -u rdamsc python3 -m venv venv
 - sudo -u rdamsc /tmp/install-rdamsc.sh
 - mkdir /srv/rdamsc
 - chown rdamsc:www-data /srv/rdamsc
 - sudo -u rdamsc cp srv/*.* /srv/rdamsc
+- sudo -u rdamsc sed -i -E 's/create_app\(\)/create_app(instance_path="\/var\/opt\/rdamsc")/' /srv/rdamsc/rdamsc.wsgi
 - a2enmod rewrite
 - a2ensite rdamsc
 - a2dissite 000-default
