@@ -45,9 +45,14 @@ def create_app(
     test_config: t.Mapping[str, t.Any] = None, instance_path: t.Optional[str] = None
 ) -> Flask:
     """Factory for initialising the Flask application."""
+    kwargs = {"instance_relative_config": True}
+    if instance_path:
+        kwargs["instance_path"] = instance_path
+    elif "FLASK_INSTANCE_PATH" in os.environ:
+        kwargs["instance_path"] = os.environ["FLASK_INSTANCE_PATH"]
 
     # Create the app:
-    app = Flask(__name__, instance_path=instance_path, instance_relative_config=True)
+    app = Flask(__name__, **kwargs)
 
     # Set default configuration:
     app.config.from_mapping(
