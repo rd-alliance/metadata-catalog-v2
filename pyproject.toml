@@ -39,4 +39,8 @@ packages = ["rdamsc"]
 [tool.pytest.ini_options]
 filterwarnings = [
     "ignore:'crypt':DeprecationWarning:passlib",
+    "ignore:parse_commit:DeprecationWarning:dulwich",
+    "ignore:_get_extra:DeprecationWarning:dulwich",
+    "ignore:object_index:DeprecationWarning:dulwich",
+    "ignore:checkout_branch:DeprecationWarning:dulwich",
 ]
