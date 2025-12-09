@@ -2,6 +2,7 @@
 # ============
 # Standard
 # --------
+from collections.abc import Callable
 import re
 import typing as t
 import unicodedata
@@ -88,7 +89,7 @@ def clean_error_list(field: Field) -> list[str]:
     return list(seen_errors)
 
 
-def to_file_slug(string: str, callback: t.Callable[[Query], list]) -> str:
+def to_file_slug(string: str, callback: Callable[[Query], list]) -> str:
     """Transforms string into a new slug for use when decomposing the
     database to individual files. The callback should be the search
     method of a TinyDB table, and will be used to ensure that the

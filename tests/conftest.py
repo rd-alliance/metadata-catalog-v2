@@ -1,10 +1,10 @@
+from collections.abc import Generator, Iterator
 from html import unescape
 import json
 import os
 import re
 import tempfile
 import time
-import typing as t
 
 import email_validator
 from flask import Flask, request
@@ -762,7 +762,7 @@ class AuthAPIActions(object):
 
 
 @pytest.fixture
-def app() -> t.Generator[Flask, None, None]:
+def app() -> Generator[Flask, None, None]:
     with tempfile.TemporaryDirectory() as inst_path:
         app = create_app(
             test_config={
@@ -785,13 +785,13 @@ def app() -> t.Generator[Flask, None, None]:
 
 
 @pytest.fixture
-def client(app: Flask) -> t.Iterator[FlaskClient]:
+def client(app: Flask) -> Iterator[FlaskClient]:
     with app.test_client() as client:
         yield client
 
 
 @pytest.fixture
-def server() -> t.Iterator[RequestsMock]:
+def server() -> Iterator[RequestsMock]:
     with RequestsMock() as server:
         yield server
 

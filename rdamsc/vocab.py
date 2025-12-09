@@ -2,7 +2,7 @@
 # ============
 # Standard
 # --------
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 import os
 import typing as t
 
@@ -87,7 +87,7 @@ class Thesaurus(object):
         subject: _SubjectType,
         lang: str = None,
         default: T = None,
-        labelProperties: t.Sequence[_PredicateType] = (SKOS.prefLabel, RDFS.label),
+        labelProperties: Sequence[_PredicateType] = (SKOS.prefLabel, RDFS.label),
     ) -> list[tuple[_PredicateType, str]] | T:  # pragma: no cover
         """Deprecated function from rdflib library, preserved
         anticipating removal.
@@ -214,7 +214,7 @@ class Thesaurus(object):
             )
         return uris
 
-    def _lookup_child_uris(self, route: t.Sequence[str]) -> list[str]:
+    def _lookup_child_uris(self, route: Sequence[str]) -> list[str]:
         """Given a sequence of URIs (a term, followed by each progressively
         broader ancestor), returns a list of URIs of all child terms."""
         uris = list()

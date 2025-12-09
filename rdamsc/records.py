@@ -185,7 +185,7 @@ class Relation(object):
         return removed_relations
 
     def subjects(
-        self, predicate: str = None, object: str = None, filter: t.Type[Document] = None
+        self, predicate: str = None, object: str = None, filter: type[Document] = None
     ) -> list[str]:
         """Returns list of MSCIDs for all records that are subjects in the
         relations database, optionally filtered by predicate (forward

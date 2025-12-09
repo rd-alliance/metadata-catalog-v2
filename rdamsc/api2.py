@@ -3,7 +3,7 @@
 # Standard
 # --------
 from collections import deque, defaultdict
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from enum import Enum, auto
 import math
 import re
@@ -116,7 +116,7 @@ def do_not_embellish(mapping: _M) -> _M:
 
 
 def as_response_item(
-    mapping: Mapping, callback: t.Callable[[_M], _M] = embellish_record
+    mapping: Mapping, callback: Callable[[_M], _M] = embellish_record
 ) -> dict[str, t.Any]:
     """Embellishes a record using the callback function, then wraps it in a
     response object.
@@ -138,7 +138,7 @@ def as_response_page(
     page_size=10,
     start: int = None,
     page: int = None,
-    callback: t.Callable[[_M], _M] = embellish_record,
+    callback: Callable[[_M], _M] = embellish_record,
 ) -> dict[str, t.Any]:
     """Wraps list of records in a response object representing a page of
     `page_size` items, starting with item number `start` or page number `page`
