@@ -338,7 +338,7 @@ def parse_query(filter: str) -> tuple | list:
             state.append(Qp.WORD)
         working[level - 1].append(item)
 
-    def check_type(word: str) -> t.Pattern | str:
+    def check_type(word: str) -> re.Pattern | str:
         """If wildcards are present, converts to a regex. Otherwise
         returns the string unaltered. Database currently contains
         only strings, otherwise coercion to int (say) would happen
@@ -663,7 +663,7 @@ def passes_filter(
                     return True
         return False
 
-    if isinstance(filter[1], t.Pattern):
+    if isinstance(filter[1], re.Pattern):
         for v in [d for d in values_to_test if isinstance(d, str)]:
             if exact:
                 if filter[1].fullmatch(v):

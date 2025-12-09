@@ -135,7 +135,7 @@ class Relation(object):
         for subcls in Record.__subclasses__():
             self.series_map[subcls.table] = subcls.series
 
-    def add(self, relations: t.Mapping[str, t.Mapping[str, t.List[str]]]):
+    def add(self, relations: t.Mapping[str, t.Mapping[str, list[str]]]):
         """Adds relations to the table."""
         with transaction(self.tb) as t:
             for s, properties in relations.items():
@@ -155,8 +155,8 @@ class Relation(object):
                 t.update(rel_record, doc_ids=[rel_record.doc_id])
 
     def remove(
-        self, relations: t.Mapping[str, t.Mapping[str, t.List[str]]]
-    ) -> t.Dict[str, t.Dict[str, t.List[str]]]:
+        self, relations: t.Mapping[str, t.Mapping[str, list[str]]]
+    ) -> dict[str, dict[str, list[str]]]:
         """Removes relations from table, and returns those successfully
         removed for comparison."""
         removed_relations = dict()
@@ -185,7 +185,7 @@ class Relation(object):
 
     def subjects(
         self, predicate: str = None, object: str = None, filter: t.Type[Document] = None
-    ) -> t.List[str]:
+    ) -> list[str]:
         """Returns list of MSCIDs for all records that are subjects in the
         relations database, optionally filtered by predicate (forward
         relation), object (MSCID) and record class."""
@@ -371,7 +371,7 @@ class Record(Document, metaclass=ABCMeta):
         return data
 
     @classmethod
-    def get_choices(cls) -> list[t.Tuple[str, str]]:
+    def get_choices(cls) -> list[tuple[str, str]]:
         """Returns all active instances in the database (i.e. not
         deleted ones) as a list of tuples of MSCID and name/label.
         """
@@ -817,7 +817,7 @@ class Record(Document, metaclass=ABCMeta):
             raise NotImplementedError
 
         # predicate to [role]:
-        one_way: t.DefaultDict[str, list[str]] = defaultdict(list)
+        one_way: defaultdict[str, list[str]] = defaultdict(list)
         for role, attrs in self.rolemap.items():
             if attrs.get("one_way"):
                 one_way[attrs["predicate"]].append(role)
@@ -828,7 +828,7 @@ class Record(Document, metaclass=ABCMeta):
         valid: dict[int, dict] = dict()
 
         # role to ID to [location]:
-        lookup: t.DefaultDict[str, t.DefaultDict[str, list[int]]] = defaultdict(
+        lookup: defaultdict[str, defaultdict[str, list[int]]] = defaultdict(
             lambda: defaultdict(list)
         )
 
@@ -1091,8 +1091,8 @@ class Record(Document, metaclass=ABCMeta):
 
     def _save_relations(
         self,
-        forward: list[t.Tuple[bool, str, list[str]]],
-        inverted: list[t.Tuple[str, str, bool]],
+        forward: list[tuple[bool, str, list[str]]],
+        inverted: list[tuple[str, str, bool]],
     ) -> str:
         """Saves relation edits to the Relations table. Returns error
         message if a problem arises."""
@@ -1146,10 +1146,10 @@ class Record(Document, metaclass=ABCMeta):
 
         # Get current list of relations for this record so we can delete them:
         rel = Relation()
-        # Forward relationships: list[t.Tuple[False, predicate, list[object]]]
+        # Forward relationships: list[tuple[False, predicate, list[object]]]
         fwd_rel = rel.related(self.mscid, direction=rel.FORWARD)
         forward = [(False, k, v) for k, v in fwd_rel.items()]
-        # Inverse relationships: list[t.Tuple[subject, predicate, False]]
+        # Inverse relationships: list[tuple[subject, predicate, False]]
         invrelmap = rel.inversion_map
         inv_rel = rel.related(self.mscid, direction=rel.INVERSE)
         inverted = list()
@@ -1294,8 +1294,8 @@ class Record(Document, metaclass=ABCMeta):
         # Move relatedEntities information into new lists: we can add new ones
         # but not remove old ones.
 
-        # Forward relationships: list[t.Tuple[True, predicate, list[object]]]
-        # Inverse relationships: list[t.Tuple[subject, predicate, True]]
+        # Forward relationships: list[tuple[True, predicate, list[object]]]
+        # Inverse relationships: list[tuple[subject, predicate, True]]
         forward_map = dict()
         inverted = list()
 
@@ -1374,8 +1374,8 @@ class Record(Document, metaclass=ABCMeta):
         #   the only values that should be set.
 
         # We will assemble lists of changes to make.
-        # Forward relationships are list[t.Tuple[Bool, predicate, list[object]]].
-        # Inverse relationships are list[t.Tuple[subject, predicate, Bool]].
+        # Forward relationships are list[tuple[Bool, predicate, list[object]]].
+        # Inverse relationships are list[tuple[subject, predicate, Bool]].
         # Bool=True indicates an addition, Bool=False indicates a deletion.
         forward = list()
         inverted = list()
@@ -1482,7 +1482,7 @@ class Record(Document, metaclass=ABCMeta):
 
     def save_invrel_patch(
         self, input_data: t.Mapping
-    ) -> t.Tuple[list[dict[str, str]], dict]:
+    ) -> tuple[list[dict[str, str]], dict]:
         """Validates a set of patches and applies them to the database if
         they pass validation. Returns error list (dicts where `message`
         contains the error message and `location` indicates the field
@@ -1571,7 +1571,7 @@ class Record(Document, metaclass=ABCMeta):
 
     def save_rel_patch(
         self, input_data: t.Mapping
-    ) -> t.Tuple[list[dict[str, str]], dict]:
+    ) -> tuple[list[dict[str, str]], dict]:
         """Validates a set of patches and applies them to the database if
         they pass validation. Returns error list (dicts where `message`
         contains the error message and `location` indicates the field
@@ -1638,7 +1638,7 @@ class Record(Document, metaclass=ABCMeta):
 
     def save_rel_record(
         self, input_data: t.Mapping
-    ) -> t.Tuple[list[dict[str, str]], dict]:
+    ) -> tuple[list[dict[str, str]], dict]:
         """Validates a complete relations table record and saves it to the
         database if it passes validation. Returns error list (dicts
         where `message` contains the error message and `location`
@@ -1661,7 +1661,7 @@ class Record(Document, metaclass=ABCMeta):
 
         return (errors, result)
 
-    def validate(self, input_data: t.Mapping) -> t.Tuple[list[dict[str, str]], dict]:
+    def validate(self, input_data: t.Mapping) -> tuple[list[dict[str, str]], dict]:
         """Checks input for valid keys and values. Invalid keys are
         removed. Invalid values raise an error. Valid values are
         cleaned. Returns a tuple consisting of a list of errors (dicts
@@ -1686,7 +1686,7 @@ class Record(Document, metaclass=ABCMeta):
 
     def validate_against(
         self, input_data: t.Mapping, schema: t.Mapping
-    ) -> t.Tuple[list[dict[str, str]], dict]:
+    ) -> tuple[list[dict[str, str]], dict]:
         """Recursive function for performing validation against a given
         schema. Returns a dict where `errors` contains a list of errors
         (dicts where `message` contains the error message and `location`
@@ -1741,7 +1741,7 @@ class Record(Document, metaclass=ABCMeta):
 
     def validate_rel_list(
         self, mscids: list[str], predicate: str, table: str, check_reverse: bool
-    ) -> t.Tuple[list[dict[str, str]], dict]:
+    ) -> tuple[list[dict[str, str]], dict]:
         """Checks if any mscids in the list are invalid or do not belong
         to the given table. Returns a list of errors (dicts where
         `message` contains the error message and `location` indicates
@@ -1812,7 +1812,7 @@ class Record(Document, metaclass=ABCMeta):
         patch: t.Mapping[str, str],
         acceptable: t.Mapping[str, str],
         one_way: t.Mapping[str, bool],
-    ) -> t.Tuple[list[dict[str, str]], dict]:
+    ) -> tuple[list[dict[str, str]], dict]:
         """Parses a patch, and (if possible) applies it to the input data.
         Returns a tuple consisting of a list of errors (dicts where
         `message` contains the error message and `location` indicates
@@ -2033,7 +2033,7 @@ class Record(Document, metaclass=ABCMeta):
 
     def validate_rel_record(
         self, input_data: t.Mapping
-    ) -> t.Tuple[list[dict[str, str]], dict]:
+    ) -> tuple[list[dict[str, str]], dict]:
         """Checks validity of a set of relations. Invalid keys are removed.
         Invalid values raise an error. Valid values are cleaned. Returns a
         tuple consisting of a list of errors (dicts where `message`
@@ -2771,7 +2771,7 @@ class Datatype(Record):
         return get_term_db()
 
     @classmethod
-    def get_choices(cls) -> list[t.Tuple[str, str]]:
+    def get_choices(cls) -> list[tuple[str, str]]:
         choices = [("", "")]
         for record in cls.search(Query().id.exists()):
             choices.append((record.mscid, record["label"]))
@@ -2868,7 +2868,7 @@ class VocabTerm(Document, metaclass=ABCMeta):
         return get_term_db()
 
     @classmethod
-    def get_choices(cls, filter: type[Record] = None) -> list[t.Tuple[str, str]]:
+    def get_choices(cls, filter: type[Record] = None) -> list[tuple[str, str]]:
         """Returns all active instances in the database (i.e. not
         deleted ones) as a list of tuples of ID and label. May be
         filtered to include only those instances that are valid

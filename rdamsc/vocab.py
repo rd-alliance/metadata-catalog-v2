@@ -87,7 +87,7 @@ class Thesaurus(object):
         lang: str = None,
         default: T = None,
         labelProperties: t.Sequence[_PredicateType] = (SKOS.prefLabel, RDFS.label),
-    ) -> list[t.Tuple[_PredicateType, str]] | T:  # pragma: no cover
+    ) -> list[tuple[_PredicateType, str]] | T:  # pragma: no cover
         """Deprecated function from rdflib library, preserved
         anticipating removal.
 
