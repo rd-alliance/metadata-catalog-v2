@@ -83,7 +83,7 @@ disallowed_tagblocks = [
 ]
 MainTableID = t.Literal["m", "g", "t", "c", "e"]
 TermTableID = t.Literal["datatype", "location", "type", "id_scheme"]
-TableID = t.Union[MainTableID, TermTableID]
+TableID = MainTableID | TermTableID
 
 
 # Database wrapper classes
@@ -107,7 +107,7 @@ class Relation(object):
     INVERSE = "inverse"
 
     @property
-    def inversion_map(self) -> t.Dict[str, str]:
+    def inversion_map(self) -> dict[str, str]:
         """Mapping from inverse relations to forward ones, e.g.
         maintained schemes -> maintainers. All are plural.
         """
@@ -122,7 +122,7 @@ class Relation(object):
         return invrelmap
 
     @property
-    def inversions(self) -> t.Dict[str, str]:
+    def inversions(self) -> dict[str, str]:
         """Mapping from forward relations to inverse ones, e.g.
         maintainers -> maintained {}s. All are plural.
         """
@@ -222,15 +222,18 @@ class Relation(object):
         return sorted(mscids, key=sortval)
 
     def subject_records(
-        self, predicate: str = None, object: str = None, filter: t.Type[Document] = None
-    ) -> t.List["Record"]:
+        self,
+        predicate: t.Optional[str] = None,
+        object: str = None,
+        filter: type[Document] = None,
+    ) -> list["Record"]:
         """Returns list of Records that are subjects in the relations
         database, optionally filtered by predicate (forward relation),
         object(MSCID) and record class."""
         mscids = self.subjects(predicate, object, filter)
         return [Record.load_by_mscid(mscid) for mscid in mscids]
 
-    def objects(self, subject: str = None, predicate: str = None) -> t.List[str]:
+    def objects(self, subject: str = None, predicate: str = None) -> list[str]:
         """Returns list of MSCIDs for all records that are objects in the
         relations database, optionally filtered by subject (MSCID) and
         predicate (forward relation)."""
@@ -259,14 +262,14 @@ class Relation(object):
 
     def object_records(
         self, subject: str = None, predicate: str = None
-    ) -> t.List["Record"]:
+    ) -> list["Record"]:
         """Returns list of Records that are objects in the relations
         database, optionally filtered by subject (MSCID) and predicate
         (forward relation)."""
         mscids = self.objects(subject, predicate)
         return [Record.load_by_mscid(mscid) for mscid in mscids]
 
-    def related(self, mscid: str, direction: str = None) -> t.Dict[str, t.List[str]]:
+    def related(self, mscid: str, direction: str = None) -> dict[str, list[str]]:
         """Returns dictionary where the keys are predicates (relationships)
         and the values are lists of MSCIDs of records related to the identified
         record by that predicate. The types of predicate can optionally be
@@ -308,8 +311,8 @@ class Relation(object):
         return results
 
     def related_records(
-        self, mscid: str, direction: str = None
-    ) -> t.Dict[str, t.List[dict]]:
+        self, mscid: str, direction: t.Optional[str] = None
+    ) -> dict[str, list["Record"]]:
         """Returns dictionary where the keys are predicates (relationships)
         and the values are lists of records related to the identified
         record by that predicate. The types of predicate can optionally be
@@ -368,7 +371,7 @@ class Record(Document, metaclass=ABCMeta):
         return data
 
     @classmethod
-    def get_choices(cls) -> t.List[t.Tuple[str, str]]:
+    def get_choices(cls) -> list[t.Tuple[str, str]]:
         """Returns all active instances in the database (i.e. not
         deleted ones) as a list of tuples of MSCID and name/label.
         """
@@ -380,7 +383,7 @@ class Record(Document, metaclass=ABCMeta):
         return choices
 
     @classmethod
-    def get_class_by_table(cls, table: str) -> t.Optional[t.Type["Record"]]:
+    def get_class_by_table(cls, table: str) -> t.Optional[type["Record"]]:
         """Returns subclass of Record with the corresponding table identifier,
         or None if identifier is invalid. Should not be called on subclasses.
         """
@@ -397,7 +400,7 @@ class Record(Document, metaclass=ABCMeta):
         return get_data_db()
 
     @classmethod
-    def get_vocabs(cls) -> t.Dict[str, t.List[str]]:
+    def get_vocabs(cls) -> dict[str, list[str]]:
         """Gets controlled vocabularies for use as hints in unconstrained
         StringFields. Most of these have been removed since MSC v.1."""
         return dict()
@@ -450,7 +453,7 @@ class Record(Document, metaclass=ABCMeta):
         return None
 
     @classmethod
-    def all(cls) -> t.List["Record"]:
+    def all(cls) -> list["Record"]:
         """Should only be called on subclasses of Record. Returns a list of all
         instances of that subclass from the database."""
         db = cls.get_db()
@@ -459,7 +462,7 @@ class Record(Document, metaclass=ABCMeta):
         return [cls(value=doc, doc_id=doc.doc_id) for doc in docs]
 
     @classmethod
-    def search(cls, cond: Query) -> t.List["Record"]:
+    def search(cls, cond: Query) -> list["Record"]:
         """Should only be called on subclasses of Record. Performs a TinyDB
         search on the corresponding table, converts the results into
         instances of the given subclass."""
@@ -544,7 +547,7 @@ class Record(Document, metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def form(self) -> t.Type[FlaskForm]:  # pragma: no cover
+    def form(self) -> type[FlaskForm]:  # pragma: no cover
         """Returns a subclass of FlaskForm for editing instances of
         this class.
         """
@@ -574,13 +577,13 @@ class Record(Document, metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def vform(self) -> t.Type[FlaskForm]:  # pragma: no cover
+    def vform(self) -> type[FlaskForm]:  # pragma: no cover
         """Returns a subclass of FlaskForm for editing version
         subrecords.
         """
         raise NotImplementedError
 
-    def _do_datatypes(self, value: t.List[str]) -> t.Dict[str, list]:
+    def _do_datatypes(self, value: list[str]) -> dict[str, list]:
         """API validator for data types."""
         result = {"errors": list(), "value": list()}
         valid_types = [v[0] for v in Datatype.get_choices() if v[0]]
@@ -593,7 +596,7 @@ class Record(Document, metaclass=ABCMeta):
                 result["value"].append(v)
         return result
 
-    def _do_date(self, value: str) -> t.Dict[str, t.Union[list, str]]:
+    def _do_date(self, value: str) -> dict[str, list | str]:
         """API validator for a date."""
         result = {"errors": list(), "value": ""}
         wv = W3CDate()
@@ -605,7 +608,7 @@ class Record(Document, metaclass=ABCMeta):
             )
         return result
 
-    def _do_html(self, value: str) -> t.Dict[str, t.Union[list, str]]:
+    def _do_html(self, value: str) -> dict[str, list | str]:
         """API validator for HTML text."""
         result = {"errors": list(), "value": ""}
         value = re.sub(r"\s+", r" ", value).strip()
@@ -614,7 +617,7 @@ class Record(Document, metaclass=ABCMeta):
         result["value"] = strip_tags(value)[:131072]
         return result
 
-    def _do_id_doi(self, value: str) -> t.Dict[str, t.Union[list, str]]:
+    def _do_id_doi(self, value: str) -> dict[str, list | str]:
         """API validator for DOI ID scheme. Does not check if DOI is registered."""
         result = {"errors": list(), "value": ""}
         m = re.match(
@@ -626,7 +629,7 @@ class Record(Document, metaclass=ABCMeta):
             result["errors"].append({"message": "Malformed DOI."})
         return result
 
-    def _do_id_handle(self, value: str) -> t.Dict[str, t.Union[list, str]]:
+    def _do_id_handle(self, value: str) -> dict[str, list | str]:
         """API validator for Handle System ID scheme. Does not check if Handle
         is registered.
         """
@@ -638,7 +641,7 @@ class Record(Document, metaclass=ABCMeta):
             result["errors"].append({"message": "Malformed Handle."})
         return result
 
-    def _do_id_ror(self, value: str) -> t.Dict[str, t.Union[list, str]]:
+    def _do_id_ror(self, value: str) -> dict[str, list | str]:
         """API validator for ROR ID scheme. Does not verify the check digits."""
         result = {"errors": list(), "value": ""}
         m = re.match(
@@ -650,7 +653,7 @@ class Record(Document, metaclass=ABCMeta):
             result["errors"].append({"message": "Malformed ROR."})
         return result
 
-    def _do_identifiers(self, value: t.List[t.Mapping[str, str]]) -> t.Dict[str, list]:
+    def _do_identifiers(self, value: list[t.Mapping[str, str]]) -> dict[str, list]:
         """API validator for identifiers."""
         result = {"errors": list(), "value": list()}
         valid_schemes = [v[0] for v in IDScheme.get_choices(self.__class__) if v[0]]
@@ -700,11 +703,11 @@ class Record(Document, metaclass=ABCMeta):
             result["value"].append(clean_value)
         return result
 
-    def _do_vocabid(self, value: str) -> t.Dict[str, t.Union[list, str]]:
+    def _do_vocabid(self, value: str) -> dict[str, list | str]:
         """API validator for vocabulary term ID."""
         return self._do_short_text(value, 64)
 
-    def _do_locations(self, value: t.List[t.Mapping[str, str]]) -> t.Dict[str, list]:
+    def _do_locations(self, value: list[t.Mapping[str, str]]) -> dict[str, list]:
         """API validator for locations."""
         result = {"errors": list(), "value": list()}
         valid_types = [v[0] for v in Location.get_choices(self.__class__) if v[0]]
@@ -745,7 +748,7 @@ class Record(Document, metaclass=ABCMeta):
             result["value"].append(clean_value)
         return result
 
-    def _do_namespaces(self, value: t.List[t.Mapping[str, str]]) -> t.Dict[str, list]:
+    def _do_namespaces(self, value: list[t.Mapping[str, str]]) -> dict[str, list]:
         """API validator for namespaces."""
         result = {"errors": list(), "value": list()}
         for i, v in enumerate(value):
@@ -785,9 +788,7 @@ class Record(Document, metaclass=ABCMeta):
             result["value"].append(clean_value)
         return result
 
-    def _do_period(
-        self, value: t.Mapping[str, str]
-    ) -> t.Dict[str, t.Union[list, dict]]:
+    def _do_period(self, value: t.Mapping[str, str]) -> dict[str, list | dict]:
         """API validator for time periods (start/end dates)."""
         result = {"errors": list(), "value": dict()}
         for key in ["start", "end"]:
@@ -807,7 +808,7 @@ class Record(Document, metaclass=ABCMeta):
             result["errors"].append({"message": "End date is before start date."})
         return result
 
-    def _do_relations(self, value: t.List[t.Mapping[str, str]]) -> t.Dict[str, list]:
+    def _do_relations(self, value: list[t.Mapping[str, str]]) -> dict[str, list]:
         """Validates that the ID exists and the role is recognised. Removes
         details beyond this and translates the role into temporary helper fields
         `predicate` and `direction`.
@@ -816,7 +817,7 @@ class Record(Document, metaclass=ABCMeta):
             raise NotImplementedError
 
         # predicate to [role]:
-        one_way: t.DefaultDict[str, t.List[str]] = defaultdict(list)
+        one_way: t.DefaultDict[str, list[str]] = defaultdict(list)
         for role, attrs in self.rolemap.items():
             if attrs.get("one_way"):
                 one_way[attrs["predicate"]].append(role)
@@ -824,14 +825,14 @@ class Record(Document, metaclass=ABCMeta):
         result = {"errors": list(), "value": list()}
 
         # location to relation:
-        valid: t.Dict[int, dict] = dict()
+        valid: dict[int, dict] = dict()
 
         # role to ID to [location]:
-        lookup: t.DefaultDict[str, t.DefaultDict[str, t.List[int]]] = defaultdict(
+        lookup: t.DefaultDict[str, t.DefaultDict[str, list[int]]] = defaultdict(
             lambda: defaultdict(list)
         )
 
-        cache: t.Dict[str, Record] = dict()
+        cache: dict[str, Record] = dict()
         for i, v in enumerate(value):
             clean_relation = dict()
             has_error = False
@@ -927,7 +928,7 @@ class Record(Document, metaclass=ABCMeta):
 
         return result
 
-    def _do_series(self, value: t.List[str]) -> t.Dict[str, list]:
+    def _do_series(self, value: list[str]) -> dict[str, list]:
         """API validator limiting values to main record series."""
         result = {"errors": list(), "value": list()}
         valid_series = [
@@ -959,9 +960,7 @@ class Record(Document, metaclass=ABCMeta):
                 result["value"].append(v)
         return result
 
-    def _do_short_text(
-        self, value: str, maxlength: int
-    ) -> t.Dict[str, t.Union[list, str]]:
+    def _do_short_text(self, value: str, maxlength: int) -> dict[str, list | str]:
         """API validator for short passages of plain text."""
         result = self._do_text(value)
         length = len(result["value"])
@@ -974,7 +973,7 @@ class Record(Document, metaclass=ABCMeta):
             )
         return result
 
-    def _do_text(self, value: str) -> t.Dict[str, t.Union[list, str]]:
+    def _do_text(self, value: str) -> dict[str, list | str]:
         """API validator for plain text."""
         result = {"errors": list(), "value": ""}
         value = re.sub(r"\s+", r" ", value).strip()
@@ -983,7 +982,7 @@ class Record(Document, metaclass=ABCMeta):
         result["value"] = value[:65536]
         return result
 
-    def _do_types(self, value: t.List[str]) -> t.Dict[str, list]:
+    def _do_types(self, value: list[str]) -> dict[str, list]:
         """API validator for entity types."""
         result = {"errors": list(), "value": list()}
         valid_types = [v[0] for v in EntityType.get_choices(self.__class__) if v[0]]
@@ -1000,7 +999,7 @@ class Record(Document, metaclass=ABCMeta):
                 result["value"].append(v)
         return result
 
-    def _do_thesaurus(self, value: t.List[str]) -> t.Dict[str, list]:
+    def _do_thesaurus(self, value: list[str]) -> dict[str, list]:
         """API validator for subject thesaurus terms."""
         result = {"errors": list(), "value": list()}
         thes = get_thesaurus()
@@ -1014,7 +1013,7 @@ class Record(Document, metaclass=ABCMeta):
                 result["value"].append(v)
         return result
 
-    def _do_uri(self, value: str) -> t.Dict[str, t.Union[list, str]]:
+    def _do_uri(self, value: str) -> dict[str, list | str]:
         """API validator for namespace URIs."""
         result = {"errors": list(), "value": ""}
         if not value:
@@ -1035,7 +1034,7 @@ class Record(Document, metaclass=ABCMeta):
         result["value"] = value
         return result
 
-    def _do_url(self, value: str) -> t.Dict[str, t.Union[list, str]]:
+    def _do_url(self, value: str) -> dict[str, list | str]:
         """API validator for URLs and mailto: email addresses."""
         result = {"errors": list(), "value": ""}
         if not value:
@@ -1066,7 +1065,7 @@ class Record(Document, metaclass=ABCMeta):
         result["value"] = value
         return result
 
-    def _do_versionid(self, value: str) -> t.Dict[str, t.Union[list, str]]:
+    def _do_versionid(self, value: str) -> dict[str, list | str]:
         """API validator for version numbers/identifiers."""
         return self._do_short_text(value, 32)
 
@@ -1092,14 +1091,14 @@ class Record(Document, metaclass=ABCMeta):
 
     def _save_relations(
         self,
-        forward: t.List[t.Tuple[bool, str, t.List[str]]],
-        inverted: t.List[t.Tuple[str, str, bool]],
+        forward: list[t.Tuple[bool, str, list[str]]],
+        inverted: list[t.Tuple[str, str, bool]],
     ) -> str:
         """Saves relation edits to the Relations table. Returns error
         message if a problem arises."""
         rel = Relation()
-        additions = dict()
-        deletions = dict()
+        additions: dict[str, dict[str, list[str]]] = dict()
+        deletions: dict[str, dict[str, list[str]]] = dict()
 
         for is_addition, p, objects in forward:
             if is_addition:
@@ -1140,17 +1139,17 @@ class Record(Document, metaclass=ABCMeta):
 
         return ""
 
-    def annul(self) -> t.List[t.Dict[str, str]]:
+    def annul(self) -> list[dict[str, str]]:
         """Removes content of record. Returns a list of error messages if any
         problems arise (dicts with `message` containing the error message).
         """
 
         # Get current list of relations for this record so we can delete them:
         rel = Relation()
-        # Forward relationships: t.List[t.Tuple[False, predicate, t.List[object]]]
+        # Forward relationships: list[t.Tuple[False, predicate, list[object]]]
         fwd_rel = rel.related(self.mscid, direction=rel.FORWARD)
         forward = [(False, k, v) for k, v in fwd_rel.items()]
-        # Inverse relationships: t.List[t.Tuple[subject, predicate, False]]
+        # Inverse relationships: list[t.Tuple[subject, predicate, False]]
         invrelmap = rel.inversion_map
         inv_rel = rel.related(self.mscid, direction=rel.INVERSE)
         inverted = list()
@@ -1181,7 +1180,7 @@ class Record(Document, metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def get_related_entities(self) -> t.List[t.Dict[str, str]]:
+    def get_related_entities(self) -> list[dict[str, str]]:
         """Returns a list of dictionaries where each gives the MSC ID of another
         record, and the role that record plays with respect to the current one.
         """
@@ -1279,7 +1278,7 @@ class Record(Document, metaclass=ABCMeta):
             del self[key]
         self.update(doc)
 
-    def save_api_input(self, input_data: t.Mapping) -> t.List[t.Dict[str, str]]:
+    def save_api_input(self, input_data: t.Mapping) -> list[dict[str, str]]:
         """Processes form input and saves it. Returns a list of error messages
         if any problems arise (dicts with `message` containing the error message
         and `location` indicating which field if any triggered the error)."""
@@ -1295,8 +1294,8 @@ class Record(Document, metaclass=ABCMeta):
         # Move relatedEntities information into new lists: we can add new ones
         # but not remove old ones.
 
-        # Forward relationships: t.List[t.Tuple[True, predicate, t.List[object]]]
-        # Inverse relationships: t.List[t.Tuple[subject, predicate, True]]
+        # Forward relationships: list[t.Tuple[True, predicate, list[object]]]
+        # Inverse relationships: list[t.Tuple[subject, predicate, True]]
         forward_map = dict()
         inverted = list()
 
@@ -1375,8 +1374,8 @@ class Record(Document, metaclass=ABCMeta):
         #   the only values that should be set.
 
         # We will assemble lists of changes to make.
-        # Forward relationships are t.List[t.Tuple[Bool, predicate, t.List[object]]].
-        # Inverse relationships are t.List[t.Tuple[subject, predicate, Bool]].
+        # Forward relationships are list[t.Tuple[Bool, predicate, list[object]]].
+        # Inverse relationships are list[t.Tuple[subject, predicate, Bool]].
         # Bool=True indicates an addition, Bool=False indicates a deletion.
         forward = list()
         inverted = list()
@@ -1483,7 +1482,7 @@ class Record(Document, metaclass=ABCMeta):
 
     def save_invrel_patch(
         self, input_data: t.Mapping
-    ) -> t.Tuple[t.List[t.Dict[str, str]], dict]:
+    ) -> t.Tuple[list[dict[str, str]], dict]:
         """Validates a set of patches and applies them to the database if
         they pass validation. Returns error list (dicts where `message`
         contains the error message and `location` indicates the field
@@ -1572,7 +1571,7 @@ class Record(Document, metaclass=ABCMeta):
 
     def save_rel_patch(
         self, input_data: t.Mapping
-    ) -> t.Tuple[t.List[t.Dict[str, str]], dict]:
+    ) -> t.Tuple[list[dict[str, str]], dict]:
         """Validates a set of patches and applies them to the database if
         they pass validation. Returns error list (dicts where `message`
         contains the error message and `location` indicates the field
@@ -1639,7 +1638,7 @@ class Record(Document, metaclass=ABCMeta):
 
     def save_rel_record(
         self, input_data: t.Mapping
-    ) -> t.Tuple[t.List[t.Dict[str, str]], dict]:
+    ) -> t.Tuple[list[dict[str, str]], dict]:
         """Validates a complete relations table record and saves it to the
         database if it passes validation. Returns error list (dicts
         where `message` contains the error message and `location`
@@ -1662,9 +1661,7 @@ class Record(Document, metaclass=ABCMeta):
 
         return (errors, result)
 
-    def validate(
-        self, input_data: t.Mapping
-    ) -> t.Tuple[t.List[t.Dict[str, str]], dict]:
+    def validate(self, input_data: t.Mapping) -> t.Tuple[list[dict[str, str]], dict]:
         """Checks input for valid keys and values. Invalid keys are
         removed. Invalid values raise an error. Valid values are
         cleaned. Returns a tuple consisting of a list of errors (dicts
@@ -1689,7 +1686,7 @@ class Record(Document, metaclass=ABCMeta):
 
     def validate_against(
         self, input_data: t.Mapping, schema: t.Mapping
-    ) -> t.Tuple[t.List[t.Dict[str, str]], dict]:
+    ) -> t.Tuple[list[dict[str, str]], dict]:
         """Recursive function for performing validation against a given
         schema. Returns a dict where `errors` contains a list of errors
         (dicts where `message` contains the error message and `location`
@@ -1743,8 +1740,8 @@ class Record(Document, metaclass=ABCMeta):
         return (errors, clean_data)
 
     def validate_rel_list(
-        self, mscids: t.List[str], predicate: str, table: str, check_reverse: bool
-    ) -> t.Tuple[t.List[t.Dict[str, str]], dict]:
+        self, mscids: list[str], predicate: str, table: str, check_reverse: bool
+    ) -> t.Tuple[list[dict[str, str]], dict]:
         """Checks if any mscids in the list are invalid or do not belong
         to the given table. Returns a list of errors (dicts where
         `message` contains the error message and `location` indicates
@@ -1815,7 +1812,7 @@ class Record(Document, metaclass=ABCMeta):
         patch: t.Mapping[str, str],
         acceptable: t.Mapping[str, str],
         one_way: t.Mapping[str, bool],
-    ) -> t.Tuple[t.List[t.Dict[str, str]], dict]:
+    ) -> t.Tuple[list[dict[str, str]], dict]:
         """Parses a patch, and (if possible) applies it to the input data.
         Returns a tuple consisting of a list of errors (dicts where
         `message` contains the error message and `location` indicates
@@ -2036,7 +2033,7 @@ class Record(Document, metaclass=ABCMeta):
 
     def validate_rel_record(
         self, input_data: t.Mapping
-    ) -> t.Tuple[t.List[t.Dict[str, str]], dict]:
+    ) -> t.Tuple[list[dict[str, str]], dict]:
         """Checks validity of a set of relations. Invalid keys are removed.
         Invalid values raise an error. Valid values are cleaned. Returns a
         tuple consisting of a list of errors (dicts where `message`
@@ -2188,7 +2185,7 @@ class Scheme(Record):
     }
 
     @classmethod
-    def get_vocabs(cls) -> t.Dict[str, t.List[str]]:
+    def get_vocabs(cls) -> dict[str, list[str]]:
         vocabs = dict()
 
         th = get_thesaurus()
@@ -2197,7 +2194,7 @@ class Scheme(Record):
         return vocabs
 
     @classmethod
-    def get_used_keywords(cls) -> t.List[str]:
+    def get_used_keywords(cls) -> list[str]:
         """Returns a deduplicated list of subject keywords (as URIs) in use in
         the database.
         """
@@ -2214,7 +2211,7 @@ class Scheme(Record):
         super().__init__(value, doc_id, self.table)
 
     @property
-    def form(self) -> t.Type[FlaskForm]:
+    def form(self) -> type[FlaskForm]:
         return SchemeForm
 
     @property
@@ -2226,7 +2223,7 @@ class Scheme(Record):
         return self.get("title", "Untitled")
 
     @property
-    def vform(self) -> t.Type[FlaskForm]:
+    def vform(self) -> type[FlaskForm]:
         return SchemeVersionForm
 
     def get_form(self) -> "SchemeForm":
@@ -2347,7 +2344,7 @@ class Tool(Record):
         super().__init__(value, doc_id, self.table)
 
     @property
-    def form(self) -> t.Type[FlaskForm]:
+    def form(self) -> type[FlaskForm]:
         return ToolForm
 
     @property
@@ -2359,7 +2356,7 @@ class Tool(Record):
         return self.get("title", "Untitled")
 
     @property
-    def vform(self) -> t.Type[FlaskForm]:
+    def vform(self) -> type[FlaskForm]:
         return ToolVersionForm
 
     def get_form(self) -> "ToolForm":
@@ -2469,7 +2466,7 @@ class Crosswalk(Record):
         super().__init__(value, doc_id, self.table)
 
     @property
-    def form(self) -> t.Type[FlaskForm]:
+    def form(self) -> type[FlaskForm]:
         return CrosswalkForm
 
     @property
@@ -2492,7 +2489,7 @@ class Crosswalk(Record):
         return "Unnamed"
 
     @property
-    def vform(self) -> t.Type[FlaskForm]:
+    def vform(self) -> type[FlaskForm]:
         return CrosswalkVersionForm
 
     def get_form(self) -> "CrosswalkForm":
@@ -2657,7 +2654,7 @@ class Group(Record):
         super().__init__(value, doc_id, self.table)
 
     @property
-    def form(self) -> t.Type[FlaskForm]:
+    def form(self) -> type[FlaskForm]:
         return GroupForm
 
     @property
@@ -2731,7 +2728,7 @@ class Endorsement(Record):
         super().__init__(value, doc_id, self.table)
 
     @property
-    def form(self) -> t.Type[FlaskForm]:
+    def form(self) -> type[FlaskForm]:
         return EndorsementForm
 
     @property
@@ -2774,7 +2771,7 @@ class Datatype(Record):
         return get_term_db()
 
     @classmethod
-    def get_choices(cls) -> t.List[t.Tuple[str, str]]:
+    def get_choices(cls) -> list[t.Tuple[str, str]]:
         choices = [("", "")]
         for record in cls.search(Query().id.exists()):
             choices.append((record.mscid, record["label"]))
@@ -2783,7 +2780,7 @@ class Datatype(Record):
         return choices
 
     @classmethod
-    def get_types_used(cls) -> t.List[str]:
+    def get_types_used(cls) -> list[str]:
         """Returns an alphabetical list of all labels recorded in the
         database for instances of this class.
         """
@@ -2811,14 +2808,14 @@ class Datatype(Record):
         super().__init__(value, doc_id, self.table)
 
     @property
-    def form(self) -> t.Type[FlaskForm]:
+    def form(self) -> type[FlaskForm]:
         return DatatypeForm
 
     @property
     def name(self) -> str:
         return self.get("label", f"Type {self.doc_id}")
 
-    def annul(self) -> t.List[t.Dict[str, str]]:
+    def annul(self) -> list[dict[str, str]]:
         # Save the main record:
         error = self._save(dict())
         if error:
@@ -2871,7 +2868,7 @@ class VocabTerm(Document, metaclass=ABCMeta):
         return get_term_db()
 
     @classmethod
-    def get_choices(cls, filter: t.Type[Record] = None) -> t.List[t.Tuple[str, str]]:
+    def get_choices(cls, filter: type[Record] = None) -> list[t.Tuple[str, str]]:
         """Returns all active instances in the database (i.e. not
         deleted ones) as a list of tuples of ID and label. May be
         filtered to include only those instances that are valid
@@ -2924,7 +2921,7 @@ class VocabTerm(Document, metaclass=ABCMeta):
                             t.insert(term)
 
     @property
-    def form(self) -> t.Type["VocabForm"]:
+    def form(self) -> type["VocabForm"]:
         """Returns a subclass of FlaskForm for editing instances of
         this class.
         """
@@ -2946,7 +2943,7 @@ class VocabTerm(Document, metaclass=ABCMeta):
 
         return form
 
-    def annul(self) -> t.List[t.Dict[str, str]]:
+    def annul(self) -> list[dict[str, str]]:
         """Removes content of record. Returns a list of error messages if any
         problems arise (dicts with `message` containing the error message).
         """
@@ -2958,7 +2955,7 @@ class VocabTerm(Document, metaclass=ABCMeta):
 
         return list()
 
-    def get_overlaps(self, id: str = None) -> t.List[str]:
+    def get_overlaps(self, id: str = None) -> list[str]:
         """If `id` is given, returns a list of Record series (e.g. "m")
         to which this VocabTerm is set to apply, where another VocabTerm
         in the database with that ID is already set to apply to it
@@ -3179,7 +3176,7 @@ class RequiredIf(object):
 
     def __init__(
         self,
-        other_field_list: t.List[str],
+        other_field_list: list[str],
         message: str = None,
         strip_whitespace: bool = True,
     ):
@@ -3362,7 +3359,7 @@ class SelectRelatedField(SelectMultipleField):
     def __init__(
         self,
         label: str = "",
-        record: t.Type[Record] = Scheme,
+        record: type[Record] = Scheme,
         inverse: bool = False,
         **kwargs,
     ):
@@ -3723,7 +3720,7 @@ def get_term_db() -> TinyDB:
     return g.term_db
 
 
-def get_table_order() -> t.Dict[str, int]:
+def get_table_order() -> dict[str, int]:
     """Provides a mapping between table names and the order in which they are
     defined in this file, for the purposes of consistent sorting. The result
     is cached."""

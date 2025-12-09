@@ -103,7 +103,7 @@ def embellish_inv_relation(document: Document) -> Document:
     return embellish_relation(document, route=".get_inv_relation")
 
 
-def convert_thesaurus(document: Document) -> t.Dict[str, t.Any]:
+def convert_thesaurus(document: Document) -> dict[str, t.Any]:
     """Converts an internal thesaurus entry into a SKOS Concept."""
     th = Thesaurus()
     return th.get_concept(document.get("uri").split("/")[-1])
@@ -116,7 +116,7 @@ def do_not_embellish(mapping: _M) -> _M:
 
 def as_response_item(
     mapping: t.Mapping, callback: t.Callable[[_M], _M] = embellish_record
-) -> t.Dict[str, t.Any]:
+) -> dict[str, t.Any]:
     """Embellishes a record using the callback function, then wraps it in a
     response object.
     """
@@ -132,13 +132,13 @@ def as_response_item(
 
 
 def as_response_page(
-    mappings: t.List[_M],
+    mappings: list[_M],
     link: str,
     page_size=10,
     start: int = None,
     page: int = None,
     callback: t.Callable[[_M], _M] = embellish_record,
-) -> t.Dict[str, t.Any]:
+) -> dict[str, t.Any]:
     """Wraps list of records in a response object representing a page of
     `page_size` items, starting with item number `start` or page number `page`
     (both counting from 1) The base URL for adjacent requests should be given
@@ -244,7 +244,7 @@ class Lg(str, Enum):
     OR = "OR"
 
 
-def parse_query(filter: str) -> t.Union[tuple, list]:
+def parse_query(filter: str) -> tuple | list:
     """Normalises query string into a form suitable for passing to the
     `passes_filter()` function. Raises ValueError if parsing fails.
 
@@ -338,7 +338,7 @@ def parse_query(filter: str) -> t.Union[tuple, list]:
             state.append(Qp.WORD)
         working[level - 1].append(item)
 
-    def check_type(word: str) -> t.Union[t.Pattern, str]:
+    def check_type(word: str) -> t.Pattern | str:
         """If wildcards are present, converts to a regex. Otherwise
         returns the string unaltered. Database currently contains
         only strings, otherwise coercion to int (say) would happen
@@ -354,7 +354,7 @@ def parse_query(filter: str) -> t.Union[tuple, list]:
         return word.replace("\x91", "*").replace("\x92", "?")
 
     # Level of processing:
-    state: t.List[Qp] = [Qp.WORD]
+    state: list[Qp] = [Qp.WORD]
     tokens = list(filter)
     for token in tokens:
         if state[-1] == Qp.ESC:
@@ -602,7 +602,7 @@ def extract_values(mapping: t.Mapping, fieldpath: deque) -> list:
 
 def passes_filter(
     mapping: t.Mapping,
-    filter: t.Union[list, tuple],
+    filter: list | tuple,
     exact: bool = False,
 ) -> bool:
     """Determines whether the record passes the filter (True) or

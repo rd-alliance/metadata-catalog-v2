@@ -34,7 +34,7 @@ class Thesaurus(object):
         self.trees = db.table("thesaurus_trees")
         self.uri = "http://rdamsc.bath.ac.uk/thesaurus"
         self.label_en = "RDA MSC Thesaurus"
-        self._child_cache: t.Dict[str, t.List[str]] = dict()
+        self._child_cache: dict[str, list[str]] = dict()
         if len(self.terms) == 0:
             # Initialise from supplied data
             self.g = Graph()
@@ -56,12 +56,12 @@ class Thesaurus(object):
                     t.insert(tree)
 
     @property
-    def entries(self) -> t.List[Document]:
+    def entries(self) -> list[Document]:
         """List of all subject keyword entries in the database."""
         return self.terms.all()
 
     @property
-    def as_jsonld(self) -> t.Dict[str, t.Any]:
+    def as_jsonld(self) -> dict[str, t.Any]:
         """JSON-LD compatible dict representing the thesaurus as a
         SKOS ConceptScheme, listing its TopConcepts.
         """
@@ -77,7 +77,7 @@ class Thesaurus(object):
         return rdf_object
 
     @property
-    def tree(self) -> t.List[Document]:
+    def tree(self) -> list[Document]:
         """List of all subject keyword tree entries in the database."""
         return self.trees.all()
 
@@ -87,7 +87,7 @@ class Thesaurus(object):
         lang: str = None,
         default: T = None,
         labelProperties: t.Sequence[_PredicateType] = (SKOS.prefLabel, RDFS.label),
-    ) -> t.Union[t.List[t.Tuple[_PredicateType, str]], T]:  # pragma: no cover
+    ) -> list[t.Tuple[_PredicateType, str]] | T:  # pragma: no cover
         """Deprecated function from rdflib library, preserved
         anticipating removal.
 
@@ -127,8 +127,8 @@ class Thesaurus(object):
         return default
 
     def _to_list(
-        self, parent_uris: t.List[URIRef] = None, parent_label: str = ""
-    ) -> t.List[t.Dict[str, t.Union[URIRef, str, list]]]:
+        self, parent_uris: list[URIRef] = None, parent_label: str = ""
+    ) -> list[dict[str, URIRef | str | list]]:
         """Returns a list of all terms in the RDF Graph as dicts with
         keys "uri" (URIRef), "label" (str), "long_label" (str), and
         "ancestry" (List[URIRef]). The long label includes ancestor
@@ -176,7 +176,7 @@ class Thesaurus(object):
 
     def _to_tree(
         self, parent_uri: URIRef = None
-    ) -> t.List[t.Mapping[str, t.Union[URIRef, str, list]]]:
+    ) -> list[t.Mapping[str, URIRef | str | list]]:
         """Returns a list of top concepts in the RDF Graph as dicts with
         keys "uri" (URIRef), "label" (str), and "children". The value of
         "children" is a list of child concepts using the same form, so
@@ -202,9 +202,7 @@ class Thesaurus(object):
             tree.sort(key=lambda k: k["uri"])
         return tree
 
-    def _child_uris(
-        self, tree: t.Mapping[str, t.Union[URIRef, str, list]]
-    ) -> t.List[str]:
+    def _child_uris(self, tree: t.Mapping[str, URIRef | str | list]) -> list[str]:
         """Given a tree (URI, label, list of trees), returns a list of URIs of
         all child terms."""
         uris = list()
@@ -215,7 +213,7 @@ class Thesaurus(object):
             )
         return uris
 
-    def _lookup_child_uris(self, route: t.Sequence[str]) -> t.List[str]:
+    def _lookup_child_uris(self, route: t.Sequence[str]) -> list[str]:
         """Given a sequence of URIs (a term, followed by each progressively
         broader ancestor), returns a list of URIs of all child terms."""
         uris = list()
@@ -248,7 +246,7 @@ class Thesaurus(object):
 
     def get_branch(
         self, term: str, broader: bool = True, narrower: bool = True
-    ) -> t.List[str]:
+    ) -> list[str]:
         """Given a term's label or URI, returns the term's URI along with the
         URI of each ancestor and descendent term. Returns an empty list if term
         not recognised.
@@ -279,7 +277,7 @@ class Thesaurus(object):
 
         return uris
 
-    def get_concept(self, name: str, recursive=False) -> t.Dict[str, t.Any]:
+    def get_concept(self, name: str, recursive=False) -> dict[str, t.Any]:
         """Returns a dictionary object representing the concept, suitable for
         conversion to JSON-LD. `name` is last part of URI, e.g. domain0.
         """
@@ -313,7 +311,7 @@ class Thesaurus(object):
         broader: bool = False,
         narrower: bool = False,
         children: list = None,
-    ) -> t.Dict[str, t.Any]:
+    ) -> dict[str, t.Any]:
         """Returns a minimal dictionary object (i.e. without @context or @id)
         representing the concept, suitable for conversion to JSON-LD.
         """
@@ -394,7 +392,7 @@ class Thesaurus(object):
             return entry.get("label")
         return None
 
-    def get_labels(self) -> t.List[str]:
+    def get_labels(self) -> list[str]:
         """Returns all labels in the thesaurus."""
         return [kw["label"] for kw in self.entries]
 
@@ -407,13 +405,13 @@ class Thesaurus(object):
             return entry.get("long_label")
         return None
 
-    def get_long_labels(self) -> t.List[str]:
+    def get_long_labels(self) -> list[str]:
         """Returns all long labels in the thesaurus."""
         return [kw["long_label"] for kw in self.entries]
 
     def get_tree(
-        self, filter: t.List[str], master: list = None
-    ) -> t.List[t.Mapping[str, t.Union[str, list]]]:
+        self, filter: list[str], master: list = None
+    ) -> list[t.Mapping[str, str | list]]:
         """Takes a list of term URIs, and returns the corresponding terms in
         tree form, specifically as a list of dictionaries suitable for use with
         the contents template: 'url' holds the URL of the term's search result
@@ -456,11 +454,11 @@ class Thesaurus(object):
             return entry.get("uri")
         return None
 
-    def get_uris(self) -> t.List[str]:
+    def get_uris(self) -> list[str]:
         """Returns all term URIs in the thesaurus."""
         return [kw["uri"] for kw in self.entries]
 
-    def get_valid(self) -> t.List[str]:
+    def get_valid(self) -> list[str]:
         """Returns all labels and long labels in the thesaurus."""
         values = list()
         for kw in self.entries:

@@ -145,7 +145,7 @@ class ApiUser(User):
             return cls(value=doc, doc_id=doc.doc_id)
         return cls(value=dict(), doc_id=0)
 
-    def hash_password(self, password: t.Union[str, bytes]) -> bool:
+    def hash_password(self, password: str | bytes) -> bool:
         """Saves hash of password to record, returning True on success
         and False on error.
         """
@@ -156,7 +156,7 @@ class ApiUser(User):
             return False
         return True
 
-    def verify_password(self, password: t.Union[str, bytes]) -> bool:
+    def verify_password(self, password: str | bytes) -> bool:
         """Verifies that password matches currently stored hash. If so,
         updates the hash to a stronger one if necessary and returns
         True. Otherwise returns False.

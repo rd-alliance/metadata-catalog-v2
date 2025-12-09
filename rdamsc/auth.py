@@ -514,7 +514,7 @@ def get_oauth_clients() -> dict[str, OAuthClient]:
 
 
 @lm.user_loader
-def load_user(id: t.Union[str, int]) -> t.Optional[User]:
+def load_user(id: str | int) -> t.Optional[User]:
     """Utility for loading users."""
     user_db = get_user_db()
     document = user_db.get(doc_id=int(id))

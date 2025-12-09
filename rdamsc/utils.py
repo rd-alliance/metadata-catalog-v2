@@ -76,7 +76,7 @@ def is_list(obj: object) -> bool:
 
 # Utilities used in data
 # ======================
-def clean_error_list(field: Field) -> t.List[str]:
+def clean_error_list(field: Field) -> list[str]:
     """Extracts all errors from a Field as a flat list."""
     seen_errors = set()
     for error in field.errors:

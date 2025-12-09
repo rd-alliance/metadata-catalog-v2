@@ -594,7 +594,7 @@ def test_main_search(client: FlaskClient, data_db: DataDBActions):
     # Prepare database:
     data_db.write_db()
 
-    def mimic_output(items: t.List, query: str) -> dict:
+    def mimic_output(items: list, query: str) -> dict:
         """Turns list of items into expected response. The query
         parameter is expected to start with a slash and end with
         a query, e.g. ?q=value.

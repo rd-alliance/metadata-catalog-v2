@@ -39,10 +39,10 @@ def add_mscids(collection: t.Set[str], records: t.Iterable[Record]) -> None:
 
 
 def get_scheme_tree(
-    records: t.List[Scheme],
+    records: list[Scheme],
     descendent_ids: t.Optional[t.Set[str]] = None,
-    seen_so_far: t.Optional[t.List[str]] = None,
-) -> t.List[t.Dict[str, t.Union[str, list]]]:
+    seen_so_far: t.Optional[list[str]] = None,
+) -> list[dict[str, str | list]]:
     """Takes list of parent schemes and returns tree suitable for use with the
     contents template.
 

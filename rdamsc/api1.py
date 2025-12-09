@@ -1,9 +1,5 @@
 # Dependencies
 # ============
-# Standard
-# --------
-import typing as t
-
 # Non-standard
 # ------------
 from flask import (
@@ -39,7 +35,7 @@ def as_response_item(record: Record, route: str):
     return data
 
 
-def as_response_page(records: t.List[Record], link: str, route: str):
+def as_response_page(records: list[Record], link: str, route: str):
     """Wraps list of MSCIDs in a response object."""
 
     items = list()
