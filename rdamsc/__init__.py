@@ -42,7 +42,7 @@ logging.config.dictConfig(
 
 
 def create_app(
-    test_config: t.Mapping[str, t.Any] = None, instance_path: t.Optional[str] = None
+    test_config: t.Mapping[str, t.Any] = None, instance_path: str | None = None
 ) -> Flask:
     """Factory for initialising the Flask application."""
     kwargs = {"instance_relative_config": True}

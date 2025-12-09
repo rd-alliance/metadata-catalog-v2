@@ -51,7 +51,7 @@ class JSONStorageWithGit(Storage):
     def close(self):
         self._handle.close()
 
-    def read(self) -> t.Optional[dict[str, dict[str, t.Any]]]:
+    def read(self) -> dict[str, dict[str, t.Any]] | None:
         # Get the file size
         self._handle.seek(0, os.SEEK_END)
         size = self._handle.tell()

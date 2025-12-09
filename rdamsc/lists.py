@@ -32,7 +32,7 @@ def noop(*args) -> None:
     pass
 
 
-def add_mscids(collection: t.Set[str], records: t.Iterable[Record]) -> None:
+def add_mscids(collection: set[str], records: t.Iterable[Record]) -> None:
     """Adds MSCIDs of records to the given set."""
     for record in records:
         collection.add(record.mscid)
@@ -40,8 +40,8 @@ def add_mscids(collection: t.Set[str], records: t.Iterable[Record]) -> None:
 
 def get_scheme_tree(
     records: list[Scheme],
-    descendent_ids: t.Optional[t.Set[str]] = None,
-    seen_so_far: t.Optional[list[str]] = None,
+    descendent_ids: set[str] | None = None,
+    seen_so_far: list[str] | None = None,
 ) -> list[dict[str, str | list]]:
     """Takes list of parent schemes and returns tree suitable for use with the
     contents template.

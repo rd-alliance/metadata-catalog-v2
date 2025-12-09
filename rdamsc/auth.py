@@ -48,9 +48,9 @@ lm.login_message_category = "error"
 # Auth provider classes
 # =====================
 class ProfileData(t.NamedTuple):
-    userid: t.Optional[str] = None
-    username: t.Optional[str] = None
-    email: t.Optional[str] = None
+    userid: str | None = None
+    username: str | None = None
+    email: str | None = None
 
 
 class OAuthClient:
@@ -514,7 +514,7 @@ def get_oauth_clients() -> dict[str, OAuthClient]:
 
 
 @lm.user_loader
-def load_user(id: str | int) -> t.Optional[User]:
+def load_user(id: str | int) -> User | None:
     """Utility for loading users."""
     user_db = get_user_db()
     document = user_db.get(doc_id=int(id))

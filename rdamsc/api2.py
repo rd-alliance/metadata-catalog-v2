@@ -705,7 +705,7 @@ def passes_filter(
 
 
 @basic_auth.verify_password
-def verify_password(username: str, password: str) -> t.Optional[ApiUser]:
+def verify_password(username: str, password: str) -> ApiUser | None:
     """Verifies ApiUser by password."""
     user = ApiUser.load_by_userid(username)
     if user.is_active and user.verify_password(password):
@@ -714,7 +714,7 @@ def verify_password(username: str, password: str) -> t.Optional[ApiUser]:
 
 
 @token_auth.verify_token
-def verify_token(token) -> t.Optional[ApiUser]:
+def verify_token(token) -> ApiUser | None:
     """Verifies ApiUser by token."""
     user = ApiUser.load_by_token(token)
     if user.doc_id:

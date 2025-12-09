@@ -223,7 +223,7 @@ class Relation(object):
 
     def subject_records(
         self,
-        predicate: t.Optional[str] = None,
+        predicate: str | None = None,
         object: str = None,
         filter: type[Document] = None,
     ) -> list["Record"]:
@@ -311,7 +311,7 @@ class Relation(object):
         return results
 
     def related_records(
-        self, mscid: str, direction: t.Optional[str] = None
+        self, mscid: str, direction: str | None = None
     ) -> dict[str, list["Record"]]:
         """Returns dictionary where the keys are predicates (relationships)
         and the values are lists of records related to the identified
@@ -383,7 +383,7 @@ class Record(Document, metaclass=ABCMeta):
         return choices
 
     @classmethod
-    def get_class_by_table(cls, table: str) -> t.Optional[type["Record"]]:
+    def get_class_by_table(cls, table: str) -> type["Record"] | None:
         """Returns subclass of Record with the corresponding table identifier,
         or None if identifier is invalid. Should not be called on subclasses.
         """
@@ -406,7 +406,7 @@ class Record(Document, metaclass=ABCMeta):
         return dict()
 
     @classmethod
-    def load(cls, doc_id: int, table: str = None) -> t.Optional["Record"]:
+    def load(cls, doc_id: int, table: str = None) -> "Record | None":
         """Returns an instance of the Record subclass that corresponds to the
         given table, either blank or the existing record with the given doc_id.
         """
@@ -435,7 +435,7 @@ class Record(Document, metaclass=ABCMeta):
         return subclass(value=dict(), doc_id=0)
 
     @classmethod
-    def load_by_mscid(cls, mscid: str) -> t.Optional["Record"]:
+    def load_by_mscid(cls, mscid: str) -> "Record | None":
         """Returns an instance of the Record subclass that corresponds to the
         given MSCID, or None if the MSCID was not syntactically correct.
         """

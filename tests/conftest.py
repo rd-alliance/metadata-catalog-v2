@@ -330,7 +330,7 @@ class DataDBActions(object):
         return i - 1
 
     def get_formdata(
-        self, record: str, with_relations: bool = False, version: t.Optional[int] = None
+        self, record: str, with_relations: bool = False, version: int | None = None
     ) -> MultiDict:
         """Returns record in the form that WTForms would produce."""
         dbdata = getattr(self, record)
