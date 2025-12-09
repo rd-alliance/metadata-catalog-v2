@@ -2,6 +2,7 @@
 # ============
 # Standard
 # --------
+from collections.abc import Mapping
 import os
 import typing as t
 
@@ -176,7 +177,7 @@ class Thesaurus(object):
 
     def _to_tree(
         self, parent_uri: URIRef = None
-    ) -> list[t.Mapping[str, URIRef | str | list]]:
+    ) -> list[Mapping[str, URIRef | str | list]]:
         """Returns a list of top concepts in the RDF Graph as dicts with
         keys "uri" (URIRef), "label" (str), and "children". The value of
         "children" is a list of child concepts using the same form, so
@@ -202,7 +203,7 @@ class Thesaurus(object):
             tree.sort(key=lambda k: k["uri"])
         return tree
 
-    def _child_uris(self, tree: t.Mapping[str, URIRef | str | list]) -> list[str]:
+    def _child_uris(self, tree: Mapping[str, URIRef | str | list]) -> list[str]:
         """Given a tree (URI, label, list of trees), returns a list of URIs of
         all child terms."""
         uris = list()
@@ -411,7 +412,7 @@ class Thesaurus(object):
 
     def get_tree(
         self, filter: list[str], master: list = None
-    ) -> list[t.Mapping[str, str | list]]:
+    ) -> list[Mapping[str, str | list]]:
         """Takes a list of term URIs, and returns the corresponding terms in
         tree form, specifically as a list of dictionaries suitable for use with
         the contents template: 'url' holds the URL of the term's search result

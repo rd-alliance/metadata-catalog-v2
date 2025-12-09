@@ -2,6 +2,7 @@
 # ============
 # Standard
 # --------
+from collections.abc import Mapping
 import time
 import typing as t
 
@@ -83,7 +84,7 @@ class User(Document):
             return NotImplemented
         return not equal
 
-    def _save(self, mapping: t.Mapping) -> str:
+    def _save(self, mapping: Mapping) -> str:
         """Adds the mapping as a new record, or updates an existing record with
         the mapping. Note that a key will only be removed from an existing
         record if given a value of None. Missing keys will not be affected.

@@ -4,6 +4,7 @@
 # --------
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
+from collections.abc import Mapping
 import json
 import os
 import re
@@ -135,7 +136,7 @@ class Relation(object):
         for subcls in Record.__subclasses__():
             self.series_map[subcls.table] = subcls.series
 
-    def add(self, relations: t.Mapping[str, t.Mapping[str, list[str]]]):
+    def add(self, relations: Mapping[str, Mapping[str, list[str]]]):
         """Adds relations to the table."""
         with transaction(self.tb) as t:
             for s, properties in relations.items():
@@ -155,7 +156,7 @@ class Relation(object):
                 t.update(rel_record, doc_ids=[rel_record.doc_id])
 
     def remove(
-        self, relations: t.Mapping[str, t.Mapping[str, list[str]]]
+        self, relations: Mapping[str, Mapping[str, list[str]]]
     ) -> dict[str, dict[str, list[str]]]:
         """Removes relations from table, and returns those successfully
         removed for comparison."""
@@ -471,7 +472,7 @@ class Record(Document, metaclass=ABCMeta):
         docs = tb.search(cond)
         return [cls(value=doc, doc_id=doc.doc_id) for doc in docs]
 
-    def __init__(self, value: t.Mapping, doc_id: int, table: str):
+    def __init__(self, value: Mapping, doc_id: int, table: str):
         super().__init__(value, doc_id)
         self.table = table
 
@@ -653,7 +654,7 @@ class Record(Document, metaclass=ABCMeta):
             result["errors"].append({"message": "Malformed ROR."})
         return result
 
-    def _do_identifiers(self, value: list[t.Mapping[str, str]]) -> dict[str, list]:
+    def _do_identifiers(self, value: list[Mapping[str, str]]) -> dict[str, list]:
         """API validator for identifiers."""
         result = {"errors": list(), "value": list()}
         valid_schemes = [v[0] for v in IDScheme.get_choices(self.__class__) if v[0]]
@@ -707,7 +708,7 @@ class Record(Document, metaclass=ABCMeta):
         """API validator for vocabulary term ID."""
         return self._do_short_text(value, 64)
 
-    def _do_locations(self, value: list[t.Mapping[str, str]]) -> dict[str, list]:
+    def _do_locations(self, value: list[Mapping[str, str]]) -> dict[str, list]:
         """API validator for locations."""
         result = {"errors": list(), "value": list()}
         valid_types = [v[0] for v in Location.get_choices(self.__class__) if v[0]]
@@ -748,7 +749,7 @@ class Record(Document, metaclass=ABCMeta):
             result["value"].append(clean_value)
         return result
 
-    def _do_namespaces(self, value: list[t.Mapping[str, str]]) -> dict[str, list]:
+    def _do_namespaces(self, value: list[Mapping[str, str]]) -> dict[str, list]:
         """API validator for namespaces."""
         result = {"errors": list(), "value": list()}
         for i, v in enumerate(value):
@@ -788,7 +789,7 @@ class Record(Document, metaclass=ABCMeta):
             result["value"].append(clean_value)
         return result
 
-    def _do_period(self, value: t.Mapping[str, str]) -> dict[str, list | dict]:
+    def _do_period(self, value: Mapping[str, str]) -> dict[str, list | dict]:
         """API validator for time periods (start/end dates)."""
         result = {"errors": list(), "value": dict()}
         for key in ["start", "end"]:
@@ -808,7 +809,7 @@ class Record(Document, metaclass=ABCMeta):
             result["errors"].append({"message": "End date is before start date."})
         return result
 
-    def _do_relations(self, value: list[t.Mapping[str, str]]) -> dict[str, list]:
+    def _do_relations(self, value: list[Mapping[str, str]]) -> dict[str, list]:
         """Validates that the ID exists and the role is recognised. Removes
         details beyond this and translates the role into temporary helper fields
         `predicate` and `direction`.
@@ -1069,7 +1070,7 @@ class Record(Document, metaclass=ABCMeta):
         """API validator for version numbers/identifiers."""
         return self._do_short_text(value, 32)
 
-    def _save(self, value: t.Mapping) -> str:
+    def _save(self, value: Mapping) -> str:
         """Saves record to database. Returns error message if a problem
         arises."""
 
@@ -1199,7 +1200,7 @@ class Record(Document, metaclass=ABCMeta):
                 related_entities.append(related_entity)
         return related_entities
 
-    def get_slug(self, *, apidata: t.Mapping = None, formdata: t.Mapping = None) -> str:
+    def get_slug(self, *, apidata: Mapping = None, formdata: Mapping = None) -> str:
         """Returns the slug (unique filename-safe name) of the record.
         If the record does not have one, generates a new one from the
         available data."""
@@ -1212,7 +1213,7 @@ class Record(Document, metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def insert_relations(self, data: t.Mapping) -> t.Mapping:
+    def insert_relations(self, data: Mapping) -> Mapping:
         """Adds the relations of the current record to the input form data and
         returns the result."""
         rel = Relation()
@@ -1242,7 +1243,7 @@ class Record(Document, metaclass=ABCMeta):
 
         return data
 
-    def populate_form(self, data: t.Mapping, is_version=False) -> FlaskForm:
+    def populate_form(self, data: Mapping, is_version=False) -> FlaskForm:
         """Populates a fresh FlaskForm instance with the given data.
         If `is_version` is True, returns the version subrecord form
         instead of the main record form."""
@@ -1278,7 +1279,7 @@ class Record(Document, metaclass=ABCMeta):
             del self[key]
         self.update(doc)
 
-    def save_api_input(self, input_data: t.Mapping) -> list[dict[str, str]]:
+    def save_api_input(self, input_data: Mapping) -> list[dict[str, str]]:
         """Processes form input and saves it. Returns a list of error messages
         if any problems arise (dicts with `message` containing the error message
         and `location` indicating which field if any triggered the error)."""
@@ -1330,7 +1331,7 @@ class Record(Document, metaclass=ABCMeta):
 
         return list()
 
-    def save_gui_input(self, formdata: t.Mapping) -> str:
+    def save_gui_input(self, formdata: Mapping) -> str:
         """Processes form input and saves it. Returns error message if a
         problem arises."""
 
@@ -1445,7 +1446,7 @@ class Record(Document, metaclass=ABCMeta):
         # Update relations
         return self._save_relations(forward, inverted)
 
-    def save_gui_vinput(self, formdata: t.Mapping, index: int = None) -> str:
+    def save_gui_vinput(self, formdata: Mapping, index: int = None) -> str:
         """Processes form input and saves it. Returns error message if a
         problem arises."""
 
@@ -1481,7 +1482,7 @@ class Record(Document, metaclass=ABCMeta):
             return error
 
     def save_invrel_patch(
-        self, input_data: t.Mapping
+        self, input_data: Mapping
     ) -> tuple[list[dict[str, str]], dict]:
         """Validates a set of patches and applies them to the database if
         they pass validation. Returns error list (dicts where `message`
@@ -1569,9 +1570,7 @@ class Record(Document, metaclass=ABCMeta):
         final.update(rel.related(self.mscid, direction=rel.INVERSE))
         return (errors, final)
 
-    def save_rel_patch(
-        self, input_data: t.Mapping
-    ) -> tuple[list[dict[str, str]], dict]:
+    def save_rel_patch(self, input_data: Mapping) -> tuple[list[dict[str, str]], dict]:
         """Validates a set of patches and applies them to the database if
         they pass validation. Returns error list (dicts where `message`
         contains the error message and `location` indicates the field
@@ -1636,9 +1635,7 @@ class Record(Document, metaclass=ABCMeta):
 
         return (errors, rel.tb.get(doc_id=rel_id))
 
-    def save_rel_record(
-        self, input_data: t.Mapping
-    ) -> tuple[list[dict[str, str]], dict]:
+    def save_rel_record(self, input_data: Mapping) -> tuple[list[dict[str, str]], dict]:
         """Validates a complete relations table record and saves it to the
         database if it passes validation. Returns error list (dicts
         where `message` contains the error message and `location`
@@ -1661,7 +1658,7 @@ class Record(Document, metaclass=ABCMeta):
 
         return (errors, result)
 
-    def validate(self, input_data: t.Mapping) -> tuple[list[dict[str, str]], dict]:
+    def validate(self, input_data: Mapping) -> tuple[list[dict[str, str]], dict]:
         """Checks input for valid keys and values. Invalid keys are
         removed. Invalid values raise an error. Valid values are
         cleaned. Returns a tuple consisting of a list of errors (dicts
@@ -1685,7 +1682,7 @@ class Record(Document, metaclass=ABCMeta):
         return (errors, clean_data)
 
     def validate_against(
-        self, input_data: t.Mapping, schema: t.Mapping
+        self, input_data: Mapping, schema: Mapping
     ) -> tuple[list[dict[str, str]], dict]:
         """Recursive function for performing validation against a given
         schema. Returns a dict where `errors` contains a list of errors
@@ -1808,10 +1805,10 @@ class Record(Document, metaclass=ABCMeta):
 
     def validate_rel_patch(
         self,
-        input_data: t.Mapping,
-        patch: t.Mapping[str, str],
-        acceptable: t.Mapping[str, str],
-        one_way: t.Mapping[str, bool],
+        input_data: Mapping,
+        patch: Mapping[str, str],
+        acceptable: Mapping[str, str],
+        one_way: Mapping[str, bool],
     ) -> tuple[list[dict[str, str]], dict]:
         """Parses a patch, and (if possible) applies it to the input data.
         Returns a tuple consisting of a list of errors (dicts where
@@ -2032,7 +2029,7 @@ class Record(Document, metaclass=ABCMeta):
         return (errors, output)
 
     def validate_rel_record(
-        self, input_data: t.Mapping
+        self, input_data: Mapping
     ) -> tuple[list[dict[str, str]], dict]:
         """Checks validity of a set of relations. Invalid keys are removed.
         Invalid values raise an error. Valid values are cleaned. Returns a
@@ -2207,7 +2204,7 @@ class Scheme(Record):
 
         return list(keywords_used)
 
-    def __init__(self, value: t.Mapping, doc_id: int):
+    def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
 
     @property
@@ -2262,7 +2259,7 @@ class Scheme(Record):
 
         return form
 
-    def get_slug(self, *, apidata: t.Mapping = None, formdata: t.Mapping = None) -> str:
+    def get_slug(self, *, apidata: Mapping = None, formdata: Mapping = None) -> str:
         slug = self.get("slug")
         if slug:
             return slug
@@ -2340,7 +2337,7 @@ class Tool(Record):
         },
     }
 
-    def __init__(self, value: t.Mapping, doc_id: int):
+    def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
 
     @property
@@ -2378,7 +2375,7 @@ class Tool(Record):
 
         return form
 
-    def get_slug(self, *, apidata: t.Mapping = None, formdata: t.Mapping = None) -> str:
+    def get_slug(self, *, apidata: Mapping = None, formdata: Mapping = None) -> str:
         slug = self.get("slug")
         if slug:
             return slug
@@ -2462,7 +2459,7 @@ class Crosswalk(Record):
         },
     }
 
-    def __init__(self, value: t.Mapping, doc_id: int):
+    def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
 
     @property
@@ -2508,7 +2505,7 @@ class Crosswalk(Record):
 
         return form
 
-    def get_slug(self, *, apidata: t.Mapping = None, formdata: t.Mapping = None) -> str:
+    def get_slug(self, *, apidata: Mapping = None, formdata: Mapping = None) -> str:
         slug = self.get("slug")
         if slug:
             return slug
@@ -2650,7 +2647,7 @@ class Group(Record):
         choices.sort(key=lambda k: k[1].lower())
         return choices
 
-    def __init__(self, value: t.Mapping, doc_id: int):
+    def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
 
     @property
@@ -2676,7 +2673,7 @@ class Group(Record):
 
         return form
 
-    def get_slug(self, *, apidata: t.Mapping = None, formdata: t.Mapping = None) -> str:
+    def get_slug(self, *, apidata: Mapping = None, formdata: Mapping = None) -> str:
         slug = self.get("slug")
         if slug:
             return slug
@@ -2724,7 +2721,7 @@ class Endorsement(Record):
         },
     }
 
-    def __init__(self, value: t.Mapping, doc_id: int):
+    def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
 
     @property
@@ -2747,7 +2744,7 @@ class Endorsement(Record):
 
         return form
 
-    def get_slug(self, *, apidata: t.Mapping = None, formdata: t.Mapping = None) -> str:
+    def get_slug(self, *, apidata: Mapping = None, formdata: Mapping = None) -> str:
         slug = self.get("slug")
         if slug:
             return slug
@@ -2804,7 +2801,7 @@ class Datatype(Record):
             return cls(value=doc, doc_id=doc.doc_id)
         return cls(value=dict(), doc_id=0)
 
-    def __init__(self, value: t.Mapping, doc_id: int):
+    def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
 
     @property
@@ -2842,7 +2839,7 @@ class Datatype(Record):
 
         return form
 
-    def save_gui_input(self, formdata: t.Mapping) -> str:
+    def save_gui_input(self, formdata: Mapping) -> str:
         # Save the main record:
         error = self._save(formdata)
         if error:
@@ -2991,7 +2988,7 @@ class VocabTerm(Document, metaclass=ABCMeta):
                     break
         return overlaps
 
-    def save_gui_input(self, formdata: t.Mapping) -> str:
+    def save_gui_input(self, formdata: Mapping) -> str:
         """Processes form input and saves it. Returns error message if a
         problem arises.
         """
@@ -3023,7 +3020,7 @@ class Location(VocabTerm, Record):
     table = "location"
     series = "location"
 
-    def __init__(self, value: t.Mapping, doc_id: int):
+    def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
 
 
@@ -3033,7 +3030,7 @@ class EntityType(VocabTerm, Record):
     table = "type"
     series = "type"
 
-    def __init__(self, value: t.Mapping, doc_id: int):
+    def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
 
 
@@ -3043,7 +3040,7 @@ class IDScheme(VocabTerm, Record):
     table = "id_scheme"
     series = "id_scheme"
 
-    def __init__(self, value: t.Mapping, doc_id: int):
+    def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id, self.table)
 
 
@@ -3334,7 +3331,7 @@ class FormFieldFixed(FormField):
     anyway), so the Form can include a field named ‘prefix’.
     """
 
-    def process(self, formdata: t.Mapping, data: t.Any = unset_value):
+    def process(self, formdata: Mapping, data: t.Any = unset_value):
         if data is unset_value:
             try:
                 data = self.default()

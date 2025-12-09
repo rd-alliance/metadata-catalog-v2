@@ -3,6 +3,7 @@
 # Standard
 # --------
 from collections import deque, defaultdict
+from collections.abc import Mapping
 from enum import Enum, auto
 import math
 import re
@@ -42,7 +43,7 @@ basic_auth = HTTPBasicAuth()
 token_auth = HTTPTokenAuth("Bearer")
 multi_auth = MultiAuth(basic_auth, token_auth)
 api_version = "2.1.0"
-_M = t.TypeVar("_M", bound=t.Mapping)
+_M = t.TypeVar("_M", bound=Mapping)
 
 
 # Handy functions
@@ -115,7 +116,7 @@ def do_not_embellish(mapping: _M) -> _M:
 
 
 def as_response_item(
-    mapping: t.Mapping, callback: t.Callable[[_M], _M] = embellish_record
+    mapping: Mapping, callback: t.Callable[[_M], _M] = embellish_record
 ) -> dict[str, t.Any]:
     """Embellishes a record using the callback function, then wraps it in a
     response object.
@@ -530,7 +531,7 @@ def parse_query(filter: str) -> tuple | list:
     return working[0]
 
 
-def extract_values(mapping: t.Mapping, fieldpath: deque) -> list:
+def extract_values(mapping: Mapping, fieldpath: deque) -> list:
     """Gets all values within a record at the given fieldpath address.
     For example, for a fieldpath of ['genus', 'species'], gets the
     value at record['genus']['species'] or [v['species'] for v in
@@ -601,7 +602,7 @@ def extract_values(mapping: t.Mapping, fieldpath: deque) -> list:
 
 
 def passes_filter(
-    mapping: t.Mapping,
+    mapping: Mapping,
     filter: list | tuple,
     exact: bool = False,
 ) -> bool:

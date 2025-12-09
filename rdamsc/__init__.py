@@ -4,6 +4,7 @@
 # ============
 # Standard
 # --------
+from collections.abc import Mapping
 from datetime import datetime, timezone
 import logging.config
 import os
@@ -42,7 +43,7 @@ logging.config.dictConfig(
 
 
 def create_app(
-    test_config: t.Mapping[str, t.Any] = None, instance_path: str | None = None
+    test_config: Mapping[str, t.Any] = None, instance_path: str | None = None
 ) -> Flask:
     """Factory for initialising the Flask application."""
     kwargs = {"instance_relative_config": True}
