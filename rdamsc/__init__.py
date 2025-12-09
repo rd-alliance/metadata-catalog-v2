@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 import logging.config
 import os
 import subprocess
-import typing as t
+from typing import Any
 
 # Non-standard
 # ------------
@@ -43,10 +43,10 @@ logging.config.dictConfig(
 
 
 def create_app(
-    test_config: Mapping[str, t.Any] = None, instance_path: str | None = None
+    test_config: Mapping[str, Any] | None = None, instance_path: str | None = None
 ) -> Flask:
     """Factory for initialising the Flask application."""
-    kwargs = {"instance_relative_config": True}
+    kwargs: dict[str, Any] = {"instance_relative_config": True}
     if instance_path:
         kwargs["instance_path"] = instance_path
     elif "FLASK_INSTANCE_PATH" in os.environ:
@@ -66,7 +66,7 @@ def create_app(
         DEBUG=False,
         TESTING=False,
     )
-    app.json.ensure_ascii = False
+    app.json.ensure_ascii = False  # pyright: ignore[reportAttributeAccessIssue]
 
     # Override these settings as appropriate:
     if test_config is None:

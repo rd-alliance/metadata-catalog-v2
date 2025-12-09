@@ -114,6 +114,8 @@ def embellish_record(record: Record, route: str = ".get_record"):
         record["dataTypes"] = list()
         for dt_id in old_datatypes:
             dt = Record.load_by_mscid(dt_id)
+            if dt is None:
+                continue
             dt_summary = dict()
             label = dt.get("label")
             if label:
