@@ -65,8 +65,11 @@ recommended you make the changes in the following order.
     validation and conformance level calculation:
 
     - `type` refers to the validator for the API to use;
-    - `useful` (Boolean) refers to whether the property must be present for the
-      record to be considered useful.
+    - `required` (Boolean) refers to whether the property must be present for the
+      record to be considered valid.
+    - `useful` (normally Boolean) refers to whether the property must be present
+      for the record to be considered useful. (As mentioned above, for the
+      `relatedEntities` field, this is a list of relationship roles instead.)
     - `optional` (Boolean) refers to whether the record can be considered
       complete without including this property.
     - `or use` (property) means this property can be ignored for conformance level

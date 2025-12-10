@@ -4,11 +4,17 @@
 # --------
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 import json
 import os
 import re
-import typing as t
+import sys
+from typing import Any, Generic, Literal, TypeVar
+
+if sys.version_info < (3, 11):
+    from typing_extensions import Self, TypedDict, NotRequired
+else:
+    from typing import Self, TypedDict, NotRequired
 
 # Non-standard
 # ------------
@@ -27,9 +33,10 @@ from flask import (
 from flask_login import login_required
 from flask_wtf import FlaskForm
 from markupsafe import escape, Markup
-from tinydb import TinyDB, Query
-from tinydb.database import Document
+from tinydb import TinyDB
 from tinydb.operations import delete
+from tinydb.queries import Query, QueryLike
+from tinydb.table import Document
 from wtforms import (
     FieldList,
     Form,
@@ -82,9 +89,40 @@ disallowed_tagblocks = [
     "script",
     "style",
 ]
-MainTableID = t.Literal["m", "g", "t", "c", "e"]
-TermTableID = t.Literal["datatype", "location", "type", "id_scheme"]
+MainTableID = Literal["m", "g", "t", "c", "e"]
+TermTableID = Literal["datatype", "location", "type", "id_scheme"]
 TableID = MainTableID | TermTableID
+T = TypeVar("T")
+ConformanceSchema = TypedDict(
+    "ConformanceSchema",
+    {
+        "type": str,
+        "required": bool,
+        "useful": bool | Sequence[str],
+        "optional": bool,
+        "or use": str,
+        "or use role": str,
+        "schema": Mapping[str, "ConformanceSchema"],
+    },
+    total=False,
+)
+
+
+class RoleMap(TypedDict):
+    predicate: str
+    direction: str
+    accepts: str
+    one_way: NotRequired[bool]
+
+
+class ValidationIssues(TypedDict):
+    message: str
+    location: NotRequired[str]
+
+
+class ValidationReport(TypedDict, Generic[T]):
+    value: T
+    errors: MutableSequence[ValidationIssues]
 
 
 # Database wrapper classes
@@ -136,61 +174,67 @@ class Relation(object):
         for subcls in Record.__subclasses__():
             self.series_map[subcls.table] = subcls.series
 
-    def add(self, relations: Mapping[str, Mapping[str, list[str]]]):
+    def add(self, relations: Mapping[str, MutableMapping[str, list[str]]]):
         """Adds relations to the table."""
-        with transaction(self.tb) as t:
+        with transaction(self.tb) as tn:
             for s, properties in relations.items():
-                rel_record = self.tb.get(Query()["@id"] == s)
-                if rel_record is None:
-                    properties["@id"] = s
-                    t.insert(properties)
+                relation = self.tb.get(Query()["@id"] == s)
+                if relation is None:
+                    rel_data: dict[str, str | list[str]] = dict(properties)
+                    rel_data["@id"] = s
+                    tn.insert(rel_data)
                     continue
+                assert isinstance(relation, Document)
                 for p, objects in properties.items():
-                    if p not in rel_record:
-                        rel_record[p] = objects
+                    if p not in relation:
+                        relation[p] = objects
                         continue
+                    mscids: list[str] = relation[p]
+                    assert isinstance(mscids, list)
                     for o in objects:
-                        if o not in rel_record[p]:
-                            rel_record[p].append(o)
-                            rel_record[p].sort(key=sortval)
-                t.update(rel_record, doc_ids=[rel_record.doc_id])
+                        if o not in mscids:
+                            mscids.append(o)
+                            mscids.sort(key=sortval)
+                tn.update(relation, doc_ids=[relation.doc_id])
 
     def remove(
         self, relations: Mapping[str, Mapping[str, list[str]]]
     ) -> dict[str, dict[str, list[str]]]:
         """Removes relations from table, and returns those successfully
         removed for comparison."""
-        removed_relations = dict()
-        with transaction(self.tb) as t:
+        removed_relations: dict[str, dict[str, list[str]]] = dict()
+        with transaction(self.tb) as tn:
             for s, properties in relations.items():
                 relation = self.tb.get(Query()["@id"] == s)
                 if relation is None:
                     continue
+                assert isinstance(relation, Document)
                 for p, objects in properties.items():
-                    if p not in relation:
+                    mscids: list[str] = relation.get(p, [])
+                    if not mscids:
                         continue
                     for o in objects:
-                        if o not in relation[p]:
+                        if o not in mscids:
                             continue
-                        if s not in removed_relations:
-                            removed_relations[s] = dict()
-                        if p not in removed_relations:
-                            removed_relations[s][p] = list()
-                        relation[p].remove(o)
-                        removed_relations[s][p].append(o)
-                    if not relation[p]:
+                        mscids.remove(o)
+                        removed_relations.setdefault(s, {}).setdefault(p, []).append(o)
+                    if not mscids:
                         del relation[p]
-                        t.update(delete(p), doc_ids=[relation.doc_id])
-                t.update(relation, doc_ids=[relation.doc_id])
+                        tn.update(delete(p), doc_ids=[relation.doc_id])
+                tn.update(relation, doc_ids=[relation.doc_id])
         return removed_relations
 
     def subjects(
-        self, predicate: str = None, object: str = None, filter: type[Document] = None
+        self,
+        predicate: str | None = None,
+        object: str | None = None,
+        filter: type["Record"] | None = None,
     ) -> list[str]:
         """Returns list of MSCIDs for all records that are subjects in the
         relations database, optionally filtered by predicate (forward
         relation), object (MSCID) and record class."""
-        mscids = set()
+        mscids: set[str] = set()
+        mscid: str
         prefix = f"{mscid_prefix}{filter.table}" if filter else None
         Q = Query()
         if object is None:
@@ -201,23 +245,25 @@ class Relation(object):
             for relation in relations:
                 if len(relation.keys()) == 1:
                     continue
-                mscid = relation.get("@id")
+                if not (mscid := relation.get("@id", "")):
+                    continue
                 if prefix is None or mscid.startswith(prefix):
                     mscids.add(mscid)
         else:
             if predicate is None:
                 relations = self.tb.all()
                 for relation in relations:
-                    for objects in relation.values():
-                        if isinstance(objects, list) and object in objects:
-                            mscid = relation.get("@id")
-                            if prefix is None or mscid.startswith(prefix):
+                    if not (mscid := relation.get("@id", "")):
+                        continue
+                    if prefix is None or mscid.startswith(prefix):
+                        for objects in relation.values():
+                            if isinstance(objects, list) and object in objects:
                                 mscids.add(mscid)
             else:
                 relations = self.tb.search(Q[predicate].any([object]))
-                all_mscids = [relation.get("@id") for relation in relations]
+                all_mscids = {m for relation in relations if (m := relation.get("@id"))}
                 if prefix:
-                    mscids = [m for m in all_mscids if m.startswith(prefix)]
+                    mscids = {m for m in all_mscids if m.startswith(prefix)}
                 else:
                     mscids = all_mscids
         return sorted(mscids, key=sortval)
@@ -225,16 +271,18 @@ class Relation(object):
     def subject_records(
         self,
         predicate: str | None = None,
-        object: str = None,
-        filter: type[Document] = None,
+        object: str | None = None,
+        filter: type["Record"] | None = None,
     ) -> list["Record"]:
         """Returns list of Records that are subjects in the relations
         database, optionally filtered by predicate (forward relation),
         object(MSCID) and record class."""
         mscids = self.subjects(predicate, object, filter)
-        return [Record.load_by_mscid(mscid) for mscid in mscids]
+        return [r for mscid in mscids if (r := Record.load_by_mscid(mscid))]
 
-    def objects(self, subject: str = None, predicate: str = None) -> list[str]:
+    def objects(
+        self, subject: str | None = None, predicate: str | None = None
+    ) -> list[str]:
         """Returns list of MSCIDs for all records that are objects in the
         relations database, optionally filtered by subject (MSCID) and
         predicate (forward relation)."""
@@ -246,11 +294,10 @@ class Relation(object):
             else:
                 relations = self.tb.search(Q["@id"] == subject)
             for relation in relations:
-                for key, objects in relation.items():
-                    if key == "@id":
-                        continue
-                    for object in objects:
-                        mscids.add(object)
+                for objects in relation.values():
+                    if isinstance(objects, list):
+                        for object in objects:
+                            mscids.add(object)
         else:
             if subject is None:
                 relations = self.tb.search(Q[predicate].exists())
@@ -262,15 +309,15 @@ class Relation(object):
         return sorted(mscids, key=sortval)
 
     def object_records(
-        self, subject: str = None, predicate: str = None
+        self, subject: str | None = None, predicate: str | None = None
     ) -> list["Record"]:
         """Returns list of Records that are objects in the relations
         database, optionally filtered by subject (MSCID) and predicate
         (forward relation)."""
         mscids = self.objects(subject, predicate)
-        return [Record.load_by_mscid(mscid) for mscid in mscids]
+        return [r for mscid in mscids if (r := Record.load_by_mscid(mscid))]
 
-    def related(self, mscid: str, direction: str = None) -> dict[str, list[str]]:
+    def related(self, mscid: str, direction: str | None = None) -> dict[str, list[str]]:
         """Returns dictionary where the keys are predicates (relationships)
         and the values are lists of MSCIDs of records related to the identified
         record by that predicate. The types of predicate can optionally be
@@ -279,22 +326,22 @@ class Relation(object):
         filtering.
         """
         Q = Query()
-        results = dict()
+        results: dict[str, list[str]] = dict()
 
         if direction is None or direction == Relation.FORWARD:
             relations = self.tb.search(Q["@id"] == mscid)
             for relation in relations:
                 for predicate, objects in relation.items():
-                    if predicate == "@id":
-                        continue
-                    results[predicate] = objects
+                    if isinstance(objects, list):
+                        results[predicate] = objects
 
         if direction is None or direction == Relation.INVERSE:
             relations = self.tb.all()
             for relation in relations:
+                if not (rel_mscid := relation.get("@id", "")):
+                    continue
                 for predicate, objects in relation.items():
                     if isinstance(objects, list) and mscid in objects:
-                        rel_mscid = relation.get("@id")
                         inv_predicate = self.inversions.get(predicate)
                         if inv_predicate is None:
                             continue
@@ -322,15 +369,21 @@ class Relation(object):
         filtering.
         """
         id_results = self.related(mscid, direction)
-        results = dict()
+        results: dict[str, list["Record"]] = dict()
         for predicate, mscids in id_results.items():
-            results[predicate] = [Record.load_by_mscid(mscid) for mscid in mscids]
+            results[predicate] = [
+                r for mscid in mscids if (r := Record.load_by_mscid(mscid))
+            ]
         return results
-
 
 class Record(Document, metaclass=ABCMeta):
     """Abstract class with common methods for the helper classes
     for different types of record."""
+
+    table: str
+    series: str
+    schema: dict[str, ConformanceSchema]
+    rolemap: Mapping[str, RoleMap]
 
     @staticmethod
     def cleanup(data: dict) -> dict:
@@ -407,7 +460,7 @@ class Record(Document, metaclass=ABCMeta):
         return dict()
 
     @classmethod
-    def load(cls, doc_id: int, table: str = None) -> "Record | None":
+    def load(cls, doc_id: int, table: str | None = None) -> "Record":
         """Returns an instance of the Record subclass that corresponds to the
         given table, either blank or the existing record with the given doc_id.
         """
@@ -416,22 +469,21 @@ class Record(Document, metaclass=ABCMeta):
         # record as. If called on Record with a table string, we use that table
         # and its corresponding subclass. If called from a subclass without a
         # table string, we use that subclass and its corresponding table.
-        # Otherwise, it is an error and we return None.
         subclass = cls
         if table is None:
-            if not hasattr(cls, "table"):  # pragma: no cover
-                return None
+            if not cls.table:  # pragma: no cover
+                raise ValueError("Record.load() requires a table name")
             table = cls.table
         else:
             subclass = cls.get_class_by_table(table)
             if subclass is None:  # pragma: no cover
-                return None
+                raise ValueError("Invalid value for table name")
 
         db = subclass.get_db()
         tb = db.table(table)
         doc = tb.get(doc_id=doc_id)
 
-        if doc is not None:
+        if isinstance(doc, Document):
             return subclass(value=doc, doc_id=doc.doc_id)
         return subclass(value=dict(), doc_id=0)
 
@@ -448,13 +500,13 @@ class Record(Document, metaclass=ABCMeta):
         )
         m = mscid_format.match(mscid)
         if m:
-            if hasattr(cls, "table"):
+            if hasattr(cls, "table") and cls.table == m.group("table"):
                 return cls.load(int(m.group("doc_id")))
             return cls.load(int(m.group("doc_id")), m.group("table"))
         return None
 
     @classmethod
-    def all(cls) -> list["Record"]:
+    def all(cls) -> list[Self]:
         """Should only be called on subclasses of Record. Returns a list of all
         instances of that subclass from the database."""
         db = cls.get_db()
@@ -463,7 +515,7 @@ class Record(Document, metaclass=ABCMeta):
         return [cls(value=doc, doc_id=doc.doc_id) for doc in docs]
 
     @classmethod
-    def search(cls, cond: Query) -> list["Record"]:
+    def search(cls, cond: QueryLike) -> list[Self]:
         """Should only be called on subclasses of Record. Performs a TinyDB
         search on the corresponding table, converts the results into
         instances of the given subclass."""
@@ -472,12 +524,11 @@ class Record(Document, metaclass=ABCMeta):
         docs = tb.search(cond)
         return [cls(value=doc, doc_id=doc.doc_id) for doc in docs]
 
-    def __init__(self, value: Mapping, doc_id: int, table: str):
+    def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id)
-        self.table = table
 
     @property
-    def conformance(self) -> t.Literal["complete", "useful", "valid", "empty"]:
+    def conformance(self) -> Literal["complete", "useful", "valid", "empty"]:
         """Tests the conformity level of the record as it appears in the
         database. It does not test for invalid syntax or empty values, since
         these problems should have been eliminated when the record was saved.
@@ -489,7 +540,7 @@ class Record(Document, metaclass=ABCMeta):
         field is automatically ignored if each version has the information in
         question.
         """
-        if not hasattr(self, "schema"):  # pragma: no cover
+        if not self.schema:  # pragma: no cover
             raise NotImplementedError
 
         # Create portable version of record:
@@ -584,9 +635,9 @@ class Record(Document, metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def _do_datatypes(self, value: list[str]) -> dict[str, list]:
+    def _do_datatypes(self, value: list[str]) -> ValidationReport[list[str]]:
         """API validator for data types."""
-        result = {"errors": list(), "value": list()}
+        result: ValidationReport[list[str]] = {"errors": list(), "value": list()}
         valid_types = [v[0] for v in Datatype.get_choices() if v[0]]
         for i, v in enumerate(value):
             if v not in valid_types:
@@ -597,9 +648,9 @@ class Record(Document, metaclass=ABCMeta):
                 result["value"].append(v)
         return result
 
-    def _do_date(self, value: str) -> dict[str, list | str]:
+    def _do_date(self, value: str) -> ValidationReport[str]:
         """API validator for a date."""
-        result = {"errors": list(), "value": ""}
+        result: ValidationReport[str] = {"errors": list(), "value": ""}
         wv = W3CDate()
         if wv.regex.match(value):
             result["value"] = value
@@ -609,18 +660,18 @@ class Record(Document, metaclass=ABCMeta):
             )
         return result
 
-    def _do_html(self, value: str) -> dict[str, list | str]:
+    def _do_html(self, value: str) -> ValidationReport[str]:
         """API validator for HTML text."""
-        result = {"errors": list(), "value": ""}
+        result: ValidationReport[str] = {"errors": list(), "value": ""}
         value = re.sub(r"\s+", r" ", value).strip()
 
         # This limit should only be hit by malicious requests:
         result["value"] = strip_tags(value)[:131072]
         return result
 
-    def _do_id_doi(self, value: str) -> dict[str, list | str]:
+    def _do_id_doi(self, value: str) -> ValidationReport[str]:
         """API validator for DOI ID scheme. Does not check if DOI is registered."""
-        result = {"errors": list(), "value": ""}
+        result: ValidationReport[str] = {"errors": list(), "value": ""}
         m = re.match(
             r"^(?:https?://(?:dx\.)?doi\.org/)?" r"(?P<doi>10\.\d+/.+)$", value
         )
@@ -630,11 +681,11 @@ class Record(Document, metaclass=ABCMeta):
             result["errors"].append({"message": "Malformed DOI."})
         return result
 
-    def _do_id_handle(self, value: str) -> dict[str, list | str]:
+    def _do_id_handle(self, value: str) -> ValidationReport[str]:
         """API validator for Handle System ID scheme. Does not check if Handle
         is registered.
         """
-        result = {"errors": list(), "value": ""}
+        result: ValidationReport[str] = {"errors": list(), "value": ""}
         m = re.match(r"^(?:https?://hdl.handle.net/)?" r"(?P<hdl>\d+\.\d+/.+)$", value)
         if m:
             result["value"] = m.group("hdl")
@@ -642,9 +693,9 @@ class Record(Document, metaclass=ABCMeta):
             result["errors"].append({"message": "Malformed Handle."})
         return result
 
-    def _do_id_ror(self, value: str) -> dict[str, list | str]:
+    def _do_id_ror(self, value: str) -> ValidationReport[str]:
         """API validator for ROR ID scheme. Does not verify the check digits."""
-        result = {"errors": list(), "value": ""}
+        result: ValidationReport[str] = {"errors": list(), "value": ""}
         m = re.match(
             r"^(?:https?://ror.org/)" r"(?P<ror>0[0-9a-hjkmnp-z]{6}\d\d)$", value
         )
@@ -654,9 +705,14 @@ class Record(Document, metaclass=ABCMeta):
             result["errors"].append({"message": "Malformed ROR."})
         return result
 
-    def _do_identifiers(self, value: list[Mapping[str, str]]) -> dict[str, list]:
+    def _do_identifiers(
+        self, value: list[dict[str, str]]
+    ) -> ValidationReport[list[dict[str, str]]]:
         """API validator for identifiers."""
-        result = {"errors": list(), "value": list()}
+        result: ValidationReport[list[dict[str, str]]] = {
+            "errors": list(),
+            "value": list(),
+        }
         valid_schemes = [v[0] for v in IDScheme.get_choices(self.__class__) if v[0]]
         for i, v in enumerate(value):
             clean_value = dict()
@@ -704,13 +760,18 @@ class Record(Document, metaclass=ABCMeta):
             result["value"].append(clean_value)
         return result
 
-    def _do_vocabid(self, value: str) -> dict[str, list | str]:
+    def _do_vocabid(self, value: str) -> ValidationReport[str]:
         """API validator for vocabulary term ID."""
         return self._do_short_text(value, 64)
 
-    def _do_locations(self, value: list[Mapping[str, str]]) -> dict[str, list]:
+    def _do_locations(
+        self, value: list[dict[str, str]]
+    ) -> ValidationReport[list[dict[str, str]]]:
         """API validator for locations."""
-        result = {"errors": list(), "value": list()}
+        result: ValidationReport[list[dict[str, str]]] = {
+            "errors": list(),
+            "value": list(),
+        }
         valid_types = [v[0] for v in Location.get_choices(self.__class__) if v[0]]
         for i, v in enumerate(value):
             clean_value = dict()
@@ -723,7 +784,7 @@ class Record(Document, metaclass=ABCMeta):
                 )
             else:
                 validated = self._do_url(url)
-                for error in validated.get("errors"):
+                for error in validated.get("errors", []):
                     result["errors"].append(
                         {"message": error.get("message", ""), "location": f"[{i}].url"}
                     )
@@ -749,9 +810,14 @@ class Record(Document, metaclass=ABCMeta):
             result["value"].append(clean_value)
         return result
 
-    def _do_namespaces(self, value: list[Mapping[str, str]]) -> dict[str, list]:
+    def _do_namespaces(
+        self, value: list[dict[str, str]]
+    ) -> ValidationReport[list[dict[str, str]]]:
         """API validator for namespaces."""
-        result = {"errors": list(), "value": list()}
+        result: ValidationReport[list[dict[str, str]]] = {
+            "errors": list(),
+            "value": list(),
+        }
         for i, v in enumerate(value):
             clean_value = dict()
 
@@ -789,9 +855,9 @@ class Record(Document, metaclass=ABCMeta):
             result["value"].append(clean_value)
         return result
 
-    def _do_period(self, value: Mapping[str, str]) -> dict[str, list | dict]:
+    def _do_period(self, value: dict[str, str]) -> ValidationReport[dict[str, str]]:
         """API validator for time periods (start/end dates)."""
-        result = {"errors": list(), "value": dict()}
+        result: ValidationReport[dict[str, str]] = {"errors": list(), "value": dict()}
         for key in ["start", "end"]:
             if key in value:
                 validated = self._do_date(value[key])
@@ -809,12 +875,14 @@ class Record(Document, metaclass=ABCMeta):
             result["errors"].append({"message": "End date is before start date."})
         return result
 
-    def _do_relations(self, value: list[Mapping[str, str]]) -> dict[str, list]:
+    def _do_relations(
+        self, value: list[dict[str, str]]
+    ) -> ValidationReport[list[dict[str, str]]]:
         """Validates that the ID exists and the role is recognised. Removes
         details beyond this and translates the role into temporary helper fields
         `predicate` and `direction`.
         """
-        if not hasattr(self, "rolemap"):  # pragma: no cover
+        if not self.rolemap:  # pragma: no cover
             raise NotImplementedError
 
         # predicate to [role]:
@@ -823,7 +891,10 @@ class Record(Document, metaclass=ABCMeta):
             if attrs.get("one_way"):
                 one_way[attrs["predicate"]].append(role)
 
-        result = {"errors": list(), "value": list()}
+        result: ValidationReport[list[dict[str, str]]] = {
+            "errors": list(),
+            "value": list(),
+        }
 
         # location to relation:
         valid: dict[int, dict] = dict()
@@ -836,7 +907,6 @@ class Record(Document, metaclass=ABCMeta):
         cache: dict[str, Record] = dict()
         for i, v in enumerate(value):
             clean_relation = dict()
-            has_error = False
             accepts = None
 
             # Validate role
@@ -845,7 +915,6 @@ class Record(Document, metaclass=ABCMeta):
                 result["errors"].append(
                     {"message": "Missing field: role.", "location": f"[{i}]"}
                 )
-                has_error = True
             elif role not in self.rolemap.keys():
                 result["errors"].append(
                     {
@@ -854,7 +923,7 @@ class Record(Document, metaclass=ABCMeta):
                         "location": f"[{i}].role",
                     }
                 )
-                has_error = True
+                role = None
             else:
                 accepts = self.rolemap[role]["accepts"]
 
@@ -864,12 +933,10 @@ class Record(Document, metaclass=ABCMeta):
                 result["errors"].append(
                     {"message": "Missing field: id.", "location": f"[{i}]"}
                 )
-                has_error = True
             else:
                 rel_record = cache.get(mscid)
                 if rel_record is None:
                     rel_record = Record.load_by_mscid(mscid)
-                    cache[mscid] = rel_record
                 if rel_record is None:
                     result["errors"].append(
                         {
@@ -877,26 +944,28 @@ class Record(Document, metaclass=ABCMeta):
                             "location": f"[{i}].id",
                         }
                     )
-                    has_error = True
-                elif rel_record.doc_id == 0:
-                    result["errors"].append(
-                        {
-                            "message": f"No such record: {mscid}.",
-                            "location": f"[{i}].id",
-                        }
-                    )
-                    has_error = True
-                elif accepts and rel_record.table != accepts:
-                    result["errors"].append(
-                        {
-                            "message": f"The record {mscid} cannot take the role of"
-                            f" {role}.",
-                            "location": f"[{i}]",
-                        }
-                    )
-                    has_error = True
+                    mscid = None
+                else:
+                    cache[mscid] = rel_record
+                    if rel_record.doc_id == 0:
+                        result["errors"].append(
+                            {
+                                "message": f"No such record: {mscid}.",
+                                "location": f"[{i}].id",
+                            }
+                        )
+                        mscid = None
+                    elif accepts and rel_record.table != accepts:
+                        result["errors"].append(
+                            {
+                                "message": f"The record {mscid} cannot take the role of"
+                                f" {role}.",
+                                "location": f"[{i}]",
+                            }
+                        )
+                        mscid = None
 
-            if has_error:
+            if role is None or mscid is None:
                 continue
             lookup[role][mscid].append(i)
             clean_relation = {
@@ -929,9 +998,10 @@ class Record(Document, metaclass=ABCMeta):
 
         return result
 
-    def _do_series(self, value: list[str]) -> dict[str, list]:
+
+    def _do_series(self, value: list[str]) -> ValidationReport[list[str]]:
         """API validator limiting values to main record series."""
-        result = {"errors": list(), "value": list()}
+        result: ValidationReport[list[str]] = {"errors": list(), "value": list()}
         valid_series = [
             Scheme.series,
             Tool.series,
@@ -961,9 +1031,9 @@ class Record(Document, metaclass=ABCMeta):
                 result["value"].append(v)
         return result
 
-    def _do_short_text(self, value: str, maxlength: int) -> dict[str, list | str]:
+    def _do_short_text(self, value: str, maxlength: int) -> ValidationReport[str]:
         """API validator for short passages of plain text."""
-        result = self._do_text(value)
+        result: ValidationReport[str] = self._do_text(value)
         length = len(result["value"])
         if length > maxlength:
             result["errors"].append(
@@ -974,18 +1044,18 @@ class Record(Document, metaclass=ABCMeta):
             )
         return result
 
-    def _do_text(self, value: str) -> dict[str, list | str]:
+    def _do_text(self, value: str) -> ValidationReport[str]:
         """API validator for plain text."""
-        result = {"errors": list(), "value": ""}
+        result: ValidationReport[str] = {"errors": list(), "value": ""}
         value = re.sub(r"\s+", r" ", value).strip()
 
         # This limit should only be hit by malicious requests:
         result["value"] = value[:65536]
         return result
 
-    def _do_types(self, value: list[str]) -> dict[str, list]:
+    def _do_types(self, value: list[str]) -> ValidationReport[list[str]]:
         """API validator for entity types."""
-        result = {"errors": list(), "value": list()}
+        result: ValidationReport[list[str]] = {"errors": list(), "value": list()}
         valid_types = [v[0] for v in EntityType.get_choices(self.__class__) if v[0]]
         for i, v in enumerate(value):
             if v not in valid_types:
@@ -1000,9 +1070,9 @@ class Record(Document, metaclass=ABCMeta):
                 result["value"].append(v)
         return result
 
-    def _do_thesaurus(self, value: list[str]) -> dict[str, list]:
+    def _do_thesaurus(self, value: list[str]) -> ValidationReport[list[str]]:
         """API validator for subject thesaurus terms."""
-        result = {"errors": list(), "value": list()}
+        result: ValidationReport[list[str]] = {"errors": list(), "value": list()}
         thes = get_thesaurus()
         valid_terms = thes.get_uris()
         for i, v in enumerate(value):
@@ -1014,9 +1084,9 @@ class Record(Document, metaclass=ABCMeta):
                 result["value"].append(v)
         return result
 
-    def _do_uri(self, value: str) -> dict[str, list | str]:
+    def _do_uri(self, value: str) -> ValidationReport[str]:
         """API validator for namespace URIs."""
-        result = {"errors": list(), "value": ""}
+        result: ValidationReport[str] = {"errors": list(), "value": ""}
         if not value:
             return result
 
@@ -1035,9 +1105,9 @@ class Record(Document, metaclass=ABCMeta):
         result["value"] = value
         return result
 
-    def _do_url(self, value: str) -> dict[str, list | str]:
+    def _do_url(self, value: str) -> ValidationReport[str]:
         """API validator for URLs and mailto: email addresses."""
-        result = {"errors": list(), "value": ""}
+        result: ValidationReport[str] = {"errors": list(), "value": ""}
         if not value:
             return result
 
@@ -1066,11 +1136,11 @@ class Record(Document, metaclass=ABCMeta):
         result["value"] = value
         return result
 
-    def _do_versionid(self, value: str) -> dict[str, list | str]:
+    def _do_versionid(self, value: str) -> ValidationReport[str]:
         """API validator for version numbers/identifiers."""
         return self._do_short_text(value, 32)
 
-    def _save(self, value: Mapping) -> str:
+    def _save(self, value: dict) -> str:
         """Saves record to database. Returns error message if a problem
         arises."""
 
@@ -1081,10 +1151,10 @@ class Record(Document, metaclass=ABCMeta):
         db = self.get_db()
         tb = db.table(self.table)
         if self.doc_id:
-            with transaction(tb) as t:
+            with transaction(tb) as tn:
                 for key in (k for k in self if k not in value):
-                    t.update(delete(key), doc_ids=[self.doc_id])
-                t.update(value, doc_ids=[self.doc_id])
+                    tn.update(delete(key), doc_ids=[self.doc_id])
+                tn.update(value, doc_ids=[self.doc_id])
         else:
             self.doc_id = tb.insert(value)
 
@@ -1186,7 +1256,7 @@ class Record(Document, metaclass=ABCMeta):
         record, and the role that record plays with respect to the current one.
         """
         if len(self.table) > 1:
-            return None
+            return list()
 
         related_entities = list()
         rel = Relation()
@@ -1200,20 +1270,22 @@ class Record(Document, metaclass=ABCMeta):
                 related_entities.append(related_entity)
         return related_entities
 
-    def get_slug(self, *, apidata: Mapping = None, formdata: Mapping = None) -> str:
+    def get_slug(
+        self, *, apidata: Mapping | None = None, formdata: Mapping | None = None
+    ) -> str:
         """Returns the slug (unique filename-safe name) of the record.
         If the record does not have one, generates a new one from the
         available data."""
-        return self.get("slug")
+        return self.get("slug", "")
 
     @abstractmethod
-    def get_vform(self, index: int = None) -> FlaskForm:  # pragma: no cover
+    def get_vform(self, index: int | None = None) -> FlaskForm:  # pragma: no cover
         """Returns a FlaskForm instance for editing the indicated version
         sub-record within this record, populated with the current data.
         """
         raise NotImplementedError
 
-    def insert_relations(self, data: Mapping) -> Mapping:
+    def insert_relations(self, data: MutableMapping) -> Mapping:
         """Adds the relations of the current record to the input form data and
         returns the result."""
         rel = Relation()
@@ -1249,7 +1321,7 @@ class Record(Document, metaclass=ABCMeta):
         instead of the main record form."""
         form = self.vform(data=data) if is_version else self.form(data=data)
         for field in form:
-            if field.type == "FieldList" and field.name in data:
+            if isinstance(field, FieldList) and field.name in data:
                 last_entry = field.data[-1]
                 if not last_entry:
                     continue
@@ -1489,7 +1561,7 @@ class Record(Document, metaclass=ABCMeta):
         contains the error message and `location` indicates the field
         that triggered the error) and resulting record.
         """
-        if not hasattr(self, "rolemap"):  # pragma: no cover
+        if not self.rolemap:  # pragma: no cover
             raise NotImplementedError
 
         rel = Relation()
@@ -1576,7 +1648,7 @@ class Record(Document, metaclass=ABCMeta):
         contains the error message and `location` indicates the field
         that triggered the error) and resulting record.
         """
-        if not hasattr(self, "rolemap"):  # pragma: no cover
+        if not self.rolemap:  # pragma: no cover
             raise NotImplementedError
 
         acceptable = dict()
@@ -1628,10 +1700,10 @@ class Record(Document, metaclass=ABCMeta):
         if rel_id is None:
             rel_id = rel.tb.insert(result)
         else:
-            with transaction(rel.tb) as t:
+            with transaction(rel.tb) as tn:
                 for key in (k for k in rel_record if k not in result):
-                    t.update(delete(key), doc_ids=[rel_id])
-                t.update(result, doc_ids=[rel_id])
+                    tn.update(delete(key), doc_ids=[rel_id])
+                tn.update(result, doc_ids=[rel_id])
 
         return (errors, rel.tb.get(doc_id=rel_id))
 
@@ -1649,10 +1721,10 @@ class Record(Document, metaclass=ABCMeta):
         rel_record = rel.tb.get(Query()["@id"] == self.mscid)
 
         if rel_record is not None:
-            with transaction(rel.tb) as t:
+            with transaction(rel.tb) as tn:
                 for key in (k for k in rel_record if k not in result):
-                    t.update(delete(key), doc_ids=[rel_record.doc_id])
-                t.update(result, doc_ids=[rel_record.doc_id])
+                    tn.update(delete(key), doc_ids=[rel_record.doc_id])
+                tn.update(result, doc_ids=[rel_record.doc_id])
         else:
             rel.tb.insert(result)
 
@@ -1666,7 +1738,7 @@ class Record(Document, metaclass=ABCMeta):
         indicates the field that triggered the error) and the clean
         record.
         """
-        if not hasattr(self, "schema"):  # pragma: no cover
+        if not self.schema:  # pragma: no cover
             raise NotImplementedError
 
         v_errors, clean_data = self.validate_against(input_data, self.schema)
@@ -1682,7 +1754,7 @@ class Record(Document, metaclass=ABCMeta):
         return (errors, clean_data)
 
     def validate_against(
-        self, input_data: Mapping, schema: Mapping
+        self, input_data: Mapping[str, Any], schema: Mapping[str, ConformanceSchema]
     ) -> tuple[list[dict[str, str]], dict]:
         """Recursive function for performing validation against a given
         schema. Returns a dict where `errors` contains a list of errors
@@ -2036,7 +2108,7 @@ class Record(Document, metaclass=ABCMeta):
         tuple consisting of a list of errors (dicts where `message`
         contains the error message and `location` indicates the field
         that triggered the error) and the clean record."""
-        if not hasattr(self, "rolemap"):  # pragma: no cover
+        if not self.rolemap:  # pragma: no cover
             raise NotImplementedError
 
         acceptable = dict()
@@ -2205,7 +2277,7 @@ class Scheme(Record):
         return list(keywords_used)
 
     def __init__(self, value: Mapping, doc_id: int):
-        super().__init__(value, doc_id, self.table)
+        super().__init__(value, doc_id)
 
     @property
     def form(self) -> type[FlaskForm]:
@@ -2259,7 +2331,9 @@ class Scheme(Record):
 
         return form
 
-    def get_slug(self, *, apidata: Mapping = None, formdata: Mapping = None) -> str:
+    def get_slug(
+        self, *, apidata: Mapping | None = None, formdata: Mapping | None = None
+    ) -> str:
         slug = self.get("slug")
         if slug:
             return slug
@@ -2268,7 +2342,7 @@ class Scheme(Record):
                 name = mapping.get("title")
                 if name:
                     return to_file_slug(name, self.search)
-        return None
+        return ""
 
     def get_vform(self, index: int = None) -> "SchemeVersionForm":
         # Get data from database:
@@ -2338,7 +2412,7 @@ class Tool(Record):
     }
 
     def __init__(self, value: Mapping, doc_id: int):
-        super().__init__(value, doc_id, self.table)
+        super().__init__(value, doc_id)
 
     @property
     def form(self) -> type[FlaskForm]:
@@ -2375,7 +2449,9 @@ class Tool(Record):
 
         return form
 
-    def get_slug(self, *, apidata: Mapping = None, formdata: Mapping = None) -> str:
+    def get_slug(
+        self, *, apidata: Mapping | None = None, formdata: Mapping | None = None
+    ) -> str:
         slug = self.get("slug")
         if slug:
             return slug
@@ -2384,7 +2460,7 @@ class Tool(Record):
                 name = mapping.get("title")
                 if name:
                     return to_file_slug(name, self.search)
-        return None
+        return ""
 
     def get_vform(self, index: int = None) -> "ToolVersionForm":
         # Get data from database:
@@ -2460,7 +2536,7 @@ class Crosswalk(Record):
     }
 
     def __init__(self, value: Mapping, doc_id: int):
-        super().__init__(value, doc_id, self.table)
+        super().__init__(value, doc_id)
 
     @property
     def form(self) -> type[FlaskForm]:
@@ -2505,7 +2581,9 @@ class Crosswalk(Record):
 
         return form
 
-    def get_slug(self, *, apidata: Mapping = None, formdata: Mapping = None) -> str:
+    def get_slug(
+        self, *, apidata: Mapping | None = None, formdata: Mapping | None = None
+    ) -> str:
         slug = self.get("slug")
         if slug:
             return slug
@@ -2561,7 +2639,7 @@ class Crosswalk(Record):
             else:
                 return slug
 
-        return None
+        return ""
 
     def get_vform(self, index: int = None) -> "CrosswalkVersionForm":
         # Get data from database:
@@ -2648,7 +2726,7 @@ class Group(Record):
         return choices
 
     def __init__(self, value: Mapping, doc_id: int):
-        super().__init__(value, doc_id, self.table)
+        super().__init__(value, doc_id)
 
     @property
     def form(self) -> type[FlaskForm]:
@@ -2673,7 +2751,9 @@ class Group(Record):
 
         return form
 
-    def get_slug(self, *, apidata: Mapping = None, formdata: Mapping = None) -> str:
+    def get_slug(
+        self, *, apidata: Mapping | None = None, formdata: Mapping | None = None
+    ) -> str:
         slug = self.get("slug")
         if slug:
             return slug
@@ -2682,7 +2762,7 @@ class Group(Record):
                 name = mapping.get("name")
                 if name:
                     return to_file_slug(name, self.search)
-        return None
+        return ""
 
 
 class Endorsement(Record):
@@ -2722,7 +2802,7 @@ class Endorsement(Record):
     }
 
     def __init__(self, value: Mapping, doc_id: int):
-        super().__init__(value, doc_id, self.table)
+        super().__init__(value, doc_id)
 
     @property
     def form(self) -> type[FlaskForm]:
@@ -2744,7 +2824,9 @@ class Endorsement(Record):
 
         return form
 
-    def get_slug(self, *, apidata: Mapping = None, formdata: Mapping = None) -> str:
+    def get_slug(
+        self, *, apidata: Mapping | None = None, formdata: Mapping | None = None
+    ) -> str:
         slug = self.get("slug")
         if slug:
             return slug
@@ -2753,7 +2835,7 @@ class Endorsement(Record):
                 name = mapping.get("title")
                 if name:
                     return to_file_slug(name, self.search)
-        return None
+        return ""
 
 
 class Datatype(Record):
@@ -2802,7 +2884,7 @@ class Datatype(Record):
         return cls(value=dict(), doc_id=0)
 
     def __init__(self, value: Mapping, doc_id: int):
-        super().__init__(value, doc_id, self.table)
+        super().__init__(value, doc_id)
 
     @property
     def form(self) -> type[FlaskForm]:
@@ -2913,9 +2995,9 @@ class VocabTerm(Document, metaclass=ABCMeta):
                 terms = data.get(table)
                 if terms:
                     tb = db.table(table)
-                    with transaction(tb) as t:
+                    with transaction(tb) as tn:
                         for term in terms:
-                            t.insert(term)
+                            tn.insert(term)
 
     @property
     def form(self) -> type["VocabForm"]:
@@ -3021,7 +3103,7 @@ class Location(VocabTerm, Record):
     series = "location"
 
     def __init__(self, value: Mapping, doc_id: int):
-        super().__init__(value, doc_id, self.table)
+        super().__init__(value, doc_id)
 
 
 class EntityType(VocabTerm, Record):
@@ -3031,7 +3113,7 @@ class EntityType(VocabTerm, Record):
     series = "type"
 
     def __init__(self, value: Mapping, doc_id: int):
-        super().__init__(value, doc_id, self.table)
+        super().__init__(value, doc_id)
 
 
 class IDScheme(VocabTerm, Record):
@@ -3041,7 +3123,7 @@ class IDScheme(VocabTerm, Record):
     series = "id_scheme"
 
     def __init__(self, value: Mapping, doc_id: int):
-        super().__init__(value, doc_id, self.table)
+        super().__init__(value, doc_id)
 
 
 # Form components
@@ -3286,7 +3368,7 @@ class CheckboxSelect(widgets.Select):
         return Markup("\n".join(html))
 
     def render_option(
-        self, field: Field, value: t.Any, label: str, selected: bool, *args, **kwargs
+        self, field: Field, value: Any, label: str, selected: bool, *args, **kwargs
     ) -> Markup:
         if value is True:
             # Handle the special case of a 'True' value.
@@ -3331,7 +3413,7 @@ class FormFieldFixed(FormField):
     anyway), so the Form can include a field named ‘prefix’.
     """
 
-    def process(self, formdata: Mapping, data: t.Any = unset_value):
+    def process(self, formdata: Mapping, data: Any = unset_value):
         if data is unset_value:
             try:
                 data = self.default()
@@ -4090,8 +4172,8 @@ def edit_vocabterm(vocab: TermTableID, number: int):
 
 
 @bp.route("/msc/<any(m, g, t, c, e):table><int:number>")
-@bp.route("/msc/<any(m, g, t, c, e):table><int:number>/<field>")
-def display(table: MainTableID, number: int, field: str = None):
+@bp.route("/msc/<any(m, g, t, c, e):table><int:number>/<fieldname>")
+def display(table: MainTableID, number: int, fieldname: str = None):
     """Displays the page for a record."""
     # Look up record to edit, or get new:
     record = Record.load(number, table)
