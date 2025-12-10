@@ -12,9 +12,9 @@ import sys
 from typing import Any, Generic, Literal, TypeVar
 
 if sys.version_info < (3, 11):
-    from typing_extensions import Self, TypedDict, NotRequired
+    from typing_extensions import Self, TypedDict, NamedTuple, NotRequired
 else:
-    from typing import Self, TypedDict, NotRequired
+    from typing import Self, TypedDict, NamedTuple, NotRequired
 
 # Non-standard
 # ------------
@@ -89,10 +89,12 @@ disallowed_tagblocks = [
     "script",
     "style",
 ]
+
+# Fundamental types
+# =================
 MainTableID = Literal["m", "g", "t", "c", "e"]
 TermTableID = Literal["datatype", "location", "type", "id_scheme"]
 TableID = MainTableID | TermTableID
-T = TypeVar("T")
 ConformanceSchema = TypedDict(
     "ConformanceSchema",
     {
@@ -115,14 +117,9 @@ class RoleMap(TypedDict):
     one_way: NotRequired[bool]
 
 
-class ValidationIssues(TypedDict):
+class ValidationIssue(TypedDict):
     message: str
-    location: NotRequired[str]
-
-
-class ValidationReport(TypedDict, Generic[T]):
-    value: T
-    errors: MutableSequence[ValidationIssues]
+    location: str
 
 
 # Database wrapper classes
@@ -180,8 +177,7 @@ class Relation(object):
             for s, properties in relations.items():
                 relation = self.tb.get(Query()["@id"] == s)
                 if relation is None:
-                    rel_data: dict[str, str | list[str]] = dict(properties)
-                    rel_data["@id"] = s
+                    rel_data = {"@id": s, **properties}
                     tn.insert(rel_data)
                     continue
                 assert isinstance(relation, Document)
@@ -635,106 +631,116 @@ class Record(Document, metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def _do_datatypes(self, value: list[str]) -> ValidationReport[list[str]]:
+    def _do_datatypes(
+        self, value: list[str]
+    ) -> tuple[list[ValidationIssue], list[str]]:
         """API validator for data types."""
-        result: ValidationReport[list[str]] = {"errors": list(), "value": list()}
+        errors: list[ValidationIssue] = list()
+        clean: list[str] = list()
         valid_types = [v[0] for v in Datatype.get_choices() if v[0]]
         for i, v in enumerate(value):
             if v not in valid_types:
-                result["errors"].append(
+                errors.append(
                     {"message": f"No such datatype record: {v}.", "location": f"[{i}]"}
                 )
-            elif v not in result["value"]:
-                result["value"].append(v)
-        return result
+            elif v not in clean:
+                clean.append(v)
+        return errors, clean
 
-    def _do_date(self, value: str) -> ValidationReport[str]:
+    def _do_date(self, value: str) -> tuple[list[ValidationIssue], str]:
         """API validator for a date."""
-        result: ValidationReport[str] = {"errors": list(), "value": ""}
+        errors: list[ValidationIssue] = list()
         wv = W3CDate()
         if wv.regex.match(value):
-            result["value"] = value
+            clean = value
         else:
-            result["errors"].append(
-                {"message": "Date must be in yyyy or yyyy-mm or yyyy-mm-dd format."}
+            errors.append(
+                {
+                    "message": "Date must be in yyyy or yyyy-mm or yyyy-mm-dd format.",
+                    "location": "",
+                }
             )
-        return result
+            clean = ""
+        return errors, clean
 
-    def _do_html(self, value: str) -> ValidationReport[str]:
+    def _do_html(self, value: str) -> tuple[list[ValidationIssue], str]:
         """API validator for HTML text."""
-        result: ValidationReport[str] = {"errors": list(), "value": ""}
+        errors: list[ValidationIssue] = list()
         value = re.sub(r"\s+", r" ", value).strip()
 
         # This limit should only be hit by malicious requests:
-        result["value"] = strip_tags(value)[:131072]
-        return result
+        clean = strip_tags(value)[:131072]
+        return errors, clean
 
-    def _do_id_doi(self, value: str) -> ValidationReport[str]:
+    def _do_id_doi(self, value: str) -> tuple[list[ValidationIssue], str]:
         """API validator for DOI ID scheme. Does not check if DOI is registered."""
-        result: ValidationReport[str] = {"errors": list(), "value": ""}
+        errors: list[ValidationIssue] = list()
         m = re.match(
             r"^(?:https?://(?:dx\.)?doi\.org/)?" r"(?P<doi>10\.\d+/.+)$", value
         )
         if m:
-            result["value"] = m.group("doi")
+            clean = m.group("doi")
         else:
-            result["errors"].append({"message": "Malformed DOI."})
-        return result
+            errors.append({"message": "Malformed DOI.", "location": ""})
+            clean = ""
+        return errors, clean
 
-    def _do_id_handle(self, value: str) -> ValidationReport[str]:
+    def _do_id_handle(self, value: str) -> tuple[list[ValidationIssue], str]:
         """API validator for Handle System ID scheme. Does not check if Handle
         is registered.
         """
-        result: ValidationReport[str] = {"errors": list(), "value": ""}
+        errors: list[ValidationIssue] = list()
         m = re.match(r"^(?:https?://hdl.handle.net/)?" r"(?P<hdl>\d+\.\d+/.+)$", value)
         if m:
-            result["value"] = m.group("hdl")
+            clean = m.group("hdl")
         else:
-            result["errors"].append({"message": "Malformed Handle."})
-        return result
+            errors.append({"message": "Malformed Handle.", "location": ""})
+            clean = ""
+        return errors, clean
 
-    def _do_id_ror(self, value: str) -> ValidationReport[str]:
+    def _do_id_ror(self, value: str) -> tuple[list[ValidationIssue], str]:
         """API validator for ROR ID scheme. Does not verify the check digits."""
-        result: ValidationReport[str] = {"errors": list(), "value": ""}
+        errors: list[ValidationIssue] = list()
         m = re.match(
             r"^(?:https?://ror.org/)" r"(?P<ror>0[0-9a-hjkmnp-z]{6}\d\d)$", value
         )
         if m:
-            result["value"] = "https://ror.org/" + m.group("ror")
+            clean = "https://ror.org/" + m.group("ror")
         else:
-            result["errors"].append({"message": "Malformed ROR."})
-        return result
+            errors.append({"message": "Malformed ROR.", "location": ""})
+            clean = ""
+        return errors, clean
 
     def _do_identifiers(
         self, value: list[dict[str, str]]
-    ) -> ValidationReport[list[dict[str, str]]]:
+    ) -> tuple[list[ValidationIssue], list[dict[str, str]]]:
         """API validator for identifiers."""
-        result: ValidationReport[list[dict[str, str]]] = {
-            "errors": list(),
-            "value": list(),
-        }
+        errors: list[ValidationIssue] = list()
+        clean: list[dict[str, str]] = list()
         valid_schemes = [v[0] for v in IDScheme.get_choices(self.__class__) if v[0]]
         for i, v in enumerate(value):
-            clean_value = dict()
+            clean_dict = dict()
 
             # Process ID string:
             id = v.get("id")
             if id is None:
-                result["errors"].append(
-                    {"message": "Missing field: id.", "location": f"[{i}]"}
-                )
+                errors.append({"message": "Missing field: id.", "location": f"[{i}]"})
             else:
                 # Replace this if _do_text starts returning errors:
-                clean_value["id"] = self._do_text(id).get("value", "")
+                t_errors, t_clean = self._do_text(id)
+                for e in t_errors:
+                    e["location"] = f"[{i}]{e['location']}"
+                    errors.append(e)
+                clean_dict["id"] = t_clean
 
             # Validate scheme:
             scheme = v.get("scheme")
             if scheme is None:
-                result["errors"].append(
+                errors.append(
                     {"message": "Missing field: scheme.", "location": f"[{i}]"}
                 )
             elif scheme not in valid_schemes:
-                result["errors"].append(
+                errors.append(
                     {
                         "message": f"Invalid scheme: {scheme}."
                         f" Valid schemes: {', '.join(valid_schemes)}.",
@@ -742,36 +748,36 @@ class Record(Document, metaclass=ABCMeta):
                     }
                 )
             else:
-                clean_value["scheme"] = scheme
+                clean_dict["scheme"] = scheme
 
                 # Scheme-based validation:
                 subvalidator = f"_do_id_{scheme.lower()}"
-                if clean_value.get("id") and hasattr(self, subvalidator):
-                    validated = getattr(self, subvalidator)(clean_value["id"])
-                    clean_value["id"] = validated.get("value")
-                    for error in validated["errors"]:
-                        result["errors"].append(
+                if clean_dict.get("id") and hasattr(self, subvalidator):
+                    v_errors, clean_value = getattr(self, subvalidator)(
+                        clean_dict["id"]
+                    )
+                    clean_dict["id"] = clean_value
+                    for error in v_errors:
+                        errors.append(
                             {
                                 "message": error.get("message", ""),
                                 "location": f"[{i}].id",
                             }
                         )
 
-            result["value"].append(clean_value)
-        return result
+            clean.append(clean_dict)
+        return errors, clean
 
-    def _do_vocabid(self, value: str) -> ValidationReport[str]:
+    def _do_vocabid(self, value: str) -> tuple[list[ValidationIssue], str]:
         """API validator for vocabulary term ID."""
         return self._do_short_text(value, 64)
 
     def _do_locations(
         self, value: list[dict[str, str]]
-    ) -> ValidationReport[list[dict[str, str]]]:
+    ) -> tuple[list[ValidationIssue], list[dict[str, str]]]:
         """API validator for locations."""
-        result: ValidationReport[list[dict[str, str]]] = {
-            "errors": list(),
-            "value": list(),
-        }
+        errors: list[ValidationIssue] = list()
+        clean: list[dict[str, str]] = list()
         valid_types = [v[0] for v in Location.get_choices(self.__class__) if v[0]]
         for i, v in enumerate(value):
             clean_value = dict()
@@ -779,25 +785,20 @@ class Record(Document, metaclass=ABCMeta):
             # Validate URL
             url = v.get("url")
             if url is None:
-                result["errors"].append(
-                    {"message": "Missing field: url.", "location": f"[{i}]"}
-                )
+                errors.append({"message": "Missing field: url.", "location": f"[{i}]"})
             else:
-                validated = self._do_url(url)
-                for error in validated.get("errors", []):
-                    result["errors"].append(
-                        {"message": error.get("message", ""), "location": f"[{i}].url"}
-                    )
-                clean_value["url"] = validated.get("value")
+                t_errors, t_clean = self._do_url(url)
+                for e in t_errors:
+                    e["location"] = f"[{i}].url{e['location']}"
+                    errors.append(e)
+                clean_value["url"] = t_clean
 
             # Validate type
             loc_type = v.get("type")
             if loc_type is None:
-                result["errors"].append(
-                    {"message": "Missing field: type.", "location": f"[{i}]"}
-                )
+                errors.append({"message": "Missing field: type.", "location": f"[{i}]"})
             elif loc_type not in valid_types:
-                result["errors"].append(
+                errors.append(
                     {
                         "message": f"Invalid type: {loc_type}."
                         f" Valid types: {', '.join(valid_types)}.",
@@ -807,94 +808,82 @@ class Record(Document, metaclass=ABCMeta):
             else:
                 clean_value["type"] = loc_type
 
-            result["value"].append(clean_value)
-        return result
+            clean.append(clean_value)
+        return errors, clean
 
     def _do_namespaces(
         self, value: list[dict[str, str]]
-    ) -> ValidationReport[list[dict[str, str]]]:
+    ) -> tuple[list[ValidationIssue], list[dict[str, str]]]:
         """API validator for namespaces."""
-        result: ValidationReport[list[dict[str, str]]] = {
-            "errors": list(),
-            "value": list(),
-        }
+        errors: list[ValidationIssue] = list()
+        clean: list[dict[str, str]] = list()
         for i, v in enumerate(value):
             clean_value = dict()
 
             # Validate prefix
             prefix = v.get("prefix")
             if prefix is None:
-                result["errors"].append(
+                errors.append(
                     {"message": "Missing field: prefix.", "location": f"[{i}]"}
                 )
             else:
-                validated = self._do_short_text(prefix, 32)
-                for error in validated.get("errors"):
-                    result["errors"].append(
-                        {
-                            "message": error.get("message", ""),
-                            "location": f"[{i}].prefix",
-                        }
-                    )
-                clean_value["prefix"] = validated.get("value")
+                t_errors, t_clean = self._do_short_text(prefix, 32)
+                for e in t_errors:
+                    e["location"] = f"[{i}].prefix{e['location']}"
+                    errors.append(e)
+                clean_value["prefix"] = t_clean
 
             # Validate URI
             uri = v.get("uri")
             if uri is None:
-                result["errors"].append(
-                    {"message": "Missing field: uri.", "location": f"[{i}]"}
-                )
+                errors.append({"message": "Missing field: uri.", "location": f"[{i}]"})
             else:
-                validated = self._do_uri(uri)
-                for error in validated.get("errors"):
-                    result["errors"].append(
-                        {"message": error.get("message", ""), "location": f"[{i}].uri"}
-                    )
-                clean_value["uri"] = validated.get("value")
+                t_errors, t_clean = self._do_uri(uri)
+                for e in t_errors:
+                    e["location"] = f"[{i}].uri{e['location']}"
+                    errors.append(e)
+                clean_value["uri"] = t_clean
 
-            result["value"].append(clean_value)
-        return result
+            clean.append(clean_value)
+        return errors, clean
 
-    def _do_period(self, value: dict[str, str]) -> ValidationReport[dict[str, str]]:
+    def _do_period(
+        self, value: dict[str, str]
+    ) -> tuple[list[ValidationIssue], dict[str, str]]:
         """API validator for time periods (start/end dates)."""
-        result: ValidationReport[dict[str, str]] = {"errors": list(), "value": dict()}
+        errors: list[ValidationIssue] = list()
+        clean: dict[str, str] = dict()
         for key in ["start", "end"]:
             if key in value:
-                validated = self._do_date(value[key])
-                for error in validated.get("errors"):
-                    result["errors"].append(
-                        {
-                            "message": error.get("message", ""),
-                            "location": f".{key}{error.get('location', '')}",
-                        }
-                    )
-                result["value"][key] = validated.get("value")
-        if not result["errors"] and (
+                t_errors, t_clean = self._do_date(value[key])
+                for e in t_errors:
+                    e["location"] = f".{key}{e['location']}"
+                    errors.append(e)
+                clean[key] = t_clean
+        if not errors and (
             value.get("end", "9999-99-99") < value.get("start", "0000-00-00")
         ):
-            result["errors"].append({"message": "End date is before start date."})
-        return result
+            errors.append({"message": "End date is before start date.", "location": ""})
+        return errors, clean
 
     def _do_relations(
         self, value: list[dict[str, str]]
-    ) -> ValidationReport[list[dict[str, str]]]:
+    ) -> tuple[list[ValidationIssue], list[dict[str, str]]]:
         """Validates that the ID exists and the role is recognised. Removes
         details beyond this and translates the role into temporary helper fields
         `predicate` and `direction`.
         """
-        if not self.rolemap:  # pragma: no cover
+        if not hasattr(self, "rolemap"):  # pragma: no cover
             raise NotImplementedError
+
+        errors: list[ValidationIssue] = list()
+        clean: list[dict[str, str]] = list()
 
         # predicate to [role]:
         one_way: defaultdict[str, list[str]] = defaultdict(list)
         for role, attrs in self.rolemap.items():
             if attrs.get("one_way"):
                 one_way[attrs["predicate"]].append(role)
-
-        result: ValidationReport[list[dict[str, str]]] = {
-            "errors": list(),
-            "value": list(),
-        }
 
         # location to relation:
         valid: dict[int, dict] = dict()
@@ -912,11 +901,9 @@ class Record(Document, metaclass=ABCMeta):
             # Validate role
             role = v.get("role")
             if role is None:
-                result["errors"].append(
-                    {"message": "Missing field: role.", "location": f"[{i}]"}
-                )
+                errors.append({"message": "Missing field: role.", "location": f"[{i}]"})
             elif role not in self.rolemap.keys():
-                result["errors"].append(
+                errors.append(
                     {
                         "message": f"Invalid role: {role}."
                         f" Valid roles: {', '.join(self.rolemap.keys())}.",
@@ -930,15 +917,13 @@ class Record(Document, metaclass=ABCMeta):
             # Validate MSCID
             mscid = v.get("id")
             if mscid is None:
-                result["errors"].append(
-                    {"message": "Missing field: id.", "location": f"[{i}]"}
-                )
+                errors.append({"message": "Missing field: id.", "location": f"[{i}]"})
             else:
                 rel_record = cache.get(mscid)
                 if rel_record is None:
                     rel_record = Record.load_by_mscid(mscid)
                 if rel_record is None:
-                    result["errors"].append(
+                    errors.append(
                         {
                             "message": f"Not a valid MSC ID: {mscid}.",
                             "location": f"[{i}].id",
@@ -948,7 +933,7 @@ class Record(Document, metaclass=ABCMeta):
                 else:
                     cache[mscid] = rel_record
                     if rel_record.doc_id == 0:
-                        result["errors"].append(
+                        errors.append(
                             {
                                 "message": f"No such record: {mscid}.",
                                 "location": f"[{i}].id",
@@ -956,7 +941,7 @@ class Record(Document, metaclass=ABCMeta):
                         )
                         mscid = None
                     elif accepts and rel_record.table != accepts:
-                        result["errors"].append(
+                        errors.append(
                             {
                                 "message": f"The record {mscid} cannot take the role of"
                                 f" {role}.",
@@ -975,7 +960,7 @@ class Record(Document, metaclass=ABCMeta):
                 "direction": self.rolemap[role]["direction"],
             }
             valid[i] = clean_relation
-            result["value"].append(clean_relation)
+            clean.append(clean_relation)
 
         for roles in one_way.values():
             error_indexes = list()
@@ -987,21 +972,21 @@ class Record(Document, metaclass=ABCMeta):
                     error_indexes.extend(more_indexes)
             error_indexes.sort()
             for i in error_indexes:
-                result["errors"].append(
+                errors.append(
                     {
                         "message": f"One record cannot be both {roles[0]} and"
                         f" {roles[1]} of another.",
                         "location": f"[{i}]",
                     }
                 )
-                result["value"].remove(valid[i])
+                clean.remove(valid[i])
 
-        return result
+        return errors, clean
 
-
-    def _do_series(self, value: list[str]) -> ValidationReport[list[str]]:
+    def _do_series(self, value: list[str]) -> tuple[list[ValidationIssue], list[str]]:
         """API validator limiting values to main record series."""
-        result: ValidationReport[list[str]] = {"errors": list(), "value": list()}
+        errors: list[ValidationIssue] = list()
+        clean: list[str] = list()
         valid_series = [
             Scheme.series,
             Tool.series,
@@ -1010,17 +995,17 @@ class Record(Document, metaclass=ABCMeta):
             Endorsement.series,
         ]
         if not isinstance(value, list):
-            result["errors"].append(
+            errors.append(
                 {
                     "message": "Value must be a list (one or more of "
                     f"{', '.join(valid_series)}).",
                     "location": "",
                 }
             )
-            return result
+            return errors, clean
         for i, v in enumerate(value):
             if v not in valid_series:
-                result["errors"].append(
+                errors.append(
                     {
                         "message": f"Invalid series: {v}. "
                         f"Valid series: {', '.join(valid_series)}.",
@@ -1028,38 +1013,42 @@ class Record(Document, metaclass=ABCMeta):
                     }
                 )
             else:
-                result["value"].append(v)
-        return result
+                clean.append(v)
+        return errors, clean
 
-    def _do_short_text(self, value: str, maxlength: int) -> ValidationReport[str]:
+    def _do_short_text(
+        self, value: str, maxlength: int
+    ) -> tuple[list[ValidationIssue], str]:
         """API validator for short passages of plain text."""
-        result: ValidationReport[str] = self._do_text(value)
-        length = len(result["value"])
+        errors, clean = self._do_text(value)
+        length = len(clean)
         if length > maxlength:
-            result["errors"].append(
+            errors.append(
                 {
                     "message": f"Value must be {maxlength} characters or fewer "
-                    f"(actual length: {length})."
+                    f"(actual length: {length}).",
+                    "location": "",
                 }
             )
-        return result
+        return errors, clean
 
-    def _do_text(self, value: str) -> ValidationReport[str]:
+    def _do_text(self, value: str) -> tuple[list[ValidationIssue], str]:
         """API validator for plain text."""
-        result: ValidationReport[str] = {"errors": list(), "value": ""}
+        errors: list[ValidationIssue] = list()
         value = re.sub(r"\s+", r" ", value).strip()
 
         # This limit should only be hit by malicious requests:
-        result["value"] = value[:65536]
-        return result
+        clean = value[:65536]
+        return errors, clean
 
-    def _do_types(self, value: list[str]) -> ValidationReport[list[str]]:
+    def _do_types(self, value: list[str]) -> tuple[list[ValidationIssue], list[str]]:
         """API validator for entity types."""
-        result: ValidationReport[list[str]] = {"errors": list(), "value": list()}
+        errors: list[ValidationIssue] = list()
+        clean: list[str] = list()
         valid_types = [v[0] for v in EntityType.get_choices(self.__class__) if v[0]]
         for i, v in enumerate(value):
             if v not in valid_types:
-                result["errors"].append(
+                errors.append(
                     {
                         "message": f"Invalid type: {v}. "
                         f"Valid types: {', '.join(valid_types)}.",
@@ -1067,76 +1056,85 @@ class Record(Document, metaclass=ABCMeta):
                     }
                 )
             else:
-                result["value"].append(v)
-        return result
+                clean.append(v)
+        return errors, clean
 
-    def _do_thesaurus(self, value: list[str]) -> ValidationReport[list[str]]:
+    def _do_thesaurus(
+        self, value: list[str]
+    ) -> tuple[list[ValidationIssue], list[str]]:
         """API validator for subject thesaurus terms."""
-        result: ValidationReport[list[str]] = {"errors": list(), "value": list()}
+        errors: list[ValidationIssue] = list()
+        clean: list[str] = list()
         thes = get_thesaurus()
         valid_terms = thes.get_uris()
         for i, v in enumerate(value):
             if v not in valid_terms:
-                result["errors"].append(
+                errors.append(
                     {"message": f"Invalid term URI: {v}.", "location": f"[{i}]"}
                 )
-            elif v not in result["value"]:
-                result["value"].append(v)
-        return result
+            elif v not in clean:
+                clean.append(v)
+        return errors, clean
 
-    def _do_uri(self, value: str) -> ValidationReport[str]:
+    def _do_uri(self, value: str) -> tuple[list[ValidationIssue], str]:
         """API validator for namespace URIs."""
-        result: ValidationReport[str] = {"errors": list(), "value": ""}
+        errors: list[ValidationIssue] = list()
+        clean = ""
         if not value:
-            return result
+            return errors, clean
 
         uv = NamespaceURI()
         if not uv.gen_regex.match(value):
-            result["errors"].append(
-                {"message": "Value must include protocol: http, https."}
+            errors.append(
+                {"message": "Value must include protocol: http, https.", "location": ""}
             )
         elif not value.endswith(("/", "#")):
-            result["errors"].append({"message": "Value must end with / or #."})
+            errors.append({"message": "Value must end with / or #.", "location": ""})
         else:
             match = uv.url_regex.match(value)
             if not (match and uv.validate_hostname(match.group("host"))):
-                result["errors"].append({"message": f"Invalid URI: {value}."})
+                errors.append({"message": f"Invalid URI: {value}.", "location": ""})
 
-        result["value"] = value
-        return result
+        clean = value
+        return errors, clean
 
-    def _do_url(self, value: str) -> ValidationReport[str]:
+    def _do_url(self, value: str) -> tuple[list[ValidationIssue], str]:
         """API validator for URLs and mailto: email addresses."""
-        result: ValidationReport[str] = {"errors": list(), "value": ""}
+        errors: list[ValidationIssue] = list()
+        clean = ""
         if not value:
-            return result
+            return errors, clean
 
         uv = EmailOrURL()
         if not uv.gen_regex.match(value):
-            result["errors"].append(
-                {"message": "Value must include protocol: http, https, mailto."}
+            errors.append(
+                {
+                    "message": "Value must include protocol: http, https, mailto.",
+                    "location": "",
+                }
             )
         elif value.startswith("mailto:"):
             if not uv.email_regex.match(value):
-                result["errors"].append({"message": "Invalid email address."})
+                errors.append({"message": "Invalid email address.", "location": ""})
             else:
                 length = len(value)
                 if length > 254:
-                    result["errors"].append(
+                    errors.append(
                         {
                             "message": "Value must be 254 characters or fewer"
-                            f" (actual length: {length})."
+                            f" (actual length: {length}).",
+                            "location": "",
                         }
                     )
         else:
             match = uv.url_regex.match(value)
             if not (match and uv.validate_hostname(match.group("host"))):
-                result["errors"].append({"message": f"Invalid URL: {value}."})
+                errors.append({"message": f"Invalid URL: {value}.", "location": ""})
 
-        result["value"] = value
-        return result
+        clean = value
+        return errors, clean
 
-    def _do_versionid(self, value: str) -> ValidationReport[str]:
+    def _do_versionid(self, value: str) -> tuple[list[ValidationIssue], str]:
         """API validator for version numbers/identifiers."""
         return self._do_short_text(value, 32)
 
@@ -1177,33 +1175,17 @@ class Record(Document, metaclass=ABCMeta):
                     objects.remove(self.mscid)
                 if not objects:
                     continue
-                if self.mscid not in additions:
-                    additions[self.mscid] = dict()
-                if p not in additions[self.mscid]:
-                    additions[self.mscid][p] = list()
-                additions[self.mscid][p].extend(objects)
+                additions.setdefault(self.mscid, {}).setdefault(p, []).extend(objects)
             else:
                 if not objects:
                     continue
-                if self.mscid not in deletions:
-                    deletions[self.mscid] = dict()
-                if p not in deletions[self.mscid]:
-                    deletions[self.mscid][p] = list()
-                deletions[self.mscid][p].extend(objects)
+                deletions.setdefault(self.mscid, {}).setdefault(p, []).extend(objects)
 
         for s, p, is_addition in inverted:
             if is_addition:
-                if s not in additions:
-                    additions[s] = dict()
-                if p not in additions[s]:
-                    additions[s][p] = list()
-                additions[s][p].append(self.mscid)
+                additions.setdefault(s, {}).setdefault(p, []).append(self.mscid)
             else:
-                if s not in deletions:
-                    deletions[s] = dict()
-                if p not in deletions[s]:
-                    deletions[s][p] = list()
-                deletions[s][p].append(self.mscid)
+                deletions.setdefault(s, {}).setdefault(p, []).append(self.mscid)
 
         rel.add(additions)
         rel.remove(deletions)
@@ -1333,11 +1315,14 @@ class Record(Document, metaclass=ABCMeta):
                         continue
                 field.append_entry()
 
-        # Assign validators to current choices (these are in all the forms):
-        for f in form.locations:
-            f["type"].choices = Location.get_choices(self.__class__)
-        for f in form.identifiers:
-            f.scheme.choices = IDScheme.get_choices(self.__class__)
+        if isinstance(form, MainForm):
+            # Assign validators to current choices (these are in all the forms):
+            for f in form.locations:
+                if isinstance(select := f["type"], SelectField):
+                    select.choices = Location.get_choices(self.__class__)  # type: ignore
+            for f in form.identifiers:
+                assert isinstance(select := f.scheme, SelectField)
+                select.choices = IDScheme.get_choices(self.__class__)  # type: ignore
 
         return form
 
@@ -1347,6 +1332,7 @@ class Record(Document, metaclass=ABCMeta):
         db = self.get_db()
         tb = db.table(self.table)
         doc = tb.get(doc_id=self.doc_id)
+        assert isinstance(doc, Document)
         for key in [k for k in self.keys() if k not in doc]:
             del self[key]
         self.update(doc)
@@ -1403,7 +1389,7 @@ class Record(Document, metaclass=ABCMeta):
 
         return list()
 
-    def save_gui_input(self, formdata: Mapping) -> str:
+    def save_gui_input(self, formdata: dict) -> str:
         """Processes form input and saves it. Returns error message if a
         problem arises."""
 
@@ -1518,7 +1504,9 @@ class Record(Document, metaclass=ABCMeta):
         # Update relations
         return self._save_relations(forward, inverted)
 
-    def save_gui_vinput(self, formdata: Mapping, index: int = None) -> str:
+    def save_gui_vinput(
+        self, formdata: MutableMapping, index: int | None = None
+    ) -> str:
         """Processes form input and saves it. Returns error message if a
         problem arises."""
 
@@ -1549,9 +1537,7 @@ class Record(Document, metaclass=ABCMeta):
             alldata["versions"][index] = formdata
 
         # Save the main record:
-        error = self._save(alldata)
-        if error:
-            return error
+        return self._save(alldata)
 
     def save_invrel_patch(
         self, input_data: Mapping
@@ -1561,7 +1547,7 @@ class Record(Document, metaclass=ABCMeta):
         contains the error message and `location` indicates the field
         that triggered the error) and resulting record.
         """
-        if not self.rolemap:  # pragma: no cover
+        if not hasattr(self, "rolemap"):  # pragma: no cover
             raise NotImplementedError
 
         rel = Relation()
@@ -1573,17 +1559,17 @@ class Record(Document, metaclass=ABCMeta):
                 continue
             predicate = info["predicate"]
             inv_predicate = (
-                rel.inversions.get(predicate).format(
+                rel.inversions.get(predicate, "").format(
                     rel.series_map.get(info["accepts"])
                 )
                 if predicate in ["maintainers", "funders"]
-                else rel.inversions.get(predicate)
+                else rel.inversions.get(predicate, "")
             )
+            assert inv_predicate
             acceptable[inv_predicate] = info["accepts"]
             one_way[inv_predicate] = info.get("one_way", False)
 
-        result = {"@id": self.mscid}
-        result.update(rel.related(self.mscid, direction=rel.INVERSE))
+        result = {"@id": self.mscid, **rel.related(self.mscid, direction=rel.INVERSE)}
 
         self.cache = dict()
         errors = list()
@@ -1638,17 +1624,16 @@ class Record(Document, metaclass=ABCMeta):
 
         self._save_relations(list(), changes)
 
-        final = {"@id": self.mscid}
-        final.update(rel.related(self.mscid, direction=rel.INVERSE))
+        final = {"@id": self.mscid, **rel.related(self.mscid, direction=rel.INVERSE)}
         return (errors, final)
 
-    def save_rel_patch(self, input_data: Mapping) -> tuple[list[dict[str, str]], dict]:
+    def save_rel_patch(self, input_data: Mapping) -> tuple[list[ValidationIssue], dict]:
         """Validates a set of patches and applies them to the database if
         they pass validation. Returns error list (dicts where `message`
         contains the error message and `location` indicates the field
         that triggered the error) and resulting record.
         """
-        if not self.rolemap:  # pragma: no cover
+        if not hasattr(self, "rolemap"):  # pragma: no cover
             raise NotImplementedError
 
         acceptable = dict()
@@ -1663,14 +1648,15 @@ class Record(Document, metaclass=ABCMeta):
         rel = Relation()
         rel_record = rel.tb.get(Query()["@id"] == self.mscid)
         if rel_record is None:
-            result = {"@id": self.mscid}
+            record = {"@id": self.mscid}
             rel_id = None
         else:
-            result = dict(rel_record)
+            assert isinstance(rel_record, Document)
+            record = dict(rel_record)
             rel_id = rel_record.doc_id
 
         self.cache = dict()
-        errors = list()
+        errors: list[ValidationIssue] = list()
         if not isinstance(input_data, list):
             errors.append(
                 {
@@ -1679,33 +1665,34 @@ class Record(Document, metaclass=ABCMeta):
                     "location": "$",
                 }
             )
-            return (errors, result)
+            return errors, record
 
         for i, patch in enumerate(input_data):
             if not isinstance(patch, dict):
                 errors.append({"message": "Not a JSON object.", "location": f"$[{i}]"})
                 continue
-            err, result = self.validate_rel_patch(result, patch, acceptable, one_way)
+            err, record = self.validate_rel_patch(record, patch, acceptable, one_way)
             for e in err:
                 errors.append(
                     {
-                        "message": e.get("message"),
-                        "location": f"$[{i}]{e.get('location')}",
+                        "message": e["message"],
+                        "location": f"$[{i}]{e['location']}",
                     }
                 )
 
         if errors:
-            return (errors, result)
+            return errors, record
 
-        if rel_id is None:
-            rel_id = rel.tb.insert(result)
+        if rel_record is None:
+            rel_id = rel.tb.insert(record)
         else:
             with transaction(rel.tb) as tn:
-                for key in (k for k in rel_record if k not in result):
+                for key in (k for k in rel_record if k not in record):
                     tn.update(delete(key), doc_ids=[rel_id])
-                tn.update(result, doc_ids=[rel_id])
-
-        return (errors, rel.tb.get(doc_id=rel_id))
+                tn.update(record, doc_ids=[rel_id])
+        doc = rel.tb.get(doc_id=rel_id)
+        assert isinstance(doc, Document)
+        return errors, doc
 
     def save_rel_record(self, input_data: Mapping) -> tuple[list[dict[str, str]], dict]:
         """Validates a complete relations table record and saves it to the
@@ -1762,7 +1749,7 @@ class Record(Document, metaclass=ABCMeta):
         indicates the field that triggered the error) and `value`
         contains the clean data.
         """
-        errors = list()
+        errors: list[ValidationIssue] = list()
         clean_data = dict()
         for k, d in schema.items():
             if k not in input_data:
@@ -1783,8 +1770,8 @@ class Record(Document, metaclass=ABCMeta):
                     for error in v_errors:
                         errors.append(
                             {
-                                "message": error.get("message", ""),
-                                "location": f".{k}[{i}]{error.get('location', '')}",
+                                "message": error["message"],
+                                "location": f".{k}[{i}]{error['location']}",
                             }
                         )
                     clean_data[k].append(v_value)
@@ -1796,15 +1783,15 @@ class Record(Document, metaclass=ABCMeta):
 
             validator_name = f"_do_{d.get('type', 'MISSING')}"
             validator = getattr(self, validator_name)
-            validated = validator(input_data[k])
-            for error in validated["errors"]:
+            v_errors, clean_value = validator(input_data[k])
+            for error in v_errors:
                 errors.append(
                     {
-                        "message": error.get("message", ""),
-                        "location": f".{k}{error.get('location', '')}",
+                        "message": error["message"],
+                        "location": f".{k}{error['location']}",
                     }
                 )
-            clean_data[k] = validated["value"]
+            clean_data[k] = clean_value
 
         return (errors, clean_data)
 
@@ -2108,7 +2095,7 @@ class Record(Document, metaclass=ABCMeta):
         tuple consisting of a list of errors (dicts where `message`
         contains the error message and `location` indicates the field
         that triggered the error) and the clean record."""
-        if not self.rolemap:  # pragma: no cover
+        if not hasattr(self, "rolemap"):  # pragma: no cover
             raise NotImplementedError
 
         acceptable = dict()
@@ -2923,10 +2910,7 @@ class Datatype(Record):
 
     def save_gui_input(self, formdata: Mapping) -> str:
         # Save the main record:
-        error = self._save(formdata)
-        if error:
-            return error
-        return ""
+        return self._save(formdata)
 
 
 class VocabTerm(Document, metaclass=ABCMeta):
@@ -2947,7 +2931,7 @@ class VocabTerm(Document, metaclass=ABCMeta):
         return get_term_db()
 
     @classmethod
-    def get_choices(cls, filter: type[Record] = None) -> list[tuple[str, str]]:
+    def get_choices(cls, filter: type[Record] | None = None) -> list[tuple[str, str]]:
         """Returns all active instances in the database (i.e. not
         deleted ones) as a list of tuples of ID and label. May be
         filtered to include only those instances that are valid
@@ -3740,6 +3724,18 @@ class EndorsementForm(FlaskForm):
         "Endorsing organizations", Group, description="originators"
     )
     old_relations = HiddenField()
+
+
+MainForm = (
+    SchemeForm
+    | SchemeVersionForm
+    | ToolForm
+    | ToolVersionForm
+    | CrosswalkForm
+    | CrosswalkVersionForm
+    | GroupForm
+    | EndorsementForm
+)
 
 
 class DatatypeForm(FlaskForm):

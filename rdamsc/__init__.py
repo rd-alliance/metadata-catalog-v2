@@ -66,7 +66,7 @@ def create_app(
         DEBUG=False,
         TESTING=False,
     )
-    app.json.ensure_ascii = False  # pyright: ignore[reportAttributeAccessIssue]
+    app.json.ensure_ascii = False  # type: ignore
 
     # Override these settings as appropriate:
     if test_config is None:
