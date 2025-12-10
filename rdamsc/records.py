@@ -9,7 +9,7 @@ import json
 import os
 import re
 import sys
-from typing import Any, Literal, overload
+from typing import Any, Callable, Literal, overload
 
 if sys.version_info < (3, 11):
     from typing_extensions import Self, TypedDict, NotRequired
@@ -56,7 +56,7 @@ from wtforms.utils import unset_value
 # Local
 # -----
 from .db_utils import JSONStorageWithGit
-from .utils import Pluralizer, clean_error_list, to_file_slug
+from .utils import Pluralizer, clean_errors, to_file_slug
 from .vocab import get_thesaurus
 
 bp = Blueprint("main", __name__)
@@ -376,14 +376,11 @@ class Relation(object):
             ]
         return results
 
-class Record(Document, metaclass=ABCMeta):
+class BaseRecord(Document, metaclass=ABCMeta):
     """Abstract class with common methods for the helper classes
     for different types of record."""
-
     table: str
     series: str
-    schema: dict[str, ConformanceSchema]
-    rolemap: Mapping[str, RoleMap]
 
     @staticmethod
     def cleanup(data: dict) -> dict:
@@ -423,6 +420,61 @@ class Record(Document, metaclass=ABCMeta):
             elif key in ["csrf_token", "old_relations"]:
                 del data[key]
         return data
+
+    @classmethod
+    @abstractmethod
+    def get_db(cls) -> TinyDB:
+        """Returns the database where instances of this class are
+        serialized.
+        """
+        raise NotImplementedError
+
+    @classmethod
+    def all(cls) -> list[Self]:
+        """Should only be called on leaf subclasses. Returns a list of all
+        instances of that subclass from the database."""
+        db = cls.get_db()
+        tb = db.table(cls.table)
+        docs = tb.all()
+        return [cls(value=doc, doc_id=doc.doc_id) for doc in docs]
+
+    @classmethod
+    def search(cls, cond: QueryLike) -> list[Self]:
+        """Should only be called on leaf subclasses. Performs a TinyDB
+        search on the corresponding table, converts the results into
+        instances of the given subclass."""
+        db = cls.get_db()
+        tb = db.table(cls.table)
+        docs = tb.search(cond)
+        return [cls(value=doc, doc_id=doc.doc_id) for doc in docs]
+
+    def _save(self, value: dict) -> str:
+        """Saves record to database. Returns error message if a problem
+        arises."""
+
+        # Remove empty and noisy fields
+        value = self.cleanup(value)
+
+        # Update or insert record as appropriate
+        db = self.get_db()
+        tb = db.table(self.table)
+        if self.doc_id:
+            with transaction(tb) as tn:
+                for key in (k for k in self if k not in value):
+                    tn.update(delete(key), doc_ids=[self.doc_id])
+                tn.update(value, doc_ids=[self.doc_id])
+        else:
+            self.doc_id = tb.insert(value)
+
+        return ""
+
+
+class Record(BaseRecord, metaclass=ABCMeta):
+    """Abstract class with common methods for the helper classes
+    for different types of record."""
+
+    schema: dict[str, ConformanceSchema]
+    rolemap: Mapping[str, RoleMap]
 
     @classmethod
     def get_choices(cls) -> list[tuple[str, str]]:
@@ -504,25 +556,6 @@ class Record(Document, metaclass=ABCMeta):
                 return cls.load(int(m.group("doc_id")))
             return cls.load(int(m.group("doc_id")), m.group("table"))
         return None
-
-    @classmethod
-    def all(cls) -> list[Self]:
-        """Should only be called on subclasses of Record. Returns a list of all
-        instances of that subclass from the database."""
-        db = cls.get_db()
-        tb = db.table(cls.table)
-        docs = tb.all()
-        return [cls(value=doc, doc_id=doc.doc_id) for doc in docs]
-
-    @classmethod
-    def search(cls, cond: QueryLike) -> list[Self]:
-        """Should only be called on subclasses of Record. Performs a TinyDB
-        search on the corresponding table, converts the results into
-        instances of the given subclass."""
-        db = cls.get_db()
-        tb = db.table(cls.table)
-        docs = tb.search(cond)
-        return [cls(value=doc, doc_id=doc.doc_id) for doc in docs]
 
     def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id)
@@ -1141,26 +1174,6 @@ class Record(Document, metaclass=ABCMeta):
     def _do_versionid(self, value: str) -> tuple[list[ValidationIssue], str]:
         """API validator for version numbers/identifiers."""
         return self._do_short_text(value, 32)
-
-    def _save(self, value: dict) -> str:
-        """Saves record to database. Returns error message if a problem
-        arises."""
-
-        # Remove empty and noisy fields
-        value = self.cleanup(value)
-
-        # Update or insert record as appropriate
-        db = self.get_db()
-        tb = db.table(self.table)
-        if self.doc_id:
-            with transaction(tb) as tn:
-                for key in (k for k in self if k not in value):
-                    tn.update(delete(key), doc_ids=[self.doc_id])
-                tn.update(value, doc_ids=[self.doc_id])
-        else:
-            self.doc_id = tb.insert(value)
-
-        return ""
 
     def _save_relations(
         self,
@@ -2983,7 +2996,7 @@ class Datatype(Record):
         return self._save(formdata)
 
 
-class VocabTerm(Document, metaclass=ABCMeta):
+class VocabTerm(BaseRecord, metaclass=ABCMeta):
     """Abstract class with common methods for the helper classes
     for different types of vocabulary terms."""
 
@@ -3011,7 +3024,7 @@ class VocabTerm(Document, metaclass=ABCMeta):
 
         if filter:
             Q = Query()
-            records = cls.search(Q.applies.any(filter.series))
+            records = cls.search(Q.applies.any([filter.series]))
             records.sort(key=lambda k: k.doc_id)
             for record in records:
                 choices.append((record["id"], record["label"]))
@@ -3088,7 +3101,7 @@ class VocabTerm(Document, metaclass=ABCMeta):
 
         return list()
 
-    def get_overlaps(self, id: str = None) -> list[str]:
+    def get_overlaps(self, id: str | None = None) -> list[str]:
         """If `id` is given, returns a list of Record series (e.g. "m")
         to which this VocabTerm is set to apply, where another VocabTerm
         in the database with that ID is already set to apply to it
@@ -3124,7 +3137,7 @@ class VocabTerm(Document, metaclass=ABCMeta):
                     break
         return overlaps
 
-    def save_gui_input(self, formdata: Mapping) -> str:
+    def save_gui_input(self, formdata: dict) -> str:
         """Processes form input and saves it. Returns error message if a
         problem arises.
         """
@@ -3298,7 +3311,7 @@ class Optional(object):
             isinstance(field.raw_data[0], str)
             and not self.string_check(field.raw_data[0])
         ):
-            field.errors[:] = []
+            field.errors[:] = []  # type: ignore
             raise validators.StopValidation()
 
 
@@ -3310,7 +3323,7 @@ class RequiredIf(object):
     def __init__(
         self,
         other_field_list: list[str],
-        message: str = None,
+        message: str | None = None,
         strip_whitespace: bool = True,
     ):
         self.other_field_list = other_field_list
@@ -3336,7 +3349,7 @@ class RequiredIf(object):
                 isinstance(field.raw_data[0], str)
                 and not self.string_check(field.raw_data[0])
             ):
-                field.errors[:] = []
+                field.errors[:] = []  # type: ignore
                 raise validators.StopValidation()
         else:
             # InputRequired
@@ -3345,7 +3358,7 @@ class RequiredIf(object):
                     message = field.gettext("This field is required.")
                 else:
                     message = self.message
-                field.errors[:] = []
+                field.errors[:] = []  # type: ignore
                 raise validators.StopValidation(message)
 
 
@@ -3356,7 +3369,7 @@ class ValuesDistinctFrom(object):
     def __init__(
         self,
         other_field: str,
-        message: str = None,
+        message: str | None = None,
     ):
         self.other_field_name = other_field
         self.message = message
@@ -3371,12 +3384,12 @@ class ValuesDistinctFrom(object):
         if other_values is None:
             return
         duplicates = list()
-        assert hasattr(field, "choices")
-        ui_values = {v[0]: v[1] for v in field.choices} if field.choices else dict()
-        for data in field.data:
-            if data in other_values:
-                ui_value = ui_values.get(data, data)
-                duplicates.append(ui_value)
+        if isinstance(field, SelectField):
+            ui_values = {v[0]: v[1] for v in field.choices} if field.choices else dict()
+            for data in field.data:
+                if data in other_values:
+                    ui_value = ui_values.get(data, data)
+                    duplicates.append(ui_value)
         if not duplicates:
             return
         message = self.message or field.gettext(
@@ -3391,7 +3404,7 @@ class W3CDate(validators.Regexp):
     not eliminate semantically invalid dates such as `0000-02-31`.
     """
 
-    def __init__(self, message: str = None):
+    def __init__(self, message: str | None = None):
         pattern = (
             r"^(?P<year>\d{4})"
             r"(?P<month>-0[1-9]|-1[0-2])?"
@@ -3399,7 +3412,7 @@ class W3CDate(validators.Regexp):
         )
         super().__init__(pattern, message=message)
 
-    def __call__(self, form: Form, field: Field):
+    def __call__(self, form: Form, field: StringField):
         message = self.message or field.gettext(
             "Please provide the date in yyyy-mm-dd format."
         )
@@ -3414,7 +3427,7 @@ class CheckboxSelect(widgets.Select):
     a select element with option elements.
     """
 
-    def __call__(self, field: Field, **kwargs) -> Markup:
+    def __call__(self, field: SelectField, **kwargs) -> Markup:
         kwargs.setdefault("id", field.id)
         html = list()
         for choice_bits in field.iter_choices():
@@ -3469,9 +3482,9 @@ class FormFieldFixed(FormField):
 
     def process(self, formdata: Mapping, data: Any = unset_value):
         if data is unset_value:
-            try:
+            if isinstance(self.default, Callable):
                 data = self.default()
-            except TypeError:
+            else:
                 data = self.default
             self._obj = data
 
@@ -3503,7 +3516,7 @@ class SelectRelatedField(SelectMultipleField):
 
     def omit_mscid(self, mscid: str):
         filtered_choices = [choice for choice in self.choices if choice[0] != mscid]
-        self.choices = filtered_choices
+        self.choices = filtered_choices  # type: ignore
 
 
 class TextHTMLField(TextAreaField):
@@ -3982,6 +3995,7 @@ def edit_record(table: MainTableID, number: int):
 
     # Instantiate edit form
     form = record.get_form()
+    assert isinstance(form, MainForm)
 
     # Form-specific value lists
     params = record.get_vocabs()
@@ -4029,17 +4043,8 @@ def edit_record(table: MainTableID, number: int):
                 " errors}. See below for details.".format(Pluralizer(len(form.errors)))
             )
         flash(msg, "error")
-        for field, errors in form.errors.items():
-            if len(errors) > 0:
-                if isinstance(errors[0], dict):
-                    # Subform
-                    for subform in errors:
-                        for subfield, suberrors in subform.items():
-                            for f in form[field]:
-                                f[subfield].errors = clean_error_list(f[subfield])
-                else:
-                    # Simple field
-                    form[field].errors = clean_error_list(form[field])
+        clean_errors(form)
+
     return render_template(
         f"edit-{record.series}.html",
         form=form,
@@ -4055,7 +4060,7 @@ def edit_record(table: MainTableID, number: int):
 )
 @bp.route("/edit/<any(m, g, t, c, e):table><int:number>/add", methods=["GET", "POST"])
 @login_required
-def edit_version(table: MainTableID, number: int, index: int = None):
+def edit_version(table: MainTableID, number: int, index: int | None = None):
     """Editing form for a version subrecord."""
     # Look up record to edit, or get new:
     record = Record.load(number, table)
@@ -4085,9 +4090,10 @@ def edit_version(table: MainTableID, number: int, index: int = None):
 
     # Instantiate edit form
     form = record.get_vform(index)
+    assert isinstance(form, (SchemeVersionForm, ToolVersionForm, CrosswalkVersionForm))
 
     # Form-specific value lists
-    params = record.get_vocabs()
+    params: dict[str, Any] = record.get_vocabs()
     params["index"] = index
     vno = form.number.data
     if vno:
@@ -4136,17 +4142,8 @@ def edit_version(table: MainTableID, number: int, index: int = None):
                 " errors}. See below for details.".format(Pluralizer(len(form.errors)))
             )
         flash(msg, "error")
-        for field, errors in form.errors.items():
-            if len(errors) > 0:
-                if isinstance(errors[0], dict):
-                    # Subform
-                    for subform in errors:
-                        for subfield, suberrors in subform.items():
-                            for f in form[field]:
-                                f[subfield].errors = clean_error_list(f[subfield])
-                else:
-                    # Simple field
-                    form[field].errors = clean_error_list(form[field])
+        clean_errors(form)
+
     return render_template(
         f"edit-{record.series}-version.html",
         form=form,
@@ -4219,19 +4216,9 @@ def edit_vocabterm(vocab: TermTableID, number: int):
                 " errors}. See below for details.".format(Pluralizer(len(form.errors)))
             )
         flash(msg, "error")
-        for field, errors in form.errors.items():
-            if len(errors) > 0:
-                if isinstance(errors[0], dict):
-                    # Subform
-                    for subform in errors:
-                        for subfield, suberrors in subform.items():
-                            for f in form[field]:
-                                f[subfield].errors = clean_error_list(f[subfield])
-                else:
-                    # Simple field
-                    form[field].errors = clean_error_list(form[field])
+        clean_errors(form)
 
-    overlaps = list() if vocab == "datatype" else record.get_overlaps()
+    overlaps = record.get_overlaps() if isinstance(record, VocabTerm) else list()
     return render_template(
         f"edit-{vocab}.html", form=form, doc_id=number, overlaps=overlaps
     )
@@ -4239,7 +4226,7 @@ def edit_vocabterm(vocab: TermTableID, number: int):
 
 @bp.route("/msc/<any(m, g, t, c, e):table><int:number>")
 @bp.route("/msc/<any(m, g, t, c, e):table><int:number>/<fieldname>")
-def display(table: MainTableID, number: int, fieldname: str = None):
+def display(table: MainTableID, number: int, fieldname: str | None = None):
     """Displays the page for a record."""
     # Look up record to edit, or get new:
     record = Record.load(number, table)

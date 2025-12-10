@@ -11,8 +11,9 @@ import urllib.parse
 # Non-standard
 # ------------
 from flask import url_for
+from flask_wtf import FlaskForm
 from tinydb import Query
-from wtforms import Field
+from wtforms import Field, FieldList, Form, FormField
 
 
 # General data handling
@@ -87,6 +88,26 @@ def clean_error_list(field: Field) -> list[str]:
         else:
             seen_errors.add(error)
     return list(seen_errors)
+
+
+def clean_errors(form: FlaskForm | Form):
+    for fieldname, errors in form.errors.items():
+        if not errors:
+            continue
+        f = form[fieldname]
+        if isinstance(f, FieldList):
+            # All entries will be same type, but anyway...
+            has_no_subforms = True
+            for ff in f.entries:
+                if isinstance(ff, FormField):
+                    clean_errors(ff.form)
+                    has_no_subforms = False
+            if has_no_subforms:
+                f.errors = clean_error_list(f)
+        elif isinstance(f, FormField):
+            clean_errors(f.form)
+        else:
+            f.errors = clean_error_list(f)
 
 
 def to_file_slug(string: str, callback: Callable[[Query], list]) -> str:
