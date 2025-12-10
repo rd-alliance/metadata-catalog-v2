@@ -2935,7 +2935,7 @@ class Datatype(Record):
         tb = db.table(cls.table)
         doc = tb.get(Query().label == label)
 
-        if doc:
+        if isinstance(doc, Document):
             return cls(value=doc, doc_id=doc.doc_id)
         return cls(value=dict(), doc_id=0)
 
@@ -2943,7 +2943,7 @@ class Datatype(Record):
         super().__init__(value, doc_id)
 
     @property
-    def form(self) -> type[FlaskForm]:
+    def form(self):
         return DatatypeForm
 
     @property
@@ -2967,17 +2967,18 @@ class Datatype(Record):
 
         # Add validators:
         if self.doc_id == 0 and len(form.label.validators) == 1:
-            form.label.validators.append(
+            form.label.validators = [
+                *form.label.validators,
                 validators.NoneOf(
                     self.get_types_used(),
                     message="That descriptor is already in use."
                     + " Please make it distinct in some way.",
-                )
-            )
+                ),
+            ]
 
         return form
 
-    def save_gui_input(self, formdata: Mapping) -> str:
+    def save_gui_input(self, formdata: dict) -> str:
         # Save the main record:
         return self._save(formdata)
 
@@ -3075,7 +3076,7 @@ class VocabTerm(Document, metaclass=ABCMeta):
 
         return form
 
-    def annul(self) -> list[dict[str, str]]:
+    def annul(self) -> list[OperationIssue]:
         """Removes content of record. Returns a list of error messages if any
         problems arise (dicts with `message` containing the error message).
         """
