@@ -4,17 +4,17 @@
 # --------
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
 import json
 import os
 import re
 import sys
-from typing import Any, Generic, Literal, TypeVar
+from typing import Any, Literal, overload
 
 if sys.version_info < (3, 11):
-    from typing_extensions import Self, TypedDict, NamedTuple, NotRequired
+    from typing_extensions import Self, TypedDict, NotRequired
 else:
-    from typing import Self, TypedDict, NamedTuple, NotRequired
+    from typing import Self, TypedDict, NotRequired
 
 # Non-standard
 # ------------
@@ -90,8 +90,8 @@ disallowed_tagblocks = [
     "style",
 ]
 
-# Fundamental types
-# =================
+# Helpful independent types
+# =========================
 MainTableID = Literal["m", "g", "t", "c", "e"]
 TermTableID = Literal["datatype", "location", "type", "id_scheme"]
 TableID = MainTableID | TermTableID
@@ -115,6 +115,10 @@ class RoleMap(TypedDict):
     direction: str
     accepts: str
     one_way: NotRequired[bool]
+
+
+class OperationIssue(TypedDict):
+    message: str
 
 
 class ValidationIssue(TypedDict):
@@ -1192,7 +1196,7 @@ class Record(Document, metaclass=ABCMeta):
 
         return ""
 
-    def annul(self) -> list[dict[str, str]]:
+    def annul(self) -> list[OperationIssue]:
         """Removes content of record. Returns a list of error messages if any
         problems arise (dicts with `message` containing the error message).
         """
@@ -1267,7 +1271,7 @@ class Record(Document, metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def insert_relations(self, data: MutableMapping) -> Mapping:
+    def insert_relations(self, data: MutableMapping) -> MutableMapping:
         """Adds the relations of the current record to the input form data and
         returns the result."""
         rel = Relation()
@@ -1297,7 +1301,7 @@ class Record(Document, metaclass=ABCMeta):
 
         return data
 
-    def populate_form(self, data: Mapping, is_version=False) -> FlaskForm:
+    def populate_form(self, data: Mapping, is_version=False):
         """Populates a fresh FlaskForm instance with the given data.
         If `is_version` is True, returns the version subrecord form
         instead of the main record form."""
@@ -1337,7 +1341,7 @@ class Record(Document, metaclass=ABCMeta):
             del self[key]
         self.update(doc)
 
-    def save_api_input(self, input_data: Mapping) -> list[dict[str, str]]:
+    def save_api_input(self, input_data: Mapping) -> list[ValidationIssue]:
         """Processes form input and saves it. Returns a list of error messages
         if any problems arise (dicts with `message` containing the error message
         and `location` indicating which field if any triggered the error)."""
@@ -1379,13 +1383,13 @@ class Record(Document, metaclass=ABCMeta):
         # Save the main record:
         error = self._save(input_data)
         if error:
-            return [{"message": error}]
+            return [{"message": error, "location": ""}]
 
         # Update relations
         if related_entities:
             error = self._save_relations(forward, inverted)
             if error:
-                return [{"message": error}]
+                return [{"message": error, "location": ""}]
 
         return list()
 
@@ -1541,7 +1545,7 @@ class Record(Document, metaclass=ABCMeta):
 
     def save_invrel_patch(
         self, input_data: Mapping
-    ) -> tuple[list[dict[str, str]], dict]:
+    ) -> tuple[list[ValidationIssue], dict]:
         """Validates a set of patches and applies them to the database if
         they pass validation. Returns error list (dicts where `message`
         contains the error message and `location` indicates the field
@@ -1552,8 +1556,8 @@ class Record(Document, metaclass=ABCMeta):
 
         rel = Relation()
 
-        acceptable = dict()
-        one_way = dict()
+        acceptable: dict[str, str] = dict()
+        one_way: dict[str, bool] = dict()
         for info in self.rolemap.values():
             if info["direction"] == Relation.FORWARD:
                 continue
@@ -1636,8 +1640,8 @@ class Record(Document, metaclass=ABCMeta):
         if not hasattr(self, "rolemap"):  # pragma: no cover
             raise NotImplementedError
 
-        acceptable = dict()
-        one_way = dict()
+        acceptable: dict[str, str] = dict()
+        one_way: dict[str, bool] = dict()
         for info in self.rolemap.values():
             if info["direction"] == Relation.INVERSE:
                 continue
@@ -1694,7 +1698,9 @@ class Record(Document, metaclass=ABCMeta):
         assert isinstance(doc, Document)
         return errors, doc
 
-    def save_rel_record(self, input_data: Mapping) -> tuple[list[dict[str, str]], dict]:
+    def save_rel_record(
+        self, input_data: Mapping
+    ) -> tuple[list[ValidationIssue], dict]:
         """Validates a complete relations table record and saves it to the
         database if it passes validation. Returns error list (dicts
         where `message` contains the error message and `location`
@@ -1708,6 +1714,7 @@ class Record(Document, metaclass=ABCMeta):
         rel_record = rel.tb.get(Query()["@id"] == self.mscid)
 
         if rel_record is not None:
+            assert isinstance(rel_record, Document)
             with transaction(rel.tb) as tn:
                 for key in (k for k in rel_record if k not in result):
                     tn.update(delete(key), doc_ids=[rel_record.doc_id])
@@ -1717,7 +1724,7 @@ class Record(Document, metaclass=ABCMeta):
 
         return (errors, result)
 
-    def validate(self, input_data: Mapping) -> tuple[list[dict[str, str]], dict]:
+    def validate(self, input_data: Mapping) -> tuple[list[ValidationIssue], dict]:
         """Checks input for valid keys and values. Invalid keys are
         removed. Invalid values raise an error. Valid values are
         cleaned. Returns a tuple consisting of a list of errors (dicts
@@ -1742,7 +1749,7 @@ class Record(Document, metaclass=ABCMeta):
 
     def validate_against(
         self, input_data: Mapping[str, Any], schema: Mapping[str, ConformanceSchema]
-    ) -> tuple[list[dict[str, str]], dict]:
+    ) -> tuple[list[ValidationIssue], dict]:
         """Recursive function for performing validation against a given
         schema. Returns a dict where `errors` contains a list of errors
         (dicts where `message` contains the error message and `location`
@@ -1797,14 +1804,14 @@ class Record(Document, metaclass=ABCMeta):
 
     def validate_rel_list(
         self, mscids: list[str], predicate: str, table: str, check_reverse: bool
-    ) -> tuple[list[dict[str, str]], dict]:
+    ) -> tuple[list[ValidationIssue], list[str]]:
         """Checks if any mscids in the list are invalid or do not belong
         to the given table. Returns a list of errors (dicts where
         `message` contains the error message and `location` indicates
         the field that triggered the error) and the clean data with
         invalid mscids removed.
         """
-        errors = list()
+        errors: list[ValidationIssue] = list()
         clean_list = list()
 
         reverse_rel = (
@@ -1864,17 +1871,17 @@ class Record(Document, metaclass=ABCMeta):
 
     def validate_rel_patch(
         self,
-        input_data: Mapping,
+        input_data: dict,
         patch: Mapping[str, str],
         acceptable: Mapping[str, str],
         one_way: Mapping[str, bool],
-    ) -> tuple[list[dict[str, str]], dict]:
+    ) -> tuple[list[ValidationIssue], dict]:
         """Parses a patch, and (if possible) applies it to the input data.
         Returns a tuple consisting of a list of errors (dicts where
         `message` contains the error message and `location` indicates
         the field that triggered the error) and the resulting record.
         """
-        errors = list()
+        errors: list[ValidationIssue] = list()
         output = input_data
 
         op = patch.get("op")
@@ -1894,6 +1901,7 @@ class Record(Document, metaclass=ABCMeta):
         # Supported paths are `/predicate` (when operating on the whole list
         # of related records) or `/predicate/-` or `/predicate/<int>` (when
         # operating on a single record in the list).
+        m: re.Match[str] | None = None
         path = patch.get("path")
         if path is None:
             errors.append(
@@ -1917,7 +1925,7 @@ class Record(Document, metaclass=ABCMeta):
                     }
                 )
             elif op and m.group("index") is not None:
-                curr_list = output.get(m.group("predicate"))
+                curr_list = output.get(m.group("predicate"), [])
                 if op == "add":
                     if m.group("index") != "-":
                         if int(m.group("index")) > len(curr_list):
@@ -1954,7 +1962,7 @@ class Record(Document, metaclass=ABCMeta):
             )
 
         # We can only proceed if there have been no errors:
-        if errors:
+        if errors or m is None:
             return (errors, output)
 
         # Attempt to apply the patch.
@@ -1962,9 +1970,9 @@ class Record(Document, metaclass=ABCMeta):
         if op == "test":
             value = patch["value"]
             if index is None:
-                curr_value = output.get(m.group("predicate"))
+                curr_value = output.get(m.group("predicate"), [])
             else:
-                curr_list = output.get(m.group("predicate"))
+                curr_list = output.get(m.group("predicate"), [])
                 if index == "-":
                     curr_value = curr_list[-1]
                 else:
@@ -2089,7 +2097,7 @@ class Record(Document, metaclass=ABCMeta):
 
     def validate_rel_record(
         self, input_data: Mapping
-    ) -> tuple[list[dict[str, str]], dict]:
+    ) -> tuple[list[ValidationIssue], dict]:
         """Checks validity of a set of relations. Invalid keys are removed.
         Invalid values raise an error. Valid values are cleaned. Returns a
         tuple consisting of a list of errors (dicts where `message`
@@ -2098,8 +2106,8 @@ class Record(Document, metaclass=ABCMeta):
         if not hasattr(self, "rolemap"):  # pragma: no cover
             raise NotImplementedError
 
-        acceptable = dict()
-        one_way = dict()
+        acceptable: dict[str, str] = dict()
+        one_way: dict[str, bool] = dict()
         for role, info in self.rolemap.items():
             if info["direction"] == Relation.INVERSE:
                 continue
@@ -2107,11 +2115,11 @@ class Record(Document, metaclass=ABCMeta):
             one_way[info["predicate"]] = info.get("one_way", False)
 
         v_errors = list()
-        output = {"@id": self.mscid}
+        output: dict[str, str | list[str]] = {"@id": self.mscid}
         self.cache = dict()
         for predicate, mscids in input_data.items():
             # Validate role
-            accepts = list()
+            accepts = ""
             if predicate not in acceptable:
                 v_errors.append(
                     {
@@ -2282,6 +2290,19 @@ class Scheme(Record):
     def vform(self) -> type[FlaskForm]:
         return SchemeVersionForm
 
+    @overload
+    def populate_form(
+        self, data: Mapping, is_version: Literal[True]
+    ) -> "SchemeVersionForm": ...
+
+    @overload
+    def populate_form(
+        self, data: Mapping, is_version: Literal[False] = False
+    ) -> "SchemeForm": ...
+
+    def populate_form(self, data: Mapping, is_version=False):
+        return super().populate_form(data, is_version)
+
     def get_form(self) -> "SchemeForm":
         # Get data from database:
         data = json.loads(json.dumps(self))
@@ -2307,14 +2328,15 @@ class Scheme(Record):
         # Scheme-specific form settings:
         for field in form.keywords:
             if len(field.validators) == 1:
-                field.validators.append(
+                field.validators = [
+                    *field.validators,
                     validators.AnyOf(
                         th.get_valid(), "Value must be drawn from the UNESCO Thesaurus."
-                    )
-                )
+                    ),
+                ]
         form.parent_schemes.omit_mscid(self.mscid)
         form.child_schemes.omit_mscid(self.mscid)
-        form.dataTypes.choices = Datatype.get_choices()
+        form.dataTypes.choices = Datatype.get_choices()  # type: ignore
 
         return form
 
@@ -2331,7 +2353,7 @@ class Scheme(Record):
                     return to_file_slug(name, self.search)
         return ""
 
-    def get_vform(self, index: int = None) -> "SchemeVersionForm":
+    def get_vform(self, index: int | None = None) -> "SchemeVersionForm":
         # Get data from database:
         main_data = json.loads(json.dumps(self))
 
@@ -2417,6 +2439,19 @@ class Tool(Record):
     def vform(self) -> type[FlaskForm]:
         return ToolVersionForm
 
+    @overload
+    def populate_form(
+        self, data: Mapping, is_version: Literal[True]
+    ) -> "ToolVersionForm": ...
+
+    @overload
+    def populate_form(
+        self, data: Mapping, is_version: Literal[False] = False
+    ) -> "ToolForm": ...
+
+    def populate_form(self, data: Mapping, is_version=False):
+        return super().populate_form(data, is_version)
+
     def get_form(self) -> "ToolForm":
         # Get data from database:
         data = json.loads(json.dumps(self))
@@ -2432,7 +2467,7 @@ class Tool(Record):
         form: ToolForm = self.populate_form(data)
 
         # Tool-specific form settings:
-        form.types.choices = EntityType.get_choices(self.__class__)
+        form.types.choices = EntityType.get_choices(self.__class__)  # type: ignore
 
         return form
 
@@ -2449,7 +2484,7 @@ class Tool(Record):
                     return to_file_slug(name, self.search)
         return ""
 
-    def get_vform(self, index: int = None) -> "ToolVersionForm":
+    def get_vform(self, index: int | None = None) -> "ToolVersionForm":
         # Get data from database:
         main_data = json.loads(json.dumps(self))
 
@@ -2552,6 +2587,19 @@ class Crosswalk(Record):
     def vform(self) -> type[FlaskForm]:
         return CrosswalkVersionForm
 
+    @overload
+    def populate_form(
+        self, data: Mapping, is_version: Literal[True]
+    ) -> "CrosswalkVersionForm": ...
+
+    @overload
+    def populate_form(
+        self, data: Mapping, is_version: Literal[False] = False
+    ) -> "CrosswalkForm": ...
+
+    def populate_form(self, data: Mapping, is_version=False):
+        return super().populate_form(data, is_version)
+
     def get_form(self) -> "CrosswalkForm":
         # Get data from database:
         data = json.loads(json.dumps(self))
@@ -2590,7 +2638,7 @@ class Crosswalk(Record):
                 outputs.append(Record.load_by_mscid(mscid))
                 break
         elif apidata:
-            for entity in apidata.get("relatedEntities"):
+            for entity in apidata.get("relatedEntities", list()):
                 if entity.get("role") == "input scheme":
                     record = Record.load_by_mscid(entity.get("id"))
                     if record:
@@ -2628,7 +2676,7 @@ class Crosswalk(Record):
 
         return ""
 
-    def get_vform(self, index: int = None) -> "CrosswalkVersionForm":
+    def get_vform(self, index: int | None = None) -> "CrosswalkVersionForm":
         # Get data from database:
         main_data = json.loads(json.dumps(self))
 
@@ -2721,7 +2769,18 @@ class Group(Record):
 
     @property
     def name(self) -> str:
-        return self.get("name")
+        return self.get("name", "")
+
+    @overload
+    def populate_form(self, data: Mapping, is_version: Literal[True]): ...
+
+    @overload
+    def populate_form(
+        self, data: Mapping, is_version: Literal[False] = False
+    ) -> "GroupForm": ...
+
+    def populate_form(self, data: Mapping, is_version=False):
+        return super().populate_form(data, is_version)
 
     def get_form(self) -> "GroupForm":
         # Get data from database:
@@ -2734,7 +2793,7 @@ class Group(Record):
         form: GroupForm = self.populate_form(data)
 
         # Group-specific form settings:
-        form.types.choices = EntityType.get_choices(self.__class__)
+        form.types.choices = EntityType.get_choices(self.__class__)  # type: ignore
 
         return form
 
@@ -2797,8 +2856,18 @@ class Endorsement(Record):
 
     @property
     def name(self) -> str:
-        return self.get("title")
+        return self.get("title", "")
 
+    @overload
+    def populate_form(self, data: Mapping, is_version: Literal[True]): ...
+
+    @overload
+    def populate_form(
+        self, data: Mapping, is_version: Literal[False] = False
+    ) -> "EndorsementForm": ...
+
+    def populate_form(self, data: Mapping, is_version=False):
+        return super().populate_form(data, is_version)
     def get_form(self) -> "EndorsementForm":
         # Get data from database:
         data = json.loads(json.dumps(self))
