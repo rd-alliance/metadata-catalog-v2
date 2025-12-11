@@ -376,9 +376,11 @@ class Relation(object):
             ]
         return results
 
+
 class BaseRecord(Document, metaclass=ABCMeta):
     """Abstract class with common methods for the helper classes
     for different types of record."""
+
     table: str
     series: str
 
@@ -512,7 +514,16 @@ class Record(BaseRecord, metaclass=ABCMeta):
         return dict()
 
     @classmethod
-    def load(cls, doc_id: int, table: str | None = None) -> "Record":
+    @overload
+    def load(cls, doc_id: int) -> "Self": ...
+
+    # A lot of maintenance burden to make this explicit:
+    @classmethod
+    @overload
+    def load(cls, doc_id: int, table: str) -> "Record": ...
+
+    @classmethod
+    def load(cls, doc_id: int, table: str | None = None) -> "Self | Record":
         """Returns an instance of the Record subclass that corresponds to the
         given table, either blank or the existing record with the given doc_id.
         """
@@ -2881,6 +2892,7 @@ class Endorsement(Record):
 
     def populate_form(self, data: Mapping, is_version=False):
         return super().populate_form(data, is_version)
+
     def get_form(self) -> "EndorsementForm":
         # Get data from database:
         data = json.loads(json.dumps(self))

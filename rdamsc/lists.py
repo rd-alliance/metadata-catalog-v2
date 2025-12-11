@@ -3,7 +3,14 @@
 # Standard
 # --------
 from collections.abc import Iterable
-import typing as t
+import sys
+from typing import Literal
+
+if sys.version_info < (3, 11):
+    from typing_extensions import TypedDict
+else:
+    from typing import TypedDict
+
 
 # Non-standard
 # ------------
@@ -15,7 +22,7 @@ from .records import Record, Relation, Scheme, VocabTerm
 from .vocab import get_thesaurus
 
 bp = Blueprint("list", __name__)
-RoleLabel = t.Literal[
+RoleLabel = Literal[
     "parent schemes",
     "supported schemes",
     "input schemes",
@@ -28,29 +35,41 @@ RoleLabel = t.Literal[
 ]
 
 
-def noop(*args) -> None:
-    """Null operation."""
-    pass
+class TreeNode(TypedDict):
+    name: str
+    url: str
+    children: list["TreeNode"]
 
 
-def add_mscids(collection: set[str], records: Iterable[Record]) -> None:
-    """Adds MSCIDs of records to the given set."""
-    for record in records:
-        collection.add(record.mscid)
+class IDAdder:
+    """Optimization to avoid repeatedly testing if we're collecting IDs."""
+
+    def __init__(self, ids: set[str] | None = None):
+        if ids is None:
+            self.add = self.discard_value
+        else:
+            self.add = self.add_value
+            self.set = ids
+
+    def discard_value(self, records: Iterable[Record]):
+        pass
+
+    def add_value(self, records: Iterable[Record]):
+        for record in records:
+            self.set.add(record.mscid)
 
 
 def get_scheme_tree(
-    records: list[Scheme],
-    descendent_ids: set[str] | None = None,
+    records: list[Record],
+    id_adder: IDAdder,
     seen_so_far: list[str] | None = None,
-) -> list[dict[str, str | list]]:
+) -> list[TreeNode]:
     """Takes list of parent schemes and returns tree suitable for use with the
     contents template.
 
     If provided, populates `descendent_ids` with the MSCIDs of all records
     descending from the given list of parent schemes.
     """
-    add_children = noop if descendent_ids is None else add_mscids
     if seen_so_far is None:
         seen_so_far = list()
 
@@ -64,13 +83,13 @@ def get_scheme_tree(
             )
             return tree
         children = rel.subject_records("parent schemes", record.mscid)
-        add_children(descendent_ids, children)
-        node = {
+        id_adder.add(children)
+        node: TreeNode = {
             "name": record.name,
             "url": url_for("main.display", table=record.table, number=record.doc_id),
             "children": get_scheme_tree(
                 children,
-                descendent_ids=descendent_ids,
+                id_adder,
                 seen_so_far=seen_so_far + [record.mscid],
             ),
         }
@@ -86,7 +105,7 @@ def get_scheme_tree(
     " funders, users, originators):role>"
 )
 @bp.route("/<string:series>-index")
-def record_index(series: str, role: RoleLabel = None):
+def record_index(series: str, role: RoleLabel | None = None):
     """The contents template takes a 'tree' variable, which is a list of
     dictionaries, each with keys 'name' (human-readable name) and 'url'
     (Catalog page URL). The dictionary represents a node and if the node has
@@ -109,14 +128,17 @@ def record_index(series: str, role: RoleLabel = None):
         # Assemble tree of records that are not on blacklist:
         tree = get_scheme_tree(
             [record for record in records if record and record.mscid not in children],
-            descendent_ids=children_seen,
+            IDAdder(children_seen),
         )
 
         # Check for records excluded because of parent/child looping:
         children_unseen = [v for v in children if v not in children_seen]
         if children_unseen:
             tree.extend(
-                get_scheme_tree([Scheme.load_by_mscid(v) for v in children_unseen])
+                get_scheme_tree(
+                    [r for v in children_unseen if (r := Scheme.load_by_mscid(v))],
+                    IDAdder(),
+                )
             )
             tree.sort(key=lambda d: d["name"].lower())
 
