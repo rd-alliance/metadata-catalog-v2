@@ -3,11 +3,11 @@
 # Standard
 # --------
 from collections import deque, defaultdict
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, MutableMapping
 from enum import Enum, auto
 import math
 import re
-import typing as t
+from typing import Any, Literal, TypeVar
 
 # Non-standard
 # ------------
@@ -21,7 +21,7 @@ from flask import (
     url_for,
 )
 from flask_httpauth import HTTPBasicAuth, HTTPTokenAuth, MultiAuth
-from tinydb.database import Document
+from tinydb.table import Document
 import werkzeug.exceptions
 
 # Local
@@ -43,7 +43,7 @@ basic_auth = HTTPBasicAuth()
 token_auth = HTTPTokenAuth("Bearer")
 multi_auth = MultiAuth(basic_auth, token_auth)
 api_version = "2.1.0"
-_M = t.TypeVar("_M", bound=Mapping)
+_M = TypeVar("_M", bound=MutableMapping)
 
 
 # Handy functions
@@ -71,12 +71,16 @@ def embellish_record(record: Record, with_embedded: bool = False) -> Record:
         record["relatedEntities"] = list()
         for related_entity in related_entities:
             if with_embedded:
-                related_entity["data"] = seen_mscids.get(related_entity["id"])
-                if related_entity["data"] is None:
-                    entity = Record.load_by_mscid(related_entity["id"])
-                    full_entity = embellish_record(entity)
-                    related_entity["data"] = full_entity
-                    seen_mscids[entity.mscid] = full_entity
+                embellished_entity: dict[str, Record | str | None] = dict(
+                    related_entity
+                )
+                embellished_entity["data"] = seen_mscids.get(related_entity["id"])
+                if embellished_entity["data"] is None:
+                    if entity := Record.load_by_mscid(related_entity["id"]):
+                        full_entity = embellish_record(entity)
+                        embellished_entity["data"] = full_entity
+                        seen_mscids[entity.mscid] = full_entity
+                related_entity = embellished_entity
             record["relatedEntities"].append(related_entity)
 
     return record
@@ -89,7 +93,7 @@ def embellish_record_fully(record: Record) -> Record:
     return embellish_record(record, with_embedded=True)
 
 
-def embellish_relation(document: Document, route: str = ".get_relation") -> Document:
+def embellish_relation(document: _M, route: str = ".get_relation") -> _M:
     """Embellishes a relationship or inverse relationship record."""
     mscid = document["@id"]
     n = len(mscid_prefix)
@@ -99,15 +103,15 @@ def embellish_relation(document: Document, route: str = ".get_relation") -> Docu
     return document
 
 
-def embellish_inv_relation(document: Document) -> Document:
+def embellish_inv_relation(document: _M) -> _M:
     """Embellishes a relationship or inverse relationship record."""
     return embellish_relation(document, route=".get_inv_relation")
 
 
-def convert_thesaurus(document: Document) -> dict[str, t.Any]:
+def convert_thesaurus(document: Document) -> dict[str, Any]:
     """Converts an internal thesaurus entry into a SKOS Concept."""
     th = Thesaurus()
-    return th.get_concept(document.get("uri").split("/")[-1])
+    return th.get_concept(document["uri"].split("/")[-1])
 
 
 def do_not_embellish(mapping: _M) -> _M:
@@ -116,8 +120,8 @@ def do_not_embellish(mapping: _M) -> _M:
 
 
 def as_response_item(
-    mapping: Mapping, callback: Callable[[_M], _M] = embellish_record
-) -> dict[str, t.Any]:
+    mapping: _M, callback: Callable[[_M], Mapping] = embellish_record
+) -> dict[str, Any]:
     """Embellishes a record using the callback function, then wraps it in a
     response object.
     """
@@ -136,10 +140,10 @@ def as_response_page(
     mappings: list[_M],
     link: str,
     page_size=10,
-    start: int = None,
-    page: int = None,
-    callback: Callable[[_M], _M] = embellish_record,
-) -> dict[str, t.Any]:
+    start: int | None = None,
+    page: int | None = None,
+    callback: Callable[[_M], Mapping] = embellish_record,
+) -> dict[str, Any]:
     """Wraps list of records in a response object representing a page of
     `page_size` items, starting with item number `start` or page number `page`
     (both counting from 1) The base URL for adjacent requests should be given
@@ -802,7 +806,7 @@ def get_relations():
     # traversed robustly using the token.
     rel = Relation()
     rel_records = rel.tb.all()
-    rel_records.sort(key=lambda k: sortval(k.get("@id")))
+    rel_records.sort(key=lambda k: sortval(k["@id"]))
 
     # Get filter parameter
     filter = request.values.get("q")
@@ -855,7 +859,7 @@ def get_relation(table: MainTableID, number: int):
 
     rel = Relation()
     mscid = f"{mscid_prefix}{table}{number}"
-    rel_record = {"@id": mscid}
+    rel_record: dict[str, Any] = {"@id": mscid}
     rel_record.update(rel.related(mscid, direction=rel.FORWARD))
 
     # Return result
@@ -875,7 +879,7 @@ def get_inv_relations():
     rel_records = list()
 
     for mscid in mscids:
-        rel_record = {"@id": mscid}
+        rel_record: dict[str, Any] = {"@id": mscid}
         rel_record.update(rel.related(mscid, direction=rel.INVERSE))
         rel_records.append(rel_record)
 
@@ -930,7 +934,7 @@ def get_inv_relation(table: MainTableID, number: int):
 
     rel = Relation()
     mscid = f"{mscid_prefix}{table}{number}"
-    rel_record = {"@id": mscid}
+    rel_record: dict[str, Any] = {"@id": mscid}
     rel_record.update(rel.related(mscid, direction=rel.INVERSE))
 
     # Return result
@@ -1023,7 +1027,8 @@ def get_thesaurus_concepts_used():
 @basic_auth.login_required
 def get_auth_token():
     """Returns a token for use in future requests."""
-    user: ApiUser = basic_auth.current_user()
+    user = basic_auth.current_user()
+    assert user
     token = user.generate_auth_token()
     return jsonify({"apiVersion": api_version, "token": token.decode("ascii")})
 
@@ -1032,7 +1037,8 @@ def get_auth_token():
 @multi_auth.login_required
 def reset_password():
     """Updates the password for an ApiUser."""
-    user: ApiUser = multi_auth.current_user()
+    user = multi_auth.current_user()
+    assert user
     response = {
         "apiVersion": api_version,
         "username": user.get("userid"),
@@ -1126,7 +1132,7 @@ def annul_record(table: TableID, number: int = 0):
 
 @bp.route("/rel/<any(m, t, c, e):table><int:number>", methods=["POST", "PUT"])
 @multi_auth.login_required
-def set_relation(table: t.Literal["m", "t", "c", "e"], number: int):
+def set_relation(table: Literal["m", "t", "c", "e"], number: int):
     """Add or replace entire forward relation table for a main entity."""
     record = Record.load(number, table)
 
@@ -1153,7 +1159,7 @@ def set_relation(table: t.Literal["m", "t", "c", "e"], number: int):
 
 @bp.route("/rel/<any(m, t, c, e):table><int:number>", methods=["PATCH"])
 @multi_auth.login_required
-def patch_relation(table: t.Literal["m", "t", "c", "e"], number: int):
+def patch_relation(table: Literal["m", "t", "c", "e"], number: int):
     record = Record.load(number, table)
 
     # Abort if table or number was wrong:
@@ -1179,7 +1185,7 @@ def patch_relation(table: t.Literal["m", "t", "c", "e"], number: int):
 
 @bp.route("/invrel/<any(m, g):table><int:number>", methods=["PATCH"])
 @multi_auth.login_required
-def patch_inv_relation(table: t.Literal["m", "g"], number: int):
+def patch_inv_relation(table: Literal["m", "g"], number: int):
     record = Record.load(number, table)
 
     # Abort if table or number was wrong:
