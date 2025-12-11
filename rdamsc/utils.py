@@ -4,7 +4,6 @@
 # --------
 from collections.abc import Callable
 import re
-import typing as t
 import unicodedata
 import urllib.parse
 
@@ -12,7 +11,7 @@ import urllib.parse
 # ------------
 from flask import url_for
 from flask_wtf import FlaskForm
-from tinydb import Query
+from tinydb.queries import Query, QueryLike
 from wtforms import Field, FieldList, Form, FormField
 
 
@@ -110,7 +109,7 @@ def clean_errors(form: FlaskForm | Form):
             f.errors = clean_error_list(f)
 
 
-def to_file_slug(string: str, callback: Callable[[Query], list]) -> str:
+def to_file_slug(string: str, callback: Callable[[QueryLike], list]) -> str:
     """Transforms string into a new slug for use when decomposing the
     database to individual files. The callback should be the search
     method of a TinyDB table, and will be used to ensure that the
