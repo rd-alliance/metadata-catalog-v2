@@ -4,7 +4,6 @@
 # --------
 from collections.abc import Mapping
 import time
-import typing as t
 
 # Non-standard
 # ------------
@@ -18,7 +17,7 @@ from authlib.jose.errors import (
 from flask import current_app, g
 from passlib.apps import custom_app_context as pwd_context
 from tinydb import TinyDB, Query
-from tinydb.database import Document
+from tinydb.table import Document
 from tinydb.operations import delete
 from tinyrecord import transaction
 
@@ -49,7 +48,7 @@ class User(Document):
         tb = db.table(cls.table)
         doc = tb.get(Query().userid == userid)
 
-        if doc:
+        if isinstance(doc, Document) and doc:
             return cls(value=doc, doc_id=doc.doc_id)
         return cls(value=dict(), doc_id=0)
 
@@ -142,7 +141,7 @@ class ApiUser(User):
         tb = db.table(cls.table)
         doc = tb.get(doc_id=doc_id)
 
-        if doc:
+        if isinstance(doc, Document) and doc:
             return cls(value=doc, doc_id=doc.doc_id)
         return cls(value=dict(), doc_id=0)
 
@@ -174,7 +173,7 @@ class ApiUser(User):
                 return False
         return is_verified
 
-    def generate_auth_token(self, expiration: t.SupportsFloat = 600) -> bytes:
+    def generate_auth_token(self, expiration: int | float = 600) -> bytes:
         """Returns a time-limited, encoded authorization token for this
         user.
         """
