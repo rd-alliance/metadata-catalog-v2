@@ -2,12 +2,11 @@
 # ============
 # Standard
 # --------
-import typing as t
+from typing import NamedTuple
 
 # Non-standard
 # ------------
 from flask import (
-    Response,
     abort,
     Blueprint,
     current_app,
@@ -31,6 +30,8 @@ from authlib.integrations.flask_client.apps import FlaskOAuth1App, FlaskOAuth2Ap
 from authlib.integrations.flask_client.integration import FlaskIntegration
 import requests
 from tinydb import Query
+from tinydb.table import Document
+from werkzeug import Response
 from wtforms import validators, StringField
 
 # Local
@@ -40,14 +41,14 @@ from .utils import Pluralizer
 
 bp = Blueprint("auth", __name__)
 lm = LoginManager()
-lm.login_view = "auth.login"
+lm.login_view = "auth.login"  # type: ignore
 lm.login_message = "Please sign in to access this page."
 lm.login_message_category = "error"
 
 
 # Auth provider classes
 # =====================
-class ProfileData(t.NamedTuple):
+class ProfileData(NamedTuple):
     userid: str | None = None
     username: str | None = None
     email: str | None = None
@@ -200,12 +201,14 @@ class GitLabClient(OAuthClient):  # pragma: no cover
             user_info = self.app.userinfo()
             current_app.logger.debug(f"user_info = {user_info}")
             id = user_info["sub"]
+            name = str(s) if (s := user_info.get("name")) else ""
+            email = str(s) if (s := user_info.get("email")) else ""
         except requests.HTTPError or ValueError:
             return ProfileData()
         profile_data = ProfileData(
             userid=f"{self.slug}${id}",
-            username=user_info.get("name"),
-            email=user_info.get("email"),
+            username=name,
+            email=email,
         )
         current_app.logger.debug(f"parsed as {profile_data}")
         return profile_data
@@ -232,12 +235,14 @@ class GoogleClient(OAuthClient):  # pragma: no cover
             user_info = self.app.userinfo()
             current_app.logger.debug(f"user_info = {user_info}")
             id = user_info["sub"]
+            name = str(s) if (s := user_info.get("name")) else ""
+            email = str(s) if (s := user_info.get("email")) else ""
         except requests.HTTPError or ValueError:
             return ProfileData()
         profile_data = ProfileData(
             userid=f"{self.slug}${id}",
-            username=user_info.get("name"),
-            email=user_info.get("email"),
+            username=name,
+            email=email,
         )
         current_app.logger.debug(f"parsed as {profile_data}")
         return profile_data
@@ -300,12 +305,14 @@ class OrcidClient(OAuthClient):  # pragma: no cover
             user_info = self.app.userinfo()
             current_app.logger.debug(f"user_info = {user_info}")
             id = user_info["sub"]
+            name = str(s) if (s := user_info.get("name")) else ""
+            email = str(s) if (s := user_info.get("email")) else ""
         except requests.HTTPError or ValueError:
             return ProfileData()
         profile_data = ProfileData(
             userid=f"{self.slug}${id}",
-            username=user_info.get("name"),
-            email=user_info.get("email"),
+            username=name,
+            email=email,
         )
         if profile_data.email is None:
             email = ""
@@ -518,7 +525,7 @@ def load_user(id: str | int) -> User | None:
     """Utility for loading users."""
     user_db = get_user_db()
     document = user_db.get(doc_id=int(id))
-    if document:
+    if isinstance(document, Document):
         return User(value=document, doc_id=document.doc_id)
     return None  # pragma: no cover
 
@@ -582,7 +589,7 @@ def oauth_callback(provider: str):
         return redirect(url_for("hello"))
     User = Query()
     profile = user_db.get(User.userid == userid)
-    if profile:
+    if isinstance(profile, Document):
         flash("Successfully signed in.")
         user = load_user(profile.doc_id)
         login_user(user)
