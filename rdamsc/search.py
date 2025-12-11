@@ -14,7 +14,7 @@ from wtforms import FieldList, StringField, validators
 # Local
 # -----
 from .records import Datatype, Group, Relation, Scheme, mscid_prefix
-from .utils import Pluralizer, clean_error_list, url_for_subject, wild_to_regex
+from .utils import Pluralizer, clean_errors, url_for_subject, wild_to_regex
 from .vocab import get_thesaurus
 
 bp = Blueprint("search", __name__)
@@ -63,11 +63,12 @@ def scheme_search():
     th = get_thesaurus()
     for field in form.keywords:
         if len(field.validators) == 1:
-            field.validators.append(
+            field.validators = [
+                *field.validators,
                 validators.AnyOf(
                     th.get_valid(), "Value must be drawn from the UNESCO Thesaurus."
-                )
-            )
+                ),
+            ]
 
     # Load relation handling:
     rel = Relation()
@@ -91,7 +92,7 @@ def scheme_search():
             flash_result(len(sub_results_by_id), f'with title matching "{title_wild}"')
             results_by_id.update(sub_results_by_id)
 
-        term_list_raw = form.data.get("keywords")
+        term_list_raw = form.data.get("keywords", [])
         term_list = [v for v in term_list_raw if v]
         if term_list:
             no_of_queries += 1
@@ -103,7 +104,7 @@ def scheme_search():
                 term_set.update(th.get_branch(term))
             if term_set:
                 # Search for matching schemes
-                for m in Scheme.search(Q.keywords.any(term_set)):
+                for m in Scheme.search(Q.keywords.any(list(term_set))):
                     sub_results_by_id[m.mscid] = m
             flash_result(
                 len(sub_results_by_id), f"related to {' and '.join(term_list)}"
@@ -148,7 +149,7 @@ def scheme_search():
             no_of_queries += 1
             sub_results_by_id = dict()
             dtype = Datatype.load_by_label(dtype_raw)
-            for m in Scheme.search(Q.dataTypes.any(dtype.mscid)):
+            for m in Scheme.search(Q.dataTypes.any([dtype.mscid])):
                 sub_results_by_id[m.mscid] = m
             flash_result(
                 len(sub_results_by_id), f'used with data of type "{dtype_raw}"'
@@ -184,17 +185,7 @@ def scheme_search():
                 " errors}. See below for details.".format(Pluralizer(len(form.errors)))
             )
         flash(msg, "error")
-        for field, errors in form.errors.items():
-            if len(errors) > 0:
-                if isinstance(errors[0], dict):
-                    # Subform
-                    for subform in errors:
-                        for subfield, suberrors in subform.items():
-                            for f in form[field]:
-                                f[subfield].errors = clean_error_list(f[subfield])
-                else:
-                    # Simple field
-                    form[field].errors = clean_error_list(form[field])
+        clean_errors(form)
 
     # No results displayed, so render form instead.
     # Enable autocompletion for title, identifier, funder, dataType:
@@ -280,7 +271,7 @@ def dataType(number: int):
     if not datatype:
         abort(404)
 
-    results = Scheme.search(Query().dataTypes.any(datatype.mscid))
+    results = Scheme.search(Query().dataTypes.any([datatype.mscid]))
     no_of_hits = len(results)
     if no_of_hits:
         flash(
