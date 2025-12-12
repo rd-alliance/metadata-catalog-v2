@@ -15,7 +15,8 @@ from authlib.jose.errors import (
     InvalidClaimError,
 )
 from flask import current_app, g
-from passlib.apps import custom_app_context as pwd_context
+from passlib.context import LazyCryptContext
+from passlib.utils import sys_bits
 from tinydb import TinyDB, Query
 from tinydb.table import Document
 from tinydb.operations import delete
@@ -24,6 +25,16 @@ from tinyrecord import transaction
 # Local
 # -----
 from .db_utils import JSONStorageWithGit
+
+pwd_context = LazyCryptContext(
+    # In due course, may update to safer algorithms:
+    schemes=["sha512_crypt", "sha256_crypt"],
+    default="sha256_crypt" if sys_bits < 64 else "sha512_crypt",
+    sha512_crypt__min_rounds=535000,
+    sha256_crypt__min_rounds=535000,
+    admin__sha512_crypt__min_rounds=1024000,
+    admin__sha256_crypt__min_rounds=1024000,
+)
 
 
 class User(Document):
