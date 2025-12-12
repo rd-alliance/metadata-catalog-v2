@@ -65,9 +65,9 @@ class AuthActions(object):
         if "<h1>Create Profile</h1>" in html:
             csrf = self._page.get_csrf(html)
             m = re.search(r'<input [^>]+ name="name" [^>]+ value="([^"]+)">', html)
-            username = m.group(1)
+            username = m.group(1) if m else "MISSING"
             m = re.search(r'<input [^>]+ name="email" [^>]+ value="([^"]+)">', html)
-            useremail = m.group(1)
+            useremail = m.group(1) if m else "MISSING"
             return self._client.post(
                 "/create-profile",
                 data={"csrf_token": csrf, "name": username, "email": useremail},
@@ -470,7 +470,10 @@ class DataDBActions(object):
         """Returns relation in form that API would respond with."""
         rel_id = f"msc:{record}"
         if inverse:
-            apirel = {"@id": rel_id, "uri": f"http://localhost/api2/invrel/{record}"}
+            apirel: dict[str, str | list] = {
+                "@id": rel_id,
+                "uri": f"http://localhost/api2/invrel/{record}",
+            }
             i = 1
             while hasattr(self, f"rel{i}"):
                 rel = getattr(self, f"rel{i}")
@@ -484,7 +487,7 @@ class DataDBActions(object):
                     for object in objects:
                         if object != apirel["@id"]:
                             continue
-                        apirel.setdefault(tag, list()).append(id)
+                        apirel.setdefault(tag, list()).append(id)  # type: ignore
                 i += 1
         else:
             rel = dict()
@@ -504,11 +507,9 @@ class DataDBActions(object):
 
         table_order = {"m": 0, "t": 10, "c": 20, "g": 30, "e": 40}
         n = 5
-        for predicate in apirel.keys():
-            if isinstance(apirel[predicate], list):
-                apirel[predicate].sort(
-                    key=lambda k: table_order[k[n - 1 : n]] + int(k[n:])
-                )
+        for mscids in apirel.values():
+            if isinstance(mscids, list):
+                mscids.sort(key=lambda k: table_order[k[n - 1 : n]] + int(k[n:]))
         return apirel
 
     def get_apirelset(self, inverse: bool = False) -> list[dict]:
@@ -555,7 +556,7 @@ class DataDBActions(object):
         )
         return apidataset
 
-    def get_apiterm(self, table: str, number: int) -> dict:
+    def get_apiterm(self, table: str, number: int) -> dict | None:
         """Returns term record in form that API would respond with."""
         apidataset = self.get_apitermset(table)
         if number < 1 or number > len(apidataset):
@@ -654,7 +655,7 @@ class PageActions(object):
             r"<datalist[^>]*>(\n\s+<option>[^<]*</option>)+\n\s+</datalist>\n", "", html
         )
 
-    def get_csrf(self, html: str = None) -> str:
+    def get_csrf(self, html: str | None = None) -> str | None:
         """Extracts CSRF token from page's form controls."""
         if html is not None:
             self.read(html)
@@ -667,7 +668,7 @@ class PageActions(object):
             return None
         return m.group(1)
 
-    def get_all_hidden(self, html: str = None) -> MultiDict:
+    def get_all_hidden(self, html: str | None = None) -> MultiDict:
         """Extracts hidden inputs from page's form controls."""
         if html is not None:
             self.read(html)
@@ -680,7 +681,7 @@ class PageActions(object):
             results.add(m.group("name"), unescape(m.group("value")))
         return results
 
-    def assert_contains(self, substring: str, html: str = None) -> None:
+    def assert_contains(self, substring: str, html: str | None = None) -> None:
         """Asserts page source includes substring."""
         __tracebackhide__ = True
         if html is not None:
@@ -688,7 +689,7 @@ class PageActions(object):
         if substring not in self.html:
             pytest.fail(f"‘{substring}’ not in page. Full page:\n{self.trimmed_html}")
 
-    def assert_lacks(self, substring: str, html: str = None) -> None:
+    def assert_lacks(self, substring: str, html: str | None = None) -> None:
         """Asserts page source does not include substring."""
         __tracebackhide__ = True
         if html is not None:
@@ -741,7 +742,7 @@ class UserDBActions(object):
 class AuthAPIActions(object):
     def __init__(self, client: FlaskClient, user_db: UserDBActions):
         self._client = client
-        self._username = user_db.api_users1.get("userid")
+        self._username = user_db.api_users1["userid"]
         self._password = user_db.pwd1
         self._token = ""
         self._expiry = 0
@@ -757,7 +758,9 @@ class AuthAPIActions(object):
                 follow_redirects=True,
             )
             test_data: dict = response.get_json()
-            self._token = test_data.get("token")
+            self._token = test_data.get("token", "")
+            if not self._token:
+                raise RuntimeError("No token supplied by token endpoint")
         return self._token
 
 

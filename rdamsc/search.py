@@ -2,7 +2,7 @@
 # ============
 # Standard
 # --------
-import typing as t
+from typing import Literal
 
 # Non-standard
 # ------------
@@ -289,7 +289,7 @@ def dataType(number: int):
 
 
 @bp.route("/<any(funder, maintainer, user):role>/g<int:number>")
-def group(role: t.Literal["funder", "maintainer", "user"], number: int):
+def group(role: Literal["funder", "maintainer", "user"], number: int):
     """Show search results for funders, maintainers, known users of
     schemes.
     """

@@ -2,7 +2,6 @@ from collections import deque
 import json
 import re
 import time
-import typing as t
 
 from authlib.jose import jwt
 from flask import Flask
@@ -1090,7 +1089,7 @@ def test_auth_api2(client: FlaskClient, app: Flask, user_db: UserDBActions):
     assert response.status_code == 401
 
     # Reject call with bad credentials
-    username = user_db.api_users1.get("userid")
+    username = user_db.api_users1["userid"]
     password = "wrong"
     credentials = _basic_auth_str(username, password)
     response = client.get(
@@ -1101,7 +1100,7 @@ def test_auth_api2(client: FlaskClient, app: Flask, user_db: UserDBActions):
     assert response.status_code == 401
 
     # Succeed with good credentials
-    username = user_db.api_users1.get("userid")
+    username = user_db.api_users1["userid"]
     password = user_db.pwd1
     credentials = _basic_auth_str(username, password)
     response = client.get(
@@ -1996,7 +1995,7 @@ def test_main_write(
         follow_redirects=False,
     )
     assert response.status_code == 302
-    assert response.headers.get("Location").endswith("/api2/m")
+    assert response.headers.get("Location", "").endswith("/api2/m")
 
     record = {"parent schemes": ["msc:m1"]}
     credentials = f"Bearer {auth_api.get_token()}"

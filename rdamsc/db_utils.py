@@ -4,7 +4,7 @@
 # --------
 import json
 import os
-import typing as t
+from typing import Any
 
 # Non-standard
 # ------------
@@ -51,7 +51,7 @@ class JSONStorageWithGit(Storage):
     def close(self):
         self._handle.close()
 
-    def read(self) -> dict[str, dict[str, t.Any]] | None:
+    def read(self) -> dict[str, dict[str, Any]] | None:
         # Get the file size
         self._handle.seek(0, os.SEEK_END)
         size = self._handle.tell()
@@ -63,7 +63,7 @@ class JSONStorageWithGit(Storage):
             self._handle.seek(0)
             return json.load(self._handle)
 
-    def write(self, data: dict[str, dict[str, t.Any]]):
+    def write(self, data: dict[str, dict[str, Any]]):
         # Write the json file
         self._handle.seek(0)
         serialized = json.dumps(data, **self.kwargs)

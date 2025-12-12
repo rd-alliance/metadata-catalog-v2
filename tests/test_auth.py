@@ -1,4 +1,3 @@
-from calendar import c
 import json
 import logging
 from urllib.parse import urlencode

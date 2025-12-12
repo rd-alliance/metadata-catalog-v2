@@ -2,7 +2,13 @@
 # ============
 # Standard
 # --------
+import sys
 from typing import NamedTuple
+
+if sys.version_info < (3, 11):
+    from typing_extensions import TypedDict
+else:
+    from typing import TypedDict
 
 # Non-standard
 # ------------
@@ -48,6 +54,18 @@ lm.login_message_category = "error"
 
 # Auth provider classes
 # =====================
+class OACAppKwargs(
+    TypedDict,
+    total=False,
+):
+    access_token_url: str
+    api_base_url: str
+    authorize_url: str
+    client_kwargs: dict[str, str]
+    request_token_url: str
+    server_metadata_url: str
+
+
 class ProfileData(NamedTuple):
     userid: str | None = None
     username: str | None = None
@@ -65,7 +83,7 @@ class OAuthClient:
     name = ""
     icon = "fa-solid fa-key"
     main = False
-    app_kwargs = dict()
+    app_kwargs: OACAppKwargs = {}
 
     def __init__(self, client_id: str, client_secret: str):
         self.app = self.app_cls(
@@ -101,12 +119,12 @@ class DummyAuthClient(OAuthClient):
 
     slug = "test"
     name = "Test"
-    app_kwargs = dict(
-        authorize_url="http://example.org/login/oauth/authorize",
-        access_token_url="http://example.org/login/oauth/access_token",
-        api_base_url="http://example.org/",
-        client_kwargs=dict(scope="user"),
-    )
+    app_kwargs = {
+        "authorize_url": "http://example.org/login/oauth/authorize",
+        "access_token_url": "http://example.org/login/oauth/access_token",
+        "api_base_url": "http://example.org/",
+        "client_kwargs": dict(scope="user"),
+    }
 
     def authorize_redirect(self) -> Response:
         if current_app.config["TESTING"] is not True:
@@ -141,12 +159,12 @@ class GitHubClient(OAuthClient):  # pragma: no cover
     slug = "github"
     name = "GitHub"
     icon = "fa-brands fa-github"
-    app_kwargs = dict(
-        authorize_url="https://github.com/login/oauth/authorize",
-        access_token_url="https://github.com/login/oauth/access_token",
-        api_base_url="https://api.github.com/",
-        client_kwargs=dict(scope="read:user user:email"),
-    )
+    app_kwargs = {
+        "authorize_url": "https://github.com/login/oauth/authorize",
+        "access_token_url": "https://github.com/login/oauth/access_token",
+        "api_base_url": "https://api.github.com/",
+        "client_kwargs": dict(scope="read:user user:email"),
+    }
 
     def get_profile_data(self) -> ProfileData:
         current_app.logger.debug(f"Login with {self.name}.")
@@ -189,10 +207,10 @@ class GitLabClient(OAuthClient):  # pragma: no cover
     slug = "gitlab"
     name = "GitLab"
     icon = "fa-brands fa-gitlab"
-    app_kwargs = dict(
-        client_kwargs=dict(scope="openid email"),
-        server_metadata_url="https://gitlab.com/.well-known/openid-configuration",
-    )
+    app_kwargs = {
+        "client_kwargs": dict(scope="openid email"),
+        "server_metadata_url": "https://gitlab.com/.well-known/openid-configuration",
+    }
 
     def get_profile_data(self) -> ProfileData:
         current_app.logger.debug(f"Login with {self.name}.")
@@ -223,10 +241,10 @@ class GoogleClient(OAuthClient):  # pragma: no cover
     slug = "google"
     name = "Google"
     icon = "fa-brands fa-google"
-    app_kwargs = dict(
-        client_kwargs=dict(scope="openid name email"),
-        server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
-    )
+    app_kwargs = {
+        "client_kwargs": dict(scope="openid name email"),
+        "server_metadata_url": "https://accounts.google.com/.well-known/openid-configuration",
+    }
 
     def get_profile_data(self) -> ProfileData:
         current_app.logger.debug(f"Login with {self.name}.")
@@ -257,12 +275,12 @@ class LinkedInClient(OAuthClient):  # pragma: no cover
     slug = "linkedin"
     name = "LinkedIn"
     icon = "fa-brands fa-linkedin"
-    app_kwargs = dict(
-        authorize_url="https://www.linkedin.com/oauth/v2/authorization",
-        access_token_url="https://www.linkedin.com/oauth/v2/accessToken",
-        api_base_url="https://api.linkedin.com/v1/people/",
-        client_kwargs={"scope": "r_basicprofile r_emailaddress"},
-    )
+    app_kwargs = {
+        "authorize_url": "https://www.linkedin.com/oauth/v2/authorization",
+        "access_token_url": "https://www.linkedin.com/oauth/v2/accessToken",
+        "api_base_url": "https://api.linkedin.com/v1/people/",
+        "client_kwargs": {"scope": "r_basicprofile r_emailaddress"},
+    }
 
     def get_profile_data(self) -> ProfileData:
         current_app.logger.debug(f"Login with {self.name}.")
@@ -292,11 +310,11 @@ class OrcidClient(OAuthClient):  # pragma: no cover
     slug = "orcid"
     name = "ORCID"
     icon = "fa-brands fa-orcid"
-    app_kwargs = dict(
-        api_base_url="https://pub.orcid.org/v2.0/",
-        client_kwargs=dict(scope="openid"),
-        server_metadata_url="https://orcid.org/.well-known/openid-configuration",
-    )
+    app_kwargs = {
+        "api_base_url": "https://pub.orcid.org/v2.0/",
+        "client_kwargs": dict(scope="openid"),
+        "server_metadata_url": "https://orcid.org/.well-known/openid-configuration",
+    }
 
     def get_profile_data(self) -> ProfileData:
         current_app.logger.debug(f"Login with {self.name}.")
@@ -351,12 +369,12 @@ class TwitterClient(OAuthClient):  # pragma: no cover
     slug = "twitter"
     name = "X"
     icon = "fa-brands fa-twitter"
-    app_kwargs = dict(
-        request_token_url="https://api.x.com/oauth/request_token",
-        authorize_url="https://api.x.com/oauth/authorize",
-        access_token_url="https://api.x.com/oauth/access_token",
-        api_base_url="https://api.x.com/1.1/",
-    )
+    app_kwargs = {
+        "request_token_url": "https://api.x.com/oauth/request_token",
+        "authorize_url": "https://api.x.com/oauth/authorize",
+        "access_token_url": "https://api.x.com/oauth/access_token",
+        "api_base_url": "https://api.x.com/1.1/",
+    }
 
     def get_profile_data(self) -> ProfileData:
         current_app.logger.debug(f"Login with {self.name}.")
@@ -385,11 +403,11 @@ class WicketClient(OAuthClient):  # pragma: no cover
     slug = "wicket"
     name = "RDA"
     main = True
-    app_kwargs = dict(
-        authorize_url="https://rda-login.wicketcloud.com/oauth2.0/authorize",
-        access_token_url="https://rda-login.wicketcloud.com/oauth2.0/accessToken",
-        api_base_url="https://rda-login.wicketcloud.com/oauth2.0/",
-    )
+    app_kwargs = {
+        "authorize_url": "https://rda-login.wicketcloud.com/oauth2.0/authorize",
+        "access_token_url": "https://rda-login.wicketcloud.com/oauth2.0/accessToken",
+        "api_base_url": "https://rda-login.wicketcloud.com/oauth2.0/",
+    }
 
     def get_profile_data(self) -> ProfileData:
         current_app.logger.debug(f"Login with {self.name}.")
@@ -425,12 +443,12 @@ class XClient(OAuthClient):  # pragma: no cover
     slug = "x"
     name = "X"
     icon = "fa-brands fa-x-twitter"
-    app_kwargs = dict(
-        authorize_url="https://x.com/i/oauth2/authorize",
-        access_token_url="https://api.x.com/2/oauth2/token",
-        api_base_url="https://api.x.com/2/",
-        client_kwargs=dict(scope="users.read"),
-    )
+    app_kwargs = {
+        "authorize_url": "https://x.com/i/oauth2/authorize",
+        "access_token_url": "https://api.x.com/2/oauth2/token",
+        "api_base_url": "https://api.x.com/2/",
+        "client_kwargs": dict(scope="users.read"),
+    }
 
     def get_profile_data(self) -> ProfileData:
         current_app.logger.debug(f"Login with {self.name}.")
