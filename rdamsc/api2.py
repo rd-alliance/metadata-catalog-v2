@@ -111,7 +111,7 @@ def embellish_inv_relation(document: _M) -> _M:
 def convert_thesaurus(document: Document) -> dict[str, Any]:
     """Converts an internal thesaurus entry into a SKOS Concept."""
     th = Thesaurus()
-    return th.get_concept(document["uri"].split("/")[-1])
+    return th.get_concept(document)
 
 
 def do_not_embellish(mapping: _M) -> _M:
@@ -958,7 +958,7 @@ def get_thesaurus_concept(level: ThesaurusLevel, number: int):
     form = request.values.get("form", "concept")
 
     # Generate record
-    concept = th.get_concept(f"{level}{number}", recursive=(form == "tree"))
+    concept = th.get_concept(name=f"{level}{number}", recursive=(form == "tree"))
 
     if concept is None:
         abort(404)

@@ -4,16 +4,22 @@
 # --------
 from collections.abc import Mapping, Sequence
 import os
-import typing as t
+import sys
+from typing import Any, Literal, MutableSequence, NoReturn, overload
+
+if sys.version_info < (3, 11):
+    from typing_extensions import TypedDict
+else:
+    from typing import TypedDict
 
 # Non-standard
 # ------------
 from flask import current_app, g
-from rdflib import Graph, Namespace, URIRef
-from rdflib.graph import _SubjectType, _PredicateType
+from rdflib import Graph, Literal as RDFLiteral, Namespace, URIRef
+from rdflib.graph import _SubjectType, _ObjectType, _PredicateType
 from rdflib.namespace import SKOS, RDFS
 from tinydb import TinyDB, Query
-from tinydb.database import Document
+from tinydb.table import Document
 from tinyrecord import transaction
 
 # Local
@@ -21,9 +27,21 @@ from tinyrecord import transaction
 from .db_utils import JSONStorageWithGit
 from .utils import url_for_subject
 
-ThesaurusLevel = t.Literal["domain", "subdomain", "concept"]
-T = t.TypeVar("T")
+ThesaurusLevel = Literal["domain", "subdomain", "concept"]
 UNO = Namespace("http://vocabularies.unesco.org/ontology#")
+
+
+class Term(TypedDict):
+    uri: URIRef
+    label: str
+    long_label: str
+    ancestry: list[URIRef]
+
+
+class TreeNode(TypedDict):
+    uri: URIRef
+    label: str
+    children: list["TreeNode"]
 
 
 class Thesaurus(object):
@@ -62,7 +80,7 @@ class Thesaurus(object):
         return self.terms.all()
 
     @property
-    def as_jsonld(self) -> dict[str, t.Any]:
+    def as_jsonld(self) -> dict[str, Any]:
         """JSON-LD compatible dict representing the thesaurus as a
         SKOS ConceptScheme, listing its TopConcepts.
         """
@@ -85,10 +103,10 @@ class Thesaurus(object):
     def _preferredLabel(
         self,
         subject: _SubjectType,
-        lang: str = None,
-        default: T = None,
+        lang: str | None = None,
+        default: list[tuple[_PredicateType, str]] | None = None,
         labelProperties: Sequence[_PredicateType] = (SKOS.prefLabel, RDFS.label),
-    ) -> list[tuple[_PredicateType, str]] | T:  # pragma: no cover
+    ) -> list[tuple[_PredicateType, str]]:  # pragma: no cover
         """Deprecated function from rdflib library, preserved
         anticipating removal.
 
@@ -106,17 +124,21 @@ class Thesaurus(object):
         if lang is not None:
             if lang == "":
 
-                def langfilter(l_):
-                    return l_.language is None
+                def langfilter(l_: _ObjectType) -> bool:
+                    if isinstance(l_, RDFLiteral):
+                        return l_.language is None
+                    return False
 
             else:
 
-                def langfilter(l_):
-                    return l_.language == lang
+                def langfilter(l_: _ObjectType) -> bool:
+                    if isinstance(l_, RDFLiteral):
+                        return l_.language == lang
+                    return False
 
         else:
 
-            def langfilter(l_):
+            def langfilter(l_: _ObjectType) -> bool:
                 return True
 
         for labelProp in labelProperties:
@@ -124,12 +146,13 @@ class Thesaurus(object):
             if len(labels) == 0:
                 continue
             else:
-                return [(labelProp, l_) for l_ in labels]
+                return [(labelProp, str(l_)) for l_ in labels]
+
         return default
 
     def _to_list(
-        self, parent_uris: list[URIRef] = None, parent_label: str = ""
-    ) -> list[dict[str, URIRef | str | list]]:
+        self, parent_uris: list[URIRef] | None = None, parent_label: str = ""
+    ) -> list[Term]:
         """Returns a list of all terms in the RDF Graph as dicts with
         keys "uri" (URIRef), "label" (str), "long_label" (str), and
         "ancestry" (List[URIRef]). The long label includes ancestor
@@ -175,9 +198,7 @@ class Thesaurus(object):
                     )
         return full_list
 
-    def _to_tree(
-        self, parent_uri: URIRef = None
-    ) -> list[Mapping[str, URIRef | str | list]]:
+    def _to_tree(self, parent_uri: URIRef | None = None) -> list[TreeNode]:
         """Returns a list of top concepts in the RDF Graph as dicts with
         keys "uri" (URIRef), "label" (str), and "children". The value of
         "children" is a list of child concepts using the same form, so
@@ -191,6 +212,7 @@ class Thesaurus(object):
         if not uris:
             return tree
         for uri in uris:
+            assert isinstance(uri, URIRef)
             label = str(self._preferredLabel(uri, lang="en")[0][1])
             entry = {"uri": uri, "label": label}
             children = self._to_tree(uri)
@@ -203,7 +225,7 @@ class Thesaurus(object):
             tree.sort(key=lambda k: k["uri"])
         return tree
 
-    def _child_uris(self, tree: Mapping[str, URIRef | str | list]) -> list[str]:
+    def _child_uris(self, tree: TreeNode) -> list[str]:
         """Given a tree (URI, label, list of trees), returns a list of URIs of
         all child terms."""
         uris = list()
@@ -214,7 +236,7 @@ class Thesaurus(object):
             )
         return uris
 
-    def _lookup_child_uris(self, route: Sequence[str]) -> list[str]:
+    def _lookup_child_uris(self, route: MutableSequence[str]) -> list[str]:
         """Given a sequence of URIs (a term, followed by each progressively
         broader ancestor), returns a list of URIs of all child terms."""
         uris = list()
@@ -222,7 +244,7 @@ class Thesaurus(object):
         # Get domain tree
         domain_uri = route.pop()
         tree = self.trees.get(Query().uri == domain_uri)
-        if not tree:  # pragma: no cover
+        if not isinstance(tree, Document):  # pragma: no cover
             return uris
 
         # Traverse down to current term
@@ -259,7 +281,7 @@ class Thesaurus(object):
             base_entry = self.terms.get(Query().uri == term)
         else:
             base_entry = self.terms.get(Query().label == term)
-        if not base_entry:
+        if not isinstance(base_entry, Document):
             return uris
 
         if broader:
@@ -278,16 +300,62 @@ class Thesaurus(object):
 
         return uris
 
-    def get_concept(self, name: str, recursive=False) -> dict[str, t.Any]:
+    @overload
+    def get_concept(
+        self, entry: Document, name: str | None = ..., recursive: bool = ...
+    ) -> dict[str, Any]: ...
+
+    @overload
+    def get_concept(
+        self, *, entry: Document, name: str | None = ..., recursive: bool = ...
+    ) -> dict[str, Any]: ...
+
+    @overload
+    def get_concept(
+        self, entry: None, name: None = ..., recursive: bool = ...
+    ) -> NoReturn: ...
+
+    @overload
+    def get_concept(
+        self, *, entry: None = ..., name: None = ..., recursive: bool = ...
+    ) -> NoReturn: ...
+
+    @overload
+    def get_concept(
+        self, entry: None, name: str, recursive: bool = ...
+    ) -> dict[str, Any]: ...
+
+    @overload
+    def get_concept(
+        self, *, entry: None = ..., name: str, recursive: bool = ...
+    ) -> dict[str, Any] | None: ...
+
+    def get_concept(
+        self,
+        entry: Document | None = None,
+        name: str | None = None,
+        recursive: bool = False,
+    ):
         """Returns a dictionary object representing the concept, suitable for
         conversion to JSON-LD. `name` is last part of URI, e.g. domain0.
         """
-        # All conceptN are in UNESCO domain:
-        if name.startswith("c"):
-            uri = f"http://vocabularies.unesco.org/thesaurus/{name}"
-        # All domainN and subdomainN are in MSC domain:
+        if entry is None:
+            if name is None:
+                raise RuntimeError("You have to pass either entry or name")
+
+            # All conceptN are in UNESCO domain:
+            if name.startswith("c"):
+                uri = f"http://vocabularies.unesco.org/thesaurus/{name}"
+            # All domainN and subdomainN are in MSC domain:
+            else:
+                uri = f"{self.uri}/{name}"
+
+            entry_ = self.terms.get(Query().uri == uri)
+            if not isinstance(entry_, Document):
+                return None
+            entry = entry_
         else:
-            uri = f"{self.uri}/{name}"
+            uri = entry["uri"]
 
         template = {
             "@context": {"skos": "http://www.w3.org/2004/02/skos/core#"},
@@ -297,34 +365,27 @@ class Thesaurus(object):
         rdf_object = template.copy()
 
         rdf_object.update(
-            self.get_concept_brief(uri, broader=recursive, narrower=recursive)
+            self.get_concept_brief(entry, broader=recursive, narrower=recursive)
         )
-
-        if rdf_object == template:
-            # No information in the database about this one:
-            return None
 
         return rdf_object
 
     def get_concept_brief(
         self,
-        uri: str,
+        base_entry: Document,
         broader: bool = False,
         narrower: bool = False,
-        children: list = None,
-    ) -> dict[str, t.Any]:
+        children: list | None = None,
+    ) -> dict[str, Any]:
         """Returns a minimal dictionary object (i.e. without @context or @id)
         representing the concept, suitable for conversion to JSON-LD.
         """
         rdf_object = dict()
+        uri = base_entry["uri"]
 
         # `children` is only passed in when recursing narrower, and if so we
         # can skip all this:
         if children is None:
-            base_entry = self.terms.get(Query().uri == uri)
-            if base_entry is None:  # pragma: no cover
-                return rdf_object
-
             if broader == narrower:
                 rdf_object["skos:prefLabel"] = [
                     {"@value": base_entry["label"], "@language": "en"}
@@ -335,32 +396,39 @@ class Thesaurus(object):
                 if broader or not narrower:
                     parent_uri = base_entry["ancestry"][-1]
                     parent = {"@id": parent_uri}
-                    if broader:
-                        parent.update(self.get_concept_brief(parent_uri, broader=True))
+                    if broader and isinstance(
+                        parent_entry := self.terms.get(Query().uri == parent_uri),
+                        Document,
+                    ):
+                        parent.update(
+                            self.get_concept_brief(parent_entry, broader=True)
+                        )
                     rdf_object["skos:broader"] = [parent]
 
                 # Get narrower
                 route = [uri] + base_entry["ancestry"][::-1]
                 domain_uri = route.pop()
                 tree = self.trees.get(Query().uri == domain_uri)
-                while True:
-                    children = tree.get("children", list())
-                    if not route:
-                        break
-                    child_uri = route.pop()
-                    for child in children:
-                        if child["uri"] == child_uri:
-                            tree = child
+                if isinstance(tree, Document):
+                    while True:
+                        children = tree.get("children", list())
+                        if not route:
                             break
-                    else:  # pragma: no cover
-                        break
+                        child_uri = route.pop()
+                        for child in children:
+                            if child["uri"] == child_uri:
+                                tree = child
+                                break
+                        else:  # pragma: no cover
+                            break
             else:
                 # Add broader
                 rdf_object["skos:topConceptOf"] = [{"@id": self.uri}]
 
                 # Get narrower
                 tree = self.trees.get(Query().uri == uri)
-                children = tree.get("children")
+                if isinstance(tree, Document):
+                    children = tree.get("children")
 
         if children and (narrower or not broader):
             rdf_object["skos:narrower"] = list()
@@ -370,11 +438,14 @@ class Thesaurus(object):
                 .zfill(6)
             )
             for child in children:
-                child_concept = {"@id": child["uri"]}
-                if narrower:
+                child_uri = child["uri"]
+                child_concept = {"@id": child_uri}
+                if narrower and isinstance(
+                    child_entry := self.terms.get(Query().uri == child_uri), Document
+                ):
                     child_concept.update(
                         self.get_concept_brief(
-                            child["uri"],
+                            child_entry,
                             narrower=True,
                             children=child.get("children", list()),
                         )
@@ -386,10 +457,10 @@ class Thesaurus(object):
 
         return rdf_object
 
-    def get_label(self, uri: str) -> str:
+    def get_label(self, uri: str) -> str | None:
         """Returns the label for the term with the given URI."""
         entry = self.terms.get(Query().uri == uri)
-        if entry:
+        if isinstance(entry, Document):
             return entry.get("label")
         return None
 
@@ -397,12 +468,12 @@ class Thesaurus(object):
         """Returns all labels in the thesaurus."""
         return [kw["label"] for kw in self.entries]
 
-    def get_long_label(self, uri: str) -> str:
+    def get_long_label(self, uri: str) -> str | None:
         """Returns the long label (with ancestor labels) for the term
         with the given URI.
         """
         entry = self.terms.get(Query().uri == uri)
-        if entry:
+        if isinstance(entry, Document):
             return entry.get("long_label")
         return None
 
@@ -411,7 +482,7 @@ class Thesaurus(object):
         return [kw["long_label"] for kw in self.entries]
 
     def get_tree(
-        self, filter: list[str], master: list = None
+        self, filter: list[str], master: list | None = None
     ) -> list[Mapping[str, str | list]]:
         """Takes a list of term URIs, and returns the corresponding terms in
         tree form, specifically as a list of dictionaries suitable for use with
@@ -445,13 +516,13 @@ class Thesaurus(object):
                 tree.append(node)
         return tree
 
-    def get_uri(self, label: str) -> str:
+    def get_uri(self, label: str) -> str | None:
         """Translates long or short label into term URI."""
         if label is None:
             return None
         field = "long_label" if "<" in label else "label"
         entry = self.terms.get(Query()[field] == label)
-        if entry:
+        if isinstance(entry, Document):
             return entry.get("uri")
         return None
 
