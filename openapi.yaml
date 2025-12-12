@@ -2053,9 +2053,10 @@ components:
           description: "The date on which the endorsement was made. Use of this element does not imply that the originating organization reviews the endorsement for validity. If both `issued` and `valid` are given, issued is ignored."
         valid:
           allOf:
-          - description: "The start date expresses when the endorsement was made. If there is no end date, this implies that the originating organization currently endorses the standard. (If that implication is inappropriate, the date should be given under `issued` instead.)
+          - description: >
+              The start date expresses when the endorsement was made. If there is no end date, this implies that the originating organization currently endorses the standard. (If that implication is inappropriate, the date should be given under `issued` instead.)
 
-If an end date is provided, it expresses the date on which the endorsement was withdrawn."
+              If an end date is provided, it expresses the date on which the endorsement was withdrawn.
           - $ref: '#/components/schemas/DateRange'
         locations:
           type: array
