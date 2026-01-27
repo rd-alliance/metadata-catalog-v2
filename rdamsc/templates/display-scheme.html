@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% block title %}{{ record['title'] }}{% endblock %}
+{% block alternates %}
+  <link rel="alternate" href="{{ url_for('api2.get_record', table='m', number=record.doc_id) }}" type="application/json" />
+{% endblock %}
 {% block main %}
   {% if 'description' in record %}
   <div class="description">{{ record['description']|safe }}</div>

@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% block title %}{{ record.name }}{% endblock %}
+{% block alternates %}
+  <link rel="alternate" href="{{ url_for('api2.get_record', table='e', number=record.doc_id) }}" type="application/json" />
+{% endblock %}
 {% block main %}
   <div class="citation">
     <p>{% for creator in record['creators'] %}{% if loop.index > 1 %}{% if loop.last %} and {% else %}, {% endif %}{% endif %}{%if 'fullName' in creator %}{{ creator['fullName'] }}{% else %}{{ creator.get('givenName') }} {{ creator.get('familyName') }}{% endif %}{% endfor %}.
