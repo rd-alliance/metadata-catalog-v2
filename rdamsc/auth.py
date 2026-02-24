@@ -569,6 +569,11 @@ def login():
             main_providers.append(client)
         else:
             providers.append(client)
+    flash(
+        "Logging in with RDA credentials is currently unavailable. "
+        "We are working with the RDA website developers to fix this.",
+        "warning",
+    )
     return render_template(
         "login.html",
         main_providers=main_providers,
@@ -603,7 +608,7 @@ def oauth_callback(provider: str):
     userid, username, email = client.get_profile_data()
     session["openid"] = userid
     if userid is None:
-        flash("Authentication failed.")
+        flash("Authentication failed.", "error")
         return redirect(url_for("hello"))
     User = Query()
     profile = user_db.get(User.userid == userid)
@@ -677,7 +682,7 @@ def edit_profile():
         if user_db.update(data, doc_ids=[current_user.doc_id]):
             flash("Profile successfully updated.")
         else:  # pragma: no cover
-            flash("Profile could not be updated, sorry.")
+            flash("Profile could not be updated, sorry.", "error")
         return redirect(url_for("hello"))
     if form.errors:
         if "csrf_token" in form.errors:
@@ -707,7 +712,7 @@ def remove_profile():
         session.pop("openid", None)
         flash("You were signed out.")
     else:  # pragma: no cover
-        flash("Your profile could not be deleted.")
+        flash("Your profile could not be deleted.", "error")
     return redirect(url_for("hello"))
 
 
