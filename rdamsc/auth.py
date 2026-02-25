@@ -397,23 +397,24 @@ class TwitterClient(OAuthClient):  # pragma: no cover
         return profile_data
 
 
-class WicketClient(OAuthClient):  # pragma: no cover
-    """Wicket using OAuth 2.0."""
+class RDAClient(OAuthClient):  # pragma: no cover
+    """RDA using OAuth 2.0."""
 
-    slug = "wicket"
+    slug = "rda"
     name = "RDA"
     main = True
     app_kwargs = {
-        "authorize_url": "https://rda-login.wicketcloud.com/oauth2.0/authorize",
-        "access_token_url": "https://rda-login.wicketcloud.com/oauth2.0/accessToken",
-        "api_base_url": "https://rda-login.wicketcloud.com/oauth2.0/",
+        "authorize_url": "https://www.rd-alliance.org/wp-json/moserver/authorize",
+        "access_token_url": "https://www.rd-alliance.org/wp-json/moserver/token",
+        "api_base_url": "https://www.rd-alliance.org/wp-json/moserver/",
+        "client_kwargs": dict(scope="openid profile email"),
     }
 
     def get_profile_data(self) -> ProfileData:
         current_app.logger.debug(f"Login with {self.name}.")
         self.app.authorize_access_token()
         try:
-            r: requests.Response = self.app.get("profile")
+            r: requests.Response = self.app.get("resource")
             r.raise_for_status()
             id_info: dict = r.json()
             current_app.logger.debug(f"id_info = {id_info}")
