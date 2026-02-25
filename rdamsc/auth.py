@@ -398,7 +398,7 @@ class TwitterClient(OAuthClient):  # pragma: no cover
 
 
 class RDAClient(OAuthClient):  # pragma: no cover
-    """RDA using OAuth 2.0."""
+    """RDA (WordPress miniOrange OAuth server) using OAuth 2.0."""
 
     slug = "rda"
     name = "RDA"
@@ -418,18 +418,17 @@ class RDAClient(OAuthClient):  # pragma: no cover
             r.raise_for_status()
             id_info: dict = r.json()
             current_app.logger.debug(f"id_info = {id_info}")
-            id = id_info["id"]
+            id = id_info["username"]
         except requests.HTTPError or ValueError:
             return ProfileData()
-        user_attr: dict = id_info.get("attributes", dict())
         name_parts = list()
-        for part in ["givenName", "familyName"]:
-            if name_part := user_attr.get(part):
+        for part in ["first_name", "last_name"]:
+            if name_part := id_info.get(part):
                 name_parts.append(name_part)
         profile_data = ProfileData(
             userid=f"{self.slug}${id}",
             username=" ".join(name_parts) if name_parts else None,
-            email=user_attr.get("email"),
+            email=id_info.get("email"),
         )
         current_app.logger.debug(f"parsed as {profile_data}")
         return profile_data
