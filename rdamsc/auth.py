@@ -34,6 +34,7 @@ from flask_login import (
 from flask_wtf import FlaskForm
 from authlib.integrations.flask_client.apps import FlaskOAuth1App, FlaskOAuth2App
 from authlib.integrations.flask_client.integration import FlaskIntegration
+from authlib.integrations.base_client import errors as authlib_errors
 import requests
 from tinydb import Query
 from tinydb.table import Document
@@ -98,6 +99,25 @@ class OAuthClient:
         """Returns Flask redirect to the provider login."""
         return self.app.authorize_redirect(redirect_uri=self.callback_url)
 
+    def get_access_token(self) -> dict | None:
+        """Returns token (parsed JSON from response, or dict with single
+        key "userinfo" if OpenID Connect) if successful, None otherwise.
+        """
+        try:
+            return self.app.authorize_access_token()
+        except authlib_errors.MismatchingStateError:
+            flash(
+                "Token exchange failed: State not equal in request and response.",
+                "error",
+            )
+            return None
+        except authlib_errors.OAuthError as e:
+            flash(f"Token exchange failed: {e.description}.", "error")
+            return None
+        except RuntimeError as e:
+            flash(f"Token exchange failed: {e}.", "error")
+            return None
+
     def get_profile_data(self) -> ProfileData:
         """Returns a user ID (based off the provider name and the user
         ID held by the provider), name, and email address for the user.
@@ -135,7 +155,9 @@ class DummyAuthClient(OAuthClient):
         if current_app.config["TESTING"] is not True:
             return ProfileData()
         current_app.logger.debug(f"Login with {self.name}.")
-        self.app.authorize_access_token()
+        token = self.get_access_token()
+        if token is None:
+            return ProfileData()
         try:
             r: requests.Response = self.app.get("user")
             r.raise_for_status()
@@ -168,7 +190,9 @@ class GitHubClient(OAuthClient):  # pragma: no cover
 
     def get_profile_data(self) -> ProfileData:
         current_app.logger.debug(f"Login with {self.name}.")
-        self.app.authorize_access_token()
+        token = self.get_access_token()
+        if token is None:
+            return ProfileData()
         try:
             r: requests.Response = self.app.get("user")
             r.raise_for_status()
@@ -214,7 +238,9 @@ class GitLabClient(OAuthClient):  # pragma: no cover
 
     def get_profile_data(self) -> ProfileData:
         current_app.logger.debug(f"Login with {self.name}.")
-        self.app.authorize_access_token()
+        token = self.get_access_token()
+        if token is None:
+            return ProfileData()
         try:
             user_info = self.app.userinfo()
             current_app.logger.debug(f"user_info = {user_info}")
@@ -248,7 +274,9 @@ class GoogleClient(OAuthClient):  # pragma: no cover
 
     def get_profile_data(self) -> ProfileData:
         current_app.logger.debug(f"Login with {self.name}.")
-        self.app.authorize_access_token()
+        token = self.get_access_token()
+        if token is None:
+            return ProfileData()
         try:
             user_info = self.app.userinfo()
             current_app.logger.debug(f"user_info = {user_info}")
@@ -284,7 +312,9 @@ class LinkedInClient(OAuthClient):  # pragma: no cover
 
     def get_profile_data(self) -> ProfileData:
         current_app.logger.debug(f"Login with {self.name}.")
-        self.app.authorize_access_token()
+        token = self.get_access_token()
+        if token is None:
+            return ProfileData()
         try:
             r: requests.Response = self.app.get(
                 "~:(id,formatted-name,email-address)?format=json"
@@ -318,7 +348,9 @@ class OrcidClient(OAuthClient):  # pragma: no cover
 
     def get_profile_data(self) -> ProfileData:
         current_app.logger.debug(f"Login with {self.name}.")
-        self.app.authorize_access_token()
+        token = self.get_access_token()
+        if token is None:
+            return ProfileData()
         try:
             user_info = self.app.userinfo()
             current_app.logger.debug(f"user_info = {user_info}")
@@ -378,7 +410,9 @@ class TwitterClient(OAuthClient):  # pragma: no cover
 
     def get_profile_data(self) -> ProfileData:
         current_app.logger.debug(f"Login with {self.name}.")
-        self.app.authorize_access_token()
+        token = self.get_access_token()
+        if token is None:
+            return ProfileData()
         try:
             r: requests.Response = self.app.get("account/verify_credentials.json")
             r.raise_for_status()
@@ -412,7 +446,9 @@ class RDAClient(OAuthClient):  # pragma: no cover
 
     def get_profile_data(self) -> ProfileData:
         current_app.logger.debug(f"Login with {self.name}.")
-        self.app.authorize_access_token()
+        token = self.get_access_token()
+        if token is None:
+            return ProfileData()
         try:
             r: requests.Response = self.app.get("resource")
             r.raise_for_status()
@@ -452,7 +488,9 @@ class XClient(OAuthClient):  # pragma: no cover
 
     def get_profile_data(self) -> ProfileData:
         current_app.logger.debug(f"Login with {self.name}.")
-        self.app.authorize_access_token()
+        token = self.get_access_token()
+        if token is None:
+            return ProfileData()
         try:
             r: requests.Response = self.app.get("account/verify_credentials.json")
             r.raise_for_status()
