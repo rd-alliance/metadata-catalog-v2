@@ -2,6 +2,7 @@
 # ============
 # Standard
 # --------
+import logging
 import sys
 from typing import NamedTuple
 
@@ -97,7 +98,15 @@ class OAuthClient:
 
     def authorize_redirect(self) -> Response:
         """Returns Flask redirect to the provider login."""
-        return self.app.authorize_redirect(redirect_uri=self.callback_url)
+        if current_app.logger.level < logging.INFO:
+            # When debugging, it's useful to see where the error occurred.
+            return self.app.authorize_redirect(redirect_uri=self.callback_url)
+        else:
+            try:
+                return self.app.authorize_redirect(redirect_uri=self.callback_url)
+            except requests.HTTPError as e:
+                flash(f"Could not connect to provider: {e}.", "error")
+                return redirect(url_for("auth.login"))
 
     def get_access_token(self) -> dict | None:
         """Returns token (parsed JSON from response, or dict with single
@@ -113,6 +122,9 @@ class OAuthClient:
             return None
         except authlib_errors.OAuthError as e:
             flash(f"Token exchange failed: {e.description}.", "error")
+            return None
+        except requests.HTTPError as e:
+            flash(f"Token exchange failed: {e}.", "error")
             return None
         except RuntimeError as e:
             flash(f"Token exchange failed: {e}.", "error")
@@ -438,11 +450,15 @@ class RDAClient(OAuthClient):  # pragma: no cover
     name = "RDA"
     main = True
     app_kwargs = {
-        "authorize_url": "https://www.rd-alliance.org/wp-json/moserver/authorize",
-        "access_token_url": "https://www.rd-alliance.org/wp-json/moserver/token",
-        "api_base_url": "https://www.rd-alliance.org/wp-json/moserver/",
         "client_kwargs": dict(scope="openid profile email"),
     }
+
+    def __init__(self, client_id: str, client_secret: str):
+        self.app_kwargs["server_metadata_url"] = (
+            f"https://www.rd-alliance.org/wp-json/moserver/{client_id}"
+            "/.well-known/openid-configuration"
+        )
+        super().__init__(client_id, client_secret)
 
     def get_profile_data(self) -> ProfileData:
         current_app.logger.debug(f"Login with {self.name}.")
@@ -455,7 +471,7 @@ class RDAClient(OAuthClient):  # pragma: no cover
             id_info: dict = r.json()
             current_app.logger.debug(f"id_info = {id_info}")
             id = id_info["username"]
-        except requests.HTTPError or ValueError:
+        except (requests.HTTPError, ValueError) as e:
             return ProfileData()
         name_parts = list()
         for part in ["first_name", "last_name"]:
