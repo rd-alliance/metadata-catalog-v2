@@ -4,6 +4,7 @@
 # --------
 import logging
 import sys
+import time  # for Authlib patch
 from typing import NamedTuple
 
 if sys.version_info < (3, 11):
@@ -35,7 +36,11 @@ from flask_login import (
 from flask_wtf import FlaskForm
 from authlib.integrations.flask_client.apps import FlaskOAuth1App, FlaskOAuth2App
 from authlib.integrations.flask_client.integration import FlaskIntegration
-from authlib.integrations.base_client import errors as authlib_errors
+from authlib.integrations.base_client import (
+    errors as authlib_errors,
+    sync_app,
+    sync_openid,
+)
 import requests
 from tinydb import Query
 from tinydb.table import Document
@@ -52,6 +57,52 @@ lm = LoginManager()
 lm.login_view = "auth.login"  # type: ignore
 lm.login_message = "Please sign in to access this page."
 lm.login_message_category = "error"
+
+
+# Patch for Authlib issue 704
+# ===========================
+# See https://github.com/authlib/authlib/issues/704
+
+
+def load_server_metadata(self):  # pragma: no cover
+    if self._server_metadata_url and "_loaded_at" not in self.server_metadata:
+        with self.client_cls(**self.client_kwargs) as session:
+            session.headers["User-Agent"] = self._user_agent  # LINE ADDED
+            resp = session.request(
+                "GET", self._server_metadata_url, withhold_token=True
+            )
+            resp.raise_for_status()
+            metadata = resp.json()
+
+        metadata["_loaded_at"] = time.time()
+        self.server_metadata.update(metadata)
+    return self.server_metadata
+
+
+sync_app.OAuth2Mixin.load_server_metadata = load_server_metadata
+
+
+def fetch_jwk_set(self, force=False):  # pragma: no cover
+    metadata = self.load_server_metadata()
+    jwk_set = metadata.get("jwks")
+    if jwk_set and not force:
+        return jwk_set
+
+    uri = metadata.get("jwks_uri")
+    if not uri:
+        raise RuntimeError('Missing "jwks_uri" in metadata')
+
+    with self.client_cls(**self.client_kwargs) as session:
+        session.headers["User-Agent"] = self._user_agent  # LINE ADDED
+        resp = session.request("GET", uri, withhold_token=True)
+        resp.raise_for_status()
+        jwk_set = resp.json()
+
+    self.server_metadata["jwks"] = jwk_set
+    return jwk_set
+
+
+sync_openid.OpenIDMixin.fetch_jwk_set = fetch_jwk_set
 
 
 # Auth provider classes
