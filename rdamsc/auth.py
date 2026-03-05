@@ -508,7 +508,7 @@ class RDAClient(OAuthClient):  # pragma: no cover
     name = "RDA"
     main = True
     app_kwargs = {
-        "api_base_url": "https://www.rd-alliance.org/wp-json/moserver",
+        "api_base_url": "https://www.rd-alliance.org/wp-json/moserver/",
         "client_kwargs": dict(scope="openid profile email"),
     }
 
