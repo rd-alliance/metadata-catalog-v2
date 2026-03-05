@@ -109,8 +109,8 @@ class OAuthClient:
                 return redirect(url_for("auth.login"))
 
     def get_access_token(self) -> dict | None:
-        """Returns token (parsed JSON from response, or dict with single
-        key "userinfo" if OpenID Connect) if successful, None otherwise.
+        """Returns token (parsed JSON from response, with additional
+        "userinfo" key if OpenID Connect) if successful, None otherwise.
         """
         try:
             return self.app.authorize_access_token()
@@ -256,7 +256,7 @@ class GitLabClient(OAuthClient):  # pragma: no cover
         if token is None:
             return ProfileData()
         try:
-            user_info = self.app.userinfo()
+            user_info = token.get("userinfo") or self.app.userinfo()
             current_app.logger.debug(f"user_info = {user_info}")
             id = user_info["sub"]
             name = str(s) if (s := user_info.get("name")) else ""
@@ -293,7 +293,7 @@ class GoogleClient(OAuthClient):  # pragma: no cover
         if token is None:
             return ProfileData()
         try:
-            user_info = self.app.userinfo()
+            user_info = token.get("userinfo") or self.app.userinfo()
             current_app.logger.debug(f"user_info = {user_info}")
             id = user_info["sub"]
             name = str(s) if (s := user_info.get("name")) else ""
@@ -369,7 +369,7 @@ class OrcidClient(OAuthClient):  # pragma: no cover
         if token is None:
             return ProfileData()
         try:
-            user_info = self.app.userinfo()
+            user_info = token.get("userinfo") or self.app.userinfo()
             current_app.logger.debug(f"user_info = {user_info}")
             id = user_info["sub"]
             name = str(s) if (s := user_info.get("name")) else ""
@@ -457,6 +457,7 @@ class RDAClient(OAuthClient):  # pragma: no cover
     name = "RDA"
     main = True
     app_kwargs = {
+        "api_base_url": "https://www.rd-alliance.org/wp-json/moserver",
         "client_kwargs": dict(scope="openid profile email"),
     }
 
@@ -473,23 +474,24 @@ class RDAClient(OAuthClient):  # pragma: no cover
         if token is None:
             return ProfileData()
         try:
-            current_app.logger.debug(f"token = {token}")
-            r: requests.Response = self.app.get("resource")
-            r.raise_for_status()
-            id_info: dict = r.json()
-            current_app.logger.debug(f"id_info = {id_info}")
-            id = id_info["username"]
+            user_info = token.get("userinfo") or self.app.userinfo()
+            current_app.logger.debug(f"user_info = {user_info}")
+            id = user_info["username"]
+            name = str(s) if (s := user_info.get("display_name")) else ""
+            if not name:
+                name_parts = list()
+                for part in ["first_name", "last_name"]:
+                    if name_part := user_info.get(part):
+                        name_parts.append(name_part)
+                name = " ".join(name_parts) if name_parts else None
+            email = str(s) if (s := user_info.get("email")) else ""
         except (requests.HTTPError, ValueError) as e:
             current_app.logger.debug(f"{e}")
             return ProfileData()
-        name_parts = list()
-        for part in ["first_name", "last_name"]:
-            if name_part := id_info.get(part):
-                name_parts.append(name_part)
         profile_data = ProfileData(
             userid=f"{self.slug}${id}",
-            username=" ".join(name_parts) if name_parts else None,
-            email=id_info.get("email"),
+            username=name,
+            email=email,
         )
         current_app.logger.debug(f"parsed as {profile_data}")
         return profile_data
