@@ -686,11 +686,6 @@ def login():
             main_providers.append(client)
         else:
             providers.append(client)
-    flash(
-        "Logging in with RDA credentials is currently unavailable. "
-        "We are working with the RDA website developers to fix this.",
-        "warning",
-    )
     return render_template(
         "login.html",
         main_providers=main_providers,
