@@ -176,7 +176,8 @@ class DummyAuthClient(OAuthClient):
             id_info: dict = r.json()
             current_app.logger.debug(f"id_info = {id_info}")
             id = id_info["id"]
-        except requests.HTTPError or ValueError:
+        except (requests.HTTPError, ValueError) as e:
+            current_app.logger.debug(f"{e}")
             return ProfileData()
         profile_data = ProfileData(
             userid=f"{self.slug}${id}",
@@ -211,7 +212,8 @@ class GitHubClient(OAuthClient):  # pragma: no cover
             id_info: dict = r.json()
             current_app.logger.debug(f"id_info = {id_info}")
             id = id_info["login"]
-        except requests.HTTPError or ValueError:
+        except (requests.HTTPError, ValueError) as e:
+            current_app.logger.debug(f"{e}")
             return ProfileData()
         profile_data = ProfileData(
             userid=f"{self.slug}${id}",
@@ -259,7 +261,8 @@ class GitLabClient(OAuthClient):  # pragma: no cover
             id = user_info["sub"]
             name = str(s) if (s := user_info.get("name")) else ""
             email = str(s) if (s := user_info.get("email")) else ""
-        except requests.HTTPError or ValueError:
+        except (requests.HTTPError, ValueError) as e:
+            current_app.logger.debug(f"{e}")
             return ProfileData()
         profile_data = ProfileData(
             userid=f"{self.slug}${id}",
@@ -295,7 +298,8 @@ class GoogleClient(OAuthClient):  # pragma: no cover
             id = user_info["sub"]
             name = str(s) if (s := user_info.get("name")) else ""
             email = str(s) if (s := user_info.get("email")) else ""
-        except requests.HTTPError or ValueError:
+        except (requests.HTTPError, ValueError) as e:
+            current_app.logger.debug(f"{e}")
             return ProfileData()
         profile_data = ProfileData(
             userid=f"{self.slug}${id}",
@@ -335,7 +339,8 @@ class LinkedInClient(OAuthClient):  # pragma: no cover
             id_info: dict = r.json()
             current_app.logger.debug(f"id_info = {id_info}")
             id = id_info["id"]
-        except requests.HTTPError or ValueError:
+        except (requests.HTTPError, ValueError) as e:
+            current_app.logger.debug(f"{e}")
             return ProfileData()
         profile_data = ProfileData(
             userid=f"{self.slug}${id}",
@@ -395,7 +400,8 @@ class OrcidClient(OAuthClient):  # pragma: no cover
                     email = contact.get("email") or email
                     if contact.get("primary", False):
                         break
-            except requests.HTTPError or ValueError:
+            except (requests.HTTPError, ValueError) as e:
+                current_app.logger.debug(f"{e}")
                 pass
             if email:
                 profile_data = profile_data._replace(email=email)
@@ -431,7 +437,8 @@ class TwitterClient(OAuthClient):  # pragma: no cover
             id_info: dict = r.json()
             current_app.logger.debug(f"id_info = {id_info}")
             id = id_info["id"]
-        except requests.HTTPError or ValueError:
+        except (requests.HTTPError, ValueError) as e:
+            current_app.logger.debug(f"{e}")
             return ProfileData()
         profile_data = ProfileData(
             userid=f"{self.slug}${id}",
@@ -466,12 +473,14 @@ class RDAClient(OAuthClient):  # pragma: no cover
         if token is None:
             return ProfileData()
         try:
+            current_app.logger.debug(f"token = {token}")
             r: requests.Response = self.app.get("resource")
             r.raise_for_status()
             id_info: dict = r.json()
             current_app.logger.debug(f"id_info = {id_info}")
             id = id_info["username"]
         except (requests.HTTPError, ValueError) as e:
+            current_app.logger.debug(f"{e}")
             return ProfileData()
         name_parts = list()
         for part in ["first_name", "last_name"]:
@@ -531,7 +540,8 @@ class XClient(OAuthClient):  # pragma: no cover
                 user_info: dict = r.json()
                 current_app.logger.debug(f"user_info = {user_info}")
                 name = id_info.get("data", dict()).get("name")
-            except requests.HTTPError or ValueError:
+            except (requests.HTTPError, ValueError) as e:
+                current_app.logger.debug(f"{e}")
                 pass
             if name:
                 profile_data = profile_data._replace(username=name)
