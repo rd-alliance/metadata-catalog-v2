@@ -1,15 +1,18 @@
-from collections import deque
 import json
 import re
 import time
+from collections import deque
+from typing import Any
 
-from authlib.jose import jwt
+import pytest
 from flask import Flask
 from flask.testing import FlaskClient
-import pytest
+from joserfc import jwt
+from joserfc.jwk import OctKey
 from requests.auth import _basic_auth_str
 
 import rdamsc.api2
+
 from .conftest import AuthAPIActions, DataDBActions, UserDBActions
 
 api_version = rdamsc.api2.api_version
@@ -147,7 +150,7 @@ def test_main_get(client: FlaskClient, data_db: DataDBActions):
     results = data_db.get_apirelset(inverse=True)
     for result in results:
         if result["@id"] == "msc:g1":
-            g1rel = result
+            g1rel: dict[str, Any] = result
             break
     else:
         g1rel = None
@@ -202,7 +205,7 @@ def test_term_get(client: FlaskClient, data_db: DataDBActions):
     total = data_db.count("datatype")
     current = total if total < 10 else 10
     page_total = ((total - 1) // 10) + 1
-    ideal = {
+    ideal: dict[str, str | dict[str, Any] | None] = {
         "apiVersion": api_version,
         "data": {
             "itemsPerPage": 10,
@@ -1037,9 +1040,8 @@ def test_thesaurus(client: FlaskClient, data_db: DataDBActions):
 
 def test_auth_api2(client: FlaskClient, app: Flask, user_db: UserDBActions):
     # Generate expired token:
-    old_token = jwt.encode(
-        {"alg": "HS256"}, {"id": 1, "exp": time.time() + 1}, app.config["SECRET_KEY"]
-    )
+    key = OctKey.import_key(app.config["SECRET_KEY"])
+    old_token = jwt.encode({"alg": "HS256"}, {"id": 1, "exp": time.time() + 1}, key)
     expires = time.time() + 2
 
     # Install API user account

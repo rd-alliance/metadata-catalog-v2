@@ -2,24 +2,25 @@
 # ============
 # Standard
 # --------
-from collections.abc import Mapping
 import time
+from collections.abc import Mapping
+
+from flask import current_app, g
 
 # Non-standard
 # ------------
-from authlib.jose import jwt
-from authlib.jose.errors import (
+from joserfc import jwt
+from joserfc.errors import (
     BadSignatureError,
+    ClaimError,
     DecodeError,
-    ExpiredTokenError,
-    InvalidClaimError,
 )
-from flask import current_app, g
+from joserfc.jwk import OctKey
 from passlib.context import LazyCryptContext
 from passlib.utils import sys_bits
-from tinydb import TinyDB, Query
-from tinydb.table import Document
+from tinydb import Query, TinyDB
 from tinydb.operations import delete
+from tinydb.table import Document
 from tinyrecord import transaction
 
 # Local
@@ -125,26 +126,28 @@ class ApiUser(User):
     table = "api_users"
 
     @classmethod
-    def load_by_token(cls, token, expiration=600):
+    def load_by_token(cls, token: bytes | str, expiration: int | float = 600):
         """If the token is valid, loads and returns the API user with the
         doc_id encoded by the token. Otherwise returns a blank instance.
         """
         try:
-            claims = jwt.decode(token, current_app.config["SECRET_KEY"])
-            claims.validate_exp(time.time(), 1)
+            key = OctKey.import_key(current_app.config["SECRET_KEY"])
+            payload = jwt.decode(token, key)
+            claims_requests = jwt.JWTClaimsRegistry(
+                id={"essential": True},
+                exp={"essential": True},
+            )
+            claims_requests.validate(payload.claims)
         except DecodeError:
             # invalid token
             return cls(value=dict(), doc_id=0)
         except BadSignatureError:
             # invalid token
             return cls(value=dict(), doc_id=0)
-        except InvalidClaimError:  # pragma: no cover
-            # invalid time stamp
+        except ClaimError:  # pragma: no cover
+            # invalid, missing, expired claim
             return cls(value=dict(), doc_id=0)
-        except ExpiredTokenError:
-            # valid token, but expired
-            return cls(value=dict(), doc_id=0)
-        doc_id = int(claims.get("id", 0))
+        doc_id = int(payload.claims.get("id", 0))
         if not doc_id:
             return cls(value=dict(), doc_id=0)
 
@@ -184,14 +187,15 @@ class ApiUser(User):
                 return False
         return is_verified
 
-    def generate_auth_token(self, expiration: int | float = 600) -> bytes:
+    def generate_auth_token(self, expiration: int | float = 600) -> str:
         """Returns a time-limited, encoded authorization token for this
         user.
         """
+        key = OctKey.import_key(current_app.config["SECRET_KEY"])
         s = jwt.encode(
             {"alg": "HS256"},
             {"id": self.doc_id, "exp": time.time() + expiration},
-            current_app.config["SECRET_KEY"],
+            key,
         )
         return s
 

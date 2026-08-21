@@ -2,18 +2,20 @@
 # ============
 # Standard
 # --------
-from collections import deque, defaultdict
-from collections.abc import Callable, Mapping, MutableMapping
-from enum import Enum, auto
 import math
 import re
+from collections import defaultdict, deque
+from collections.abc import Callable, Mapping, MutableMapping
+from enum import Enum, auto
 from typing import Any, Literal, TypeVar
+
+import werkzeug.exceptions
 
 # Non-standard
 # ------------
 from flask import (
-    abort,
     Blueprint,
+    abort,
     jsonify,
     make_response,
     redirect,
@@ -22,14 +24,13 @@ from flask import (
 )
 from flask_httpauth import HTTPBasicAuth, HTTPTokenAuth, MultiAuth
 from tinydb.table import Document
-import werkzeug.exceptions
 
 # Local
 # -----
 from .records import (
     MainTableID,
-    Relation,
     Record,
+    Relation,
     Scheme,
     TableID,
     mscid_prefix,
@@ -1027,10 +1028,10 @@ def get_thesaurus_concepts_used():
 @basic_auth.login_required
 def get_auth_token():
     """Returns a token for use in future requests."""
-    user = basic_auth.current_user()
+    user: ApiUser = basic_auth.current_user()
     assert user
     token = user.generate_auth_token()
-    return jsonify({"apiVersion": api_version, "token": token.decode("ascii")})
+    return jsonify({"apiVersion": api_version, "token": token})
 
 
 @bp.route("/user/reset-password", methods=["POST"])

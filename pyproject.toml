@@ -17,6 +17,7 @@ dependencies = [
     "flask-login",
     "flask-wtf",
     "github-webhook",
+    "joserfc",
     "libpass",
     "markupsafe",
     "rdflib",
