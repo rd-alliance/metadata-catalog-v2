@@ -35,5 +35,5 @@ dev = [
     "responses",
 ]
 
-[tool.setuptools]
-packages = ["rdamsc"]
+[tool.setuptools.packages.find]
+include = ["rdamsc*"]
