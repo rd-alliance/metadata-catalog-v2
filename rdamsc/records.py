@@ -36,6 +36,7 @@ from wtforms import (
     Form,
     FormField,
     HiddenField,
+    SelectChoice,
     SelectField,
     SelectMultipleField,
     StringField,
@@ -473,15 +474,15 @@ class Record(BaseRecord, metaclass=ABCMeta):
     rolemap: Mapping[str, RoleMap]
 
     @classmethod
-    def get_choices(cls) -> list[tuple[str, str]]:
+    def get_choices(cls) -> list[SelectChoice]:
         """Returns all active instances in the database (i.e. not
         deleted ones) as a list of tuples of MSCID and name/label.
         """
-        choices = [("", "")]
+        choices = [SelectChoice("", "")]
         for record in cls.search(Query().slug.exists()):
-            choices.append((record.mscid, record.name))
+            choices.append(SelectChoice(record.mscid, record.name))
 
-        choices.sort(key=lambda k: k[1].lower())
+        choices.sort(key=lambda k: k.label.lower())
         return choices
 
     @classmethod
@@ -679,7 +680,7 @@ class Record(BaseRecord, metaclass=ABCMeta):
         """API validator for data types."""
         errors: list[ValidationIssue] = list()
         clean: list[str] = list()
-        valid_types = [v[0] for v in Datatype.get_choices() if v[0]]
+        valid_types = [v.value for v in Datatype.get_choices() if v.value]
         for i, v in enumerate(value):
             if v not in valid_types:
                 errors.append(
@@ -759,7 +760,9 @@ class Record(BaseRecord, metaclass=ABCMeta):
         """API validator for identifiers."""
         errors: list[ValidationIssue] = list()
         clean: list[dict[str, str]] = list()
-        valid_schemes = [v[0] for v in IDScheme.get_choices(self.__class__) if v[0]]
+        valid_schemes = [
+            v.value for v in IDScheme.get_choices(self.__class__) if v.value
+        ]
         for i, v in enumerate(value):
             clean_dict = dict()
 
@@ -820,7 +823,7 @@ class Record(BaseRecord, metaclass=ABCMeta):
         """API validator for locations."""
         errors: list[ValidationIssue] = list()
         clean: list[dict[str, str]] = list()
-        valid_types = [v[0] for v in Location.get_choices(self.__class__) if v[0]]
+        valid_types = [v.value for v in Location.get_choices(self.__class__) if v.value]
         for i, v in enumerate(value):
             clean_value = dict()
 
@@ -1087,7 +1090,9 @@ class Record(BaseRecord, metaclass=ABCMeta):
         """API validator for entity types."""
         errors: list[ValidationIssue] = list()
         clean: list[str] = list()
-        valid_types = [v[0] for v in EntityType.get_choices(self.__class__) if v[0]]
+        valid_types = [
+            v.value for v in EntityType.get_choices(self.__class__) if v.value
+        ]
         for i, v in enumerate(value):
             if v not in valid_types:
                 errors.append(
@@ -2770,12 +2775,12 @@ class Group(Record):
     }
 
     @classmethod
-    def get_choices(cls):
-        choices = [("", "")]
+    def get_choices(cls) -> list[SelectChoice]:
+        choices = [SelectChoice("", "")]
         for scheme in cls.search(Query().slug.exists()):
-            choices.append((scheme.mscid, scheme.get("name", "Unnamed")))
+            choices.append(SelectChoice(scheme.mscid, scheme.get("name", "Unnamed")))
 
-        choices.sort(key=lambda k: k[1].lower())
+        choices.sort(key=lambda k: k.label.lower())
         return choices
 
     def __init__(self, value: Mapping, doc_id: int):
@@ -2925,12 +2930,12 @@ class Datatype(Record):
         return get_term_db()
 
     @classmethod
-    def get_choices(cls) -> list[tuple[str, str]]:
-        choices = [("", "")]
+    def get_choices(cls) -> list[SelectChoice]:
+        choices = [SelectChoice("", "")]
         for record in cls.search(Query().id.exists()):
-            choices.append((record.mscid, record["label"]))
+            choices.append(SelectChoice(record.mscid, record["label"]))
 
-        choices.sort(key=lambda k: k[1])
+        choices.sort(key=lambda k: k.label)
         return choices
 
     @classmethod
@@ -3020,25 +3025,25 @@ class VocabTerm(BaseRecord, metaclass=ABCMeta):
         return get_term_db()
 
     @classmethod
-    def get_choices(cls, filter: type[Record] | None = None) -> list[tuple[str, str]]:
+    def get_choices(cls, filter: type[Record] | None = None) -> list[SelectChoice]:
         """Returns all active instances in the database (i.e. not
         deleted ones) as a list of tuples of ID and label. May be
         filtered to include only those instances that are valid
         for the given Record subclass.
         """
-        choices = [("", "")]
+        choices = [SelectChoice("", "")]
 
         if filter:
             Q = Query()
             records = cls.search(Q.applies.any([filter.series]))
             records.sort(key=lambda k: k.doc_id)
             for record in records:
-                choices.append((record["id"], record["label"]))
+                choices.append(SelectChoice(record["id"], record["label"]))
         else:
             records = cls.all()
             records.sort(key=lambda k: k.doc_id)
             for record in records:
-                choices.append((record["id"], record["label"]))
+                choices.append(SelectChoice(record["id"], record["label"]))
 
         return choices
 
@@ -3391,7 +3396,9 @@ class ValuesDistinctFrom(object):
             return
         duplicates = list()
         if isinstance(field, SelectField):
-            ui_values = {v[0]: v[1] for v in field.choices} if field.choices else dict()
+            ui_values = (
+                {v.value: v.label for v in field.choices} if field.choices else dict()
+            )
             for data in field.data:
                 if data in other_values:
                     ui_value = ui_values.get(data, data)
@@ -3521,7 +3528,7 @@ class SelectRelatedField(SelectMultipleField):
         setattr(self.flags, "cls", record)
 
     def omit_mscid(self, mscid: str):
-        filtered_choices = [choice for choice in self.choices if choice[0] != mscid]
+        filtered_choices = [choice for choice in self.choices if choice.value != mscid]
         self.choices = filtered_choices  # type: ignore
 
 
@@ -3842,11 +3849,11 @@ class VocabForm(FlaskForm):
     applies = SelectMultipleField(
         "Applies to",
         choices=[
-            (Scheme.series, Scheme.series),
-            (Tool.series, Tool.series),
-            (Crosswalk.series, Crosswalk.series),
-            (Endorsement.series, Endorsement.series),
-            (Group.series, Group.series),
+            SelectChoice(Scheme.series, Scheme.series),
+            SelectChoice(Tool.series, Tool.series),
+            SelectChoice(Crosswalk.series, Crosswalk.series),
+            SelectChoice(Endorsement.series, Endorsement.series),
+            SelectChoice(Group.series, Group.series),
         ],
         widget=CheckboxSelect(multiple=True),
     )
