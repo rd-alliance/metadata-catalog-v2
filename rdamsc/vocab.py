@@ -4,7 +4,15 @@
 # --------
 import os
 from collections.abc import Mapping, Sequence
-from typing import Any, Literal, MutableSequence, NoReturn, TypedDict, overload
+from typing import (
+    Any,
+    Literal,
+    MutableSequence,
+    NoReturn,
+    NotRequired,
+    TypedDict,
+    overload,
+)
 
 # Non-standard
 # ------------
@@ -36,7 +44,7 @@ class Term(TypedDict):
 class TreeNode(TypedDict):
     uri: URIRef
     label: str
-    children: list["TreeNode"]
+    children: NotRequired[list["TreeNode"]]
 
 
 class Thesaurus(object):
@@ -153,15 +161,20 @@ class Thesaurus(object):
         "ancestry" (List[URIRef]). The long label includes ancestor
         labels. Operates recursively.
         """
-        full_list = list()
-        sub_list = list()
+        full_list: list[Term] = list()
+        sub_list: list[Term] = list()
         if parent_uris is None:
             domains = self.g.subjects(SKOS.topConceptOf, self.uriref)
             for domain in domains:
+                assert isinstance(domain, URIRef)
                 label = str(self._preferredLabel(domain, lang="en")[0][1])
-                sub_list.append(
-                    {"uri": domain, "label": label, "long_label": label, "ancestry": []}
-                )
+                entry: Term = {
+                    "uri": domain,
+                    "label": label,
+                    "long_label": label,
+                    "ancestry": [],
+                }
+                sub_list.append(entry)
             sub_list.sort(key=lambda k: k["uri"])
             for entry in sub_list:
                 full_list.append(entry)
@@ -172,16 +185,16 @@ class Thesaurus(object):
             parent_uri = parent_uris[-1]
             children = self.g.objects(parent_uri, SKOS.narrower)
             for child in children:
+                assert isinstance(child, URIRef)
                 label = str(self._preferredLabel(child, lang="en")[0][1])
                 long_label = label + parent_label
-                sub_list.append(
-                    {
-                        "uri": child,
-                        "label": label,
-                        "long_label": long_label,
-                        "ancestry": parent_uris,
-                    }
-                )
+                entry: Term = {
+                    "uri": child,
+                    "label": label,
+                    "long_label": long_label,
+                    "ancestry": parent_uris,
+                }
+                sub_list.append(entry)
             if sub_list:
                 sub_list.sort(key=lambda k: k["label"])
                 for entry in sub_list:
@@ -199,17 +212,15 @@ class Thesaurus(object):
         "children" is a list of child concepts using the same form, so
         the end result is a list of traversable concept trees.
         """
-        tree = list()
+        tree: list[TreeNode] = list()
         if parent_uri:
             uris = self.g.objects(parent_uri, SKOS.narrower)
         else:
             uris = self.g.subjects(SKOS.topConceptOf, self.uriref)
-        if not uris:
-            return tree
         for uri in uris:
             assert isinstance(uri, URIRef)
             label = str(self._preferredLabel(uri, lang="en")[0][1])
-            entry = {"uri": uri, "label": label}
+            entry: TreeNode = {"uri": uri, "label": label}
             children = self._to_tree(uri)
             if children:
                 entry["children"] = children

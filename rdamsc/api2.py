@@ -5,9 +5,9 @@
 import math
 import re
 from collections import defaultdict, deque
-from collections.abc import Callable, Mapping, MutableMapping
+from collections.abc import Mapping, MutableMapping
 from enum import Enum, auto
-from typing import Any, Literal, TypeVar
+from typing import Any, Callable, Literal, overload
 
 import werkzeug.exceptions
 
@@ -44,12 +44,11 @@ basic_auth = HTTPBasicAuth()
 token_auth = HTTPTokenAuth("Bearer")
 multi_auth = MultiAuth(basic_auth, token_auth)
 api_version = "2.1.0"
-_M = TypeVar("_M", bound=MutableMapping)
 
 
 # Handy functions
 # ===============
-def embellish_record(record: Record, with_embedded: bool = False) -> Record:
+def embellish_record(record: Record, /, with_embedded: bool = False) -> Record:
     """Add convenience fields and related entities to a record."""
 
     # Form MSC ID
@@ -87,14 +86,16 @@ def embellish_record(record: Record, with_embedded: bool = False) -> Record:
     return record
 
 
-def embellish_record_fully(record: Record) -> Record:
+def embellish_record_fully(record: Record, /) -> Record:
     """Convenience wrapper around embellish_record ensuring related entities
     are embedded.
     """
     return embellish_record(record, with_embedded=True)
 
 
-def embellish_relation(document: _M, route: str = ".get_relation") -> _M:
+def embellish_relation[T: MutableMapping](
+    document: T, /, route: str = ".get_relation"
+) -> T:
     """Embellishes a relationship or inverse relationship record."""
     mscid = document["@id"]
     n = len(mscid_prefix)
@@ -104,25 +105,39 @@ def embellish_relation(document: _M, route: str = ".get_relation") -> _M:
     return document
 
 
-def embellish_inv_relation(document: _M) -> _M:
+def embellish_inv_relation[T: MutableMapping](document: T, /) -> T:
     """Embellishes a relationship or inverse relationship record."""
     return embellish_relation(document, route=".get_inv_relation")
 
 
-def convert_thesaurus(document: Document) -> dict[str, Any]:
+def convert_thesaurus(document: Document, /) -> dict[str, Any]:
     """Converts an internal thesaurus entry into a SKOS Concept."""
     th = Thesaurus()
     return th.get_concept(document)
 
 
-def do_not_embellish(mapping: _M) -> _M:
+def do_not_embellish[T: MutableMapping](mapping: T, /) -> T:
     """Dummy function, no-op."""
     return mapping
 
 
-def as_response_item(
-    mapping: _M, callback: Callable[[_M], Mapping] = embellish_record
-) -> dict[str, Any]:
+@overload
+def as_response_item(mapping: Record) -> dict[str, Any]: ...
+
+
+@overload
+def as_response_item[T: Document](
+    mapping: T, callback: Callable[[T], dict[str, Any]]
+) -> dict[str, Any]: ...
+
+
+@overload
+def as_response_item[T: MutableMapping](
+    mapping: T, callback: Callable[[T], T]
+) -> dict[str, Any]: ...
+
+
+def as_response_item(mapping, callback=embellish_record) -> dict[str, Any]:
     """Embellishes a record using the callback function, then wraps it in a
     response object.
     """
@@ -137,13 +152,49 @@ def as_response_item(
     return response
 
 
+@overload
 def as_response_page(
-    mappings: list[_M],
+    mappings: list[Record],
     link: str,
+    *,
+    page_size: int = ...,
+    start: int | None = ...,
+    page: int | None = ...,
+) -> dict[str, Any]: ...
+
+
+@overload
+def as_response_page[T: Document](
+    mappings: list[T],
+    link: str,
+    *,
+    page_size: int = ...,
+    start: int | None = ...,
+    page: int | None = ...,
+    callback: Callable[[T], dict[str, Any]],
+) -> dict[str, Any]: ...
+
+
+@overload
+def as_response_page[T: MutableMapping](
+    mappings: list[T],
+    link: str,
+    *,
+    page_size: int = ...,
+    start: int | None = ...,
+    page: int | None = ...,
+    callback: Callable[[T], T],
+) -> dict[str, Any]: ...
+
+
+def as_response_page(
+    mappings: list,
+    link: str,
+    *,
     page_size=10,
     start: int | None = None,
     page: int | None = None,
-    callback: Callable[[_M], Mapping] = embellish_record,
+    callback: Callable = embellish_record,
 ) -> dict[str, Any]:
     """Wraps list of records in a response object representing a page of
     `page_size` items, starting with item number `start` or page number `page`

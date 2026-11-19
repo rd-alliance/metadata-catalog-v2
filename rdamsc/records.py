@@ -1346,10 +1346,10 @@ class Record(BaseRecord, metaclass=ABCMeta):
             # Assign validators to current choices (these are in all the forms):
             for f in form.locations:
                 if isinstance(select := f["type"], SelectField):
-                    select.choices = Location.get_choices(self.__class__)  # type: ignore
+                    select.choices = Location.get_choices(self.__class__)
             for f in form.identifiers:
                 assert isinstance(select := f.scheme, SelectField)
-                select.choices = IDScheme.get_choices(self.__class__)  # type: ignore
+                select.choices = IDScheme.get_choices(self.__class__)
 
         return form
 
@@ -1599,7 +1599,7 @@ class Record(BaseRecord, metaclass=ABCMeta):
         result = {"@id": self.mscid, **rel.related(self.mscid, direction=rel.INVERSE)}
 
         self.cache = dict()
-        errors = list()
+        errors: list[ValidationIssue] = list()
         if not isinstance(input_data, list):
             errors.append(
                 {
@@ -1629,9 +1629,11 @@ class Record(BaseRecord, metaclass=ABCMeta):
         # Save changes:
         invrelmap = rel.inversion_map
         current = rel.related(self.mscid, direction=rel.INVERSE)
-        changes = list()
+        changes: list[tuple[str, str, bool]] = list()
         for inverted, mscids in result.items():
             predicate = invrelmap.get(inverted)
+            if predicate is None:
+                continue
             if inverted in current:
                 for mscid in mscids:
                     if mscid not in current[inverted]:
@@ -1641,6 +1643,8 @@ class Record(BaseRecord, metaclass=ABCMeta):
                     changes.append((mscid, predicate, True))
         for inverted, mscids in current.items():
             predicate = invrelmap.get(inverted)
+            if predicate is None:
+                continue
             if inverted in result:
                 for mscid in mscids:
                     if mscid not in result[inverted]:
@@ -1674,13 +1678,7 @@ class Record(BaseRecord, metaclass=ABCMeta):
 
         rel = Relation()
         rel_record = rel.tb.get(Query()["@id"] == self.mscid)
-        if rel_record is None:
-            record = {"@id": self.mscid}
-            rel_id = None
-        else:
-            assert isinstance(rel_record, Document)
-            record = dict(rel_record)
-            rel_id = rel_record.doc_id
+        record = {"@id": self.mscid} if rel_record is None else dict(rel_record)
 
         self.cache = dict()
         errors: list[ValidationIssue] = list()
@@ -1713,6 +1711,7 @@ class Record(BaseRecord, metaclass=ABCMeta):
         if rel_record is None:
             rel_id = rel.tb.insert(record)
         else:
+            rel_id = rel_record.doc_id
             with transaction(rel.tb) as tn:
                 for key in (k for k in rel_record if k not in record):
                     tn.update(delete(key), doc_ids=[rel_id])
@@ -1759,7 +1758,7 @@ class Record(BaseRecord, metaclass=ABCMeta):
             raise NotImplementedError
 
         v_errors, clean_data = self.validate_against(input_data, self.schema)
-        errors = list()
+        errors: list[ValidationIssue] = list()
         for error in v_errors:
             errors.append(
                 {
@@ -2182,7 +2181,7 @@ class Record(BaseRecord, metaclass=ABCMeta):
 
             output[predicate] = clean_list
 
-        errors = list()
+        errors: list[ValidationIssue] = list()
         for error in v_errors:
             errors.append(
                 {
@@ -2359,7 +2358,7 @@ class Scheme(Record):
                 ]
         form.parent_schemes.omit_mscid(self.mscid)
         form.child_schemes.omit_mscid(self.mscid)
-        form.dataTypes.choices = Datatype.get_choices()  # type: ignore
+        form.dataTypes.choices = Datatype.get_choices()
 
         return form
 
@@ -2490,7 +2489,7 @@ class Tool(Record):
         form: ToolForm = self.populate_form(data)
 
         # Tool-specific form settings:
-        form.types.choices = EntityType.get_choices(self.__class__)  # type: ignore
+        form.types.choices = EntityType.get_choices(self.__class__)
 
         return form
 
@@ -2655,22 +2654,22 @@ class Crosswalk(Record):
         outputs = list()
         if formdata:
             for mscid in formdata.get("input_schemes", list()):
-                inputs.append(Record.load_by_mscid(mscid))
+                if record := Record.load_by_mscid(mscid):
+                    inputs.append(record)
                 break
             for mscid in formdata.get("output_schemes", list()):
-                outputs.append(Record.load_by_mscid(mscid))
+                if record := Record.load_by_mscid(mscid):
+                    outputs.append(record)
                 break
         elif apidata:
             for entity in apidata.get("relatedEntities", list()):
                 if entity.get("role") == "input scheme":
-                    record = Record.load_by_mscid(entity.get("id"))
-                    if record:
+                    if record := Record.load_by_mscid(entity.get("id")):
                         inputs.append(record)
                         if outputs:
                             break
                 elif entity.get("role") == "output scheme":
-                    record = Record.load_by_mscid(entity.get("id"))
-                    if record:
+                    if record := Record.load_by_mscid(entity.get("id")):
                         outputs.append(record)
                         if inputs:
                             break
@@ -2816,7 +2815,7 @@ class Group(Record):
         form: GroupForm = self.populate_form(data)
 
         # Group-specific form settings:
-        form.types.choices = EntityType.get_choices(self.__class__)  # type: ignore
+        form.types.choices = EntityType.get_choices(self.__class__)
 
         return form
 
@@ -2974,7 +2973,7 @@ class Datatype(Record):
     def name(self) -> str:
         return self.get("label", f"Type {self.doc_id}")
 
-    def annul(self) -> list[dict[str, str]]:
+    def annul(self) -> list[OperationIssue]:
         # Save the main record:
         error = self._save(dict())
         if error:
@@ -2991,7 +2990,7 @@ class Datatype(Record):
 
         # Add validators:
         if self.doc_id == 0 and len(form.label.validators) == 1:
-            form.label.validators = [
+            form.label.validators = [  # type: ignore
                 *form.label.validators,
                 validators.NoneOf(
                     self.get_types_used(),
@@ -3095,7 +3094,7 @@ class VocabTerm(BaseRecord, metaclass=ABCMeta):
         form: VocabForm = self.form(data=data)
 
         if self.doc_id == 0:
-            form.id.validators = [validators.InputRequired()]
+            form.id.validators = [validators.InputRequired()]  # type: ignore
             form.id.render_kw = {"required": True}
 
         return form
@@ -3419,15 +3418,24 @@ class W3CDate(validators.Regexp):
 
     def __init__(self, message: str | None = None):
         pattern = (
-            r"^(?P<year>\d{4})"
+            r"(?P<year>\d{4})"
             r"(?P<month>-0[1-9]|-1[0-2])?"
-            r"(?(month)(?P<day>-0[1-9]|-[1-2][0-9]|-3[0-1])?)$"
+            r"(?(month)(?P<day>-0[1-9]|-[1-2][0-9]|-3[0-1])?)"
         )
-        super().__init__(pattern, message=message)
+        html_pattern = (
+            r"\d{4}"
+            r"(?:-0[1-9]|-1[0-2]"
+            r"(?:-0[1-9]|-[1-2][0-9]|-3[0-1])?)?"
+        )
+        super().__init__(
+            pattern, message=message, matcher=re.fullmatch, html_pattern=html_pattern
+        )
 
-    def __call__(self, form: Form, field: StringField):
-        message = self.message or field.gettext(
-            "Please provide the date in yyyy-mm-dd format."
+    def __call__(self, form: Form, field: StringField, message=None):
+        message = (
+            message
+            or self.message
+            or field.gettext("Please provide the date in yyyy-mm-dd format.")
         )
 
         super().__call__(form, field, message)
@@ -3489,11 +3497,17 @@ class CheckboxSelect(widgets.Select):
 # Custom fields
 # ---------------
 class FormFieldFixed(FormField):
-    """This does not pass on a form field prefix (unused in this application
-    anyway), so the Form can include a field named ‘prefix’.
-    """
+    def process(self, formdata: Mapping, data: Any = unset_value, extra_filters=None):
+        """If `data` is a dict, this version passes it in the `data`
+        parameter to the form class instead of unpacking it as `kwargs`.
+        This allows the Form to include fields that clash with
+        parameter names in the Form constructor (notably ‘prefix’).
+        """
+        if extra_filters:
+            raise TypeError(
+                "FormFieldFixed cannot take filters, as the encapsulateddata is not mutable."
+            )
 
-    def process(self, formdata: Mapping, data: Any = unset_value):
         if data is unset_value:
             if isinstance(self.default, Callable):
                 data = self.default()
@@ -3505,9 +3519,21 @@ class FormFieldFixed(FormField):
 
         prefix = self.name + self.separator
         if isinstance(data, dict):
-            self.form = self.form_class(formdata=formdata, prefix=prefix, data=data)
+            user_meta = data.get("meta") or {}
+            data_kwargs = {k: v for k, v in data.items() if k != "meta"}
+            self.form = self.form_class(
+                formdata=formdata,
+                prefix=prefix,
+                data=data_kwargs,
+                meta={**user_meta, "_parent_form": self._form},
+            )
         else:
-            self.form = self.form_class(formdata=formdata, obj=data, prefix=prefix)
+            self.form = self.form_class(
+                formdata=formdata,
+                obj=data,
+                prefix=prefix,
+                meta={"_parent_form": self._form},
+            )
 
 
 class NativeDateField(StringField):
@@ -3529,7 +3555,7 @@ class SelectRelatedField(SelectMultipleField):
 
     def omit_mscid(self, mscid: str):
         filtered_choices = [choice for choice in self.choices if choice.value != mscid]
-        self.choices = filtered_choices  # type: ignore
+        self.choices = filtered_choices
 
 
 class TextHTMLField(TextAreaField):

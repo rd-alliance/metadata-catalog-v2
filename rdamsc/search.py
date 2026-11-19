@@ -189,26 +189,25 @@ def scheme_search():
 
     # No results displayed, so render form instead.
     # Enable autocompletion for title, identifier, funder, dataType:
-    all_schemes = Scheme.all()
-    title_set = set()
-    type_set = set()
-    funder_set = set()
-    id_set = set()
+    all_schemes: list[Scheme] = Scheme.all()
+    title_set: set[str] = set()
+    type_set: set[str] = set()
+    funder_set: set[str] = set()
+    id_set: set[str] = set()
     for scheme in all_schemes:
         if not scheme:
             continue
         title_set.add(scheme.name)
         for type_id in scheme.get("dataTypes", list()):
-            type = Datatype.load_by_mscid(type_id)
-            if type:
-                type_set.add(type.get("label"))
+            if type := Datatype.load_by_mscid(type_id):
+                if type_label := type.get("label"):
+                    type_set.add(type_label)
         for group in rel.object_records(predicate="funders"):
             funder_set.add(group.name)
         for id in scheme.get("identifiers", list()):
             id_set.add(id.get("id"))
         for vn in scheme.get("versions", list()):
-            vtitle = vn.get("title")
-            if vtitle:
+            if vtitle := vn.get("title"):
                 title_set.add(vtitle)
             for id in vn.get("identifiers", list()):
                 id_set.add(id.get("id"))
