@@ -3,14 +3,7 @@
 # Standard
 # --------
 from collections.abc import Iterable
-import sys
-from typing import Literal
-
-if sys.version_info < (3, 11):
-    from typing_extensions import TypedDict
-else:
-    from typing import TypedDict
-
+from typing import Literal, TypedDict
 
 # Non-standard
 # ------------

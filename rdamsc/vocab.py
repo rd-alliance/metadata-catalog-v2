@@ -2,23 +2,18 @@
 # ============
 # Standard
 # --------
-from collections.abc import Mapping, Sequence
 import os
-import sys
-from typing import Any, Literal, MutableSequence, NoReturn, overload
-
-if sys.version_info < (3, 11):
-    from typing_extensions import TypedDict
-else:
-    from typing import TypedDict
+from collections.abc import Mapping, Sequence
+from typing import Any, Literal, MutableSequence, NoReturn, TypedDict, overload
 
 # Non-standard
 # ------------
 from flask import current_app, g
-from rdflib import Graph, Literal as RDFLiteral, Namespace, URIRef
-from rdflib.graph import _SubjectType, _ObjectType, _PredicateType
-from rdflib.namespace import SKOS, RDFS
-from tinydb import TinyDB, Query
+from rdflib import Graph, Namespace, URIRef
+from rdflib import Literal as RDFLiteral
+from rdflib.graph import _ObjectType, _PredicateType, _SubjectType
+from rdflib.namespace import RDFS, SKOS
+from tinydb import Query, TinyDB
 from tinydb.table import Document
 from tinyrecord import transaction
 
@@ -433,9 +428,11 @@ class Thesaurus(object):
         if children and (narrower or not broader):
             rdf_object["skos:narrower"] = list()
             children.sort(
-                key=lambda k: k["uri"]
-                .replace("http://vocabularies.unesco.org/thesaurus/concept", "")
-                .zfill(6)
+                key=lambda k: (
+                    k["uri"]
+                    .replace("http://vocabularies.unesco.org/thesaurus/concept", "")
+                    .zfill(6)
+                )
             )
             for child in children:
                 child_uri = child["uri"]

@@ -2,23 +2,16 @@
 # ============
 # Standard
 # --------
-from abc import ABCMeta, abstractmethod
-from collections import defaultdict
-from collections.abc import Mapping, MutableMapping, Sequence
 import json
 import os
 import re
-import sys
-from typing import Any, Callable, Literal, overload
-
-if sys.version_info < (3, 11):
-    from typing_extensions import Self, TypedDict, NotRequired
-else:
-    from typing import Self, TypedDict, NotRequired
+from abc import ABCMeta, abstractmethod
+from collections import defaultdict
+from collections.abc import Mapping, MutableMapping, Sequence
+from typing import Any, Callable, Literal, NotRequired, Self, TypedDict, overload
 
 # Non-standard
 # ------------
-from tinyrecord import transaction
 from flask import (
     Blueprint,
     abort,
@@ -32,11 +25,12 @@ from flask import (
 )
 from flask_login import login_required
 from flask_wtf import FlaskForm
-from markupsafe import escape, Markup
+from markupsafe import Markup, escape
 from tinydb import TinyDB
 from tinydb.operations import delete
 from tinydb.queries import Query, QueryLike
 from tinydb.table import Document
+from tinyrecord import transaction
 from wtforms import (
     FieldList,
     Form,

@@ -7,7 +7,7 @@ name = "rdamsc"
 version = "2.2.0"
 description = "RDA Metadata Standards Catalog"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "authlib",
     "dulwich",
@@ -24,7 +24,6 @@ dependencies = [
     "requests",
     "tinydb>=4",
     "tinyrecord>=0.2.0",
-    "typing-extensions;python_version<'3.11'",
     "werkzeug",
     "wtforms[email]",
 ]

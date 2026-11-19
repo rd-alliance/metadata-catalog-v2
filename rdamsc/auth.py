@@ -3,20 +3,24 @@
 # Standard
 # --------
 import logging
-import sys
 import time  # for Authlib patch
-from typing import NamedTuple
-
-if sys.version_info < (3, 11):
-    from typing_extensions import TypedDict
-else:
-    from typing import TypedDict
+from typing import NamedTuple, TypedDict
 
 # Non-standard
 # ------------
+import requests
+from authlib.integrations.base_client import (
+    errors as authlib_errors,
+)
+from authlib.integrations.base_client import (
+    sync_app,
+    sync_openid,
+)
+from authlib.integrations.flask_client.apps import FlaskOAuth1App, FlaskOAuth2App
+from authlib.integrations.flask_client.integration import FlaskIntegration
 from flask import (
-    abort,
     Blueprint,
+    abort,
     current_app,
     flash,
     g,
@@ -28,24 +32,16 @@ from flask import (
 )
 from flask_login import (
     LoginManager,
-    login_user,
-    logout_user,
     current_user,
     login_required,
+    login_user,
+    logout_user,
 )
 from flask_wtf import FlaskForm
-from authlib.integrations.flask_client.apps import FlaskOAuth1App, FlaskOAuth2App
-from authlib.integrations.flask_client.integration import FlaskIntegration
-from authlib.integrations.base_client import (
-    errors as authlib_errors,
-    sync_app,
-    sync_openid,
-)
-import requests
 from tinydb import Query
 from tinydb.table import Document
 from werkzeug import Response
-from wtforms import validators, StringField
+from wtforms import StringField, validators
 
 # Local
 # -----
