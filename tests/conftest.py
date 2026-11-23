@@ -1,24 +1,24 @@
-from collections.abc import Generator, Iterator
-from html import unescape
 import json
 import os
 import re
 import tempfile
 import time
+from collections.abc import Generator, Iterator
+from html import unescape
+from typing import Any
 
 import email_validator
-from flask import Flask, request
-from flask.testing import FlaskCliRunner, FlaskClient
-from passlib.apps import custom_app_context as pwd_context
 import pytest
-from responses import RequestsMock
+from flask import Flask, request
+from flask.testing import FlaskClient, FlaskCliRunner
+from passlib.apps import custom_app_context as pwd_context
 from requests.auth import _basic_auth_str
+from responses import RequestsMock
 from werkzeug.datastructures import MultiDict
 from werkzeug.test import TestResponse
 
 from rdamsc import create_app
 from rdamsc.auth import DummyAuthClient
-
 
 email_validator.TEST_ENVIRONMENT = True
 
@@ -412,7 +412,7 @@ class DataDBActions(object):
         }
 
         dbdata = getattr(self, record)
-        apidata = dict()
+        apidata: dict[str, Any] = dict()
         apidata["identifiers"] = [{"id": f"msc:{record}", "scheme": "RDA-MSCWG"}]
         for key, value in dbdata.items():
             if key == "identifiers":
@@ -542,8 +542,9 @@ class DataDBActions(object):
 
             for item in apidataset:
                 for predicate in item.keys():
-                    if isinstance(item[predicate], list):
-                        item[predicate].sort(
+                    objects = item[predicate]
+                    if isinstance(objects, list):
+                        objects.sort(
                             key=lambda k: table_order[k[n - 1 : n]] + int(k[n:])
                         )
         else:

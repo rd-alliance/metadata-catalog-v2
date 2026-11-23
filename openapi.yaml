@@ -2511,12 +2511,22 @@ components:
       allOf:
       - $ref: '#/components/schemas/Response'
       - properties:
+          "@context":
+            type: object
+            properties:
+              data:
+                type: string
           data:
             $ref: '#/components/schemas/ThesaurusConceptScheme'
     ResponseItemThesaurusConcept:
       allOf:
       - $ref: '#/components/schemas/Response'
       - properties:
+          "@context":
+            type: object
+            properties:
+              data:
+                type: string
           data:
             $ref: '#/components/schemas/ThesaurusConcept'
     Page:
@@ -2667,6 +2677,11 @@ components:
       allOf:
       - $ref: '#/components/schemas/Response'
       - properties:
+          "@context":
+            type: object
+            properties:
+              data:
+                type: string
           data:
             allOf:
               - $ref: '#/components/schemas/Page'

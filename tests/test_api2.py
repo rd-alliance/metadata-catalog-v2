@@ -797,6 +797,7 @@ def test_main_search(client: FlaskClient, data_db: DataDBActions):
 def test_thesaurus(client: FlaskClient, data_db: DataDBActions):
     # Test getting full scheme record
     ideal = {
+        "@context": {"data": "@nest"},
         "apiVersion": api_version,
         "data": {
             "@context": {"skos": "http://www.w3.org/2004/02/skos/core#"},
@@ -830,6 +831,7 @@ def test_thesaurus(client: FlaskClient, data_db: DataDBActions):
     assert response.status_code == 200
 
     ideal = {
+        "@context": {"data": "@nest"},
         "apiVersion": api_version,
         "data": {
             "@context": {"skos": "http://www.w3.org/2004/02/skos/core#"},
@@ -872,6 +874,7 @@ def test_thesaurus(client: FlaskClient, data_db: DataDBActions):
     assert response.status_code == 404
 
     ideal = {
+        "@context": {"data": "@nest"},
         "apiVersion": api_version,
         "data": {
             "@context": {"skos": "http://www.w3.org/2004/02/skos/core#"},
@@ -902,6 +905,7 @@ def test_thesaurus(client: FlaskClient, data_db: DataDBActions):
     assert response.status_code == 404
 
     ideal = {
+        "@context": {"data": "@nest"},
         "apiVersion": api_version,
         "data": {
             "@context": {"skos": "http://www.w3.org/2004/02/skos/core#"},

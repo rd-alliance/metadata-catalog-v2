@@ -46,8 +46,8 @@ multi_auth = MultiAuth(basic_auth, token_auth)
 api_version = "2.1.0"
 
 
-# Handy functions
-# ===============
+# Response embellishment callbacks
+# ================================
 def embellish_record(record: Record, /, with_embedded: bool = False) -> Record:
     """Add convenience fields and related entities to a record."""
 
@@ -110,34 +110,16 @@ def embellish_inv_relation[T: MutableMapping](document: T, /) -> T:
     return embellish_relation(document, route=".get_inv_relation")
 
 
-def convert_thesaurus(document: Document, /) -> dict[str, Any]:
-    """Converts an internal thesaurus entry into a SKOS Concept."""
-    th = Thesaurus()
-    return th.get_concept(document)
-
-
 def do_not_embellish[T: MutableMapping](mapping: T, /) -> T:
     """Dummy function, no-op."""
     return mapping
 
 
-@overload
-def as_response_item(mapping: Record) -> dict[str, Any]: ...
-
-
-@overload
-def as_response_item[T: Document](
-    mapping: T, callback: Callable[[T], dict[str, Any]]
-) -> dict[str, Any]: ...
-
-
-@overload
+# Response wrapping functions
+# ===========================
 def as_response_item[T: MutableMapping](
-    mapping: T, callback: Callable[[T], T]
-) -> dict[str, Any]: ...
-
-
-def as_response_item(mapping, callback=embellish_record) -> dict[str, Any]:
+    mapping: T, callback: Callable[[T], T] = do_not_embellish
+) -> dict[str, Any]:
     """Embellishes a record using the callback function, then wraps it in a
     response object.
     """
@@ -152,26 +134,26 @@ def as_response_item(mapping, callback=embellish_record) -> dict[str, Any]:
     return response
 
 
+def as_thesaurus_item(mapping: MutableMapping) -> dict[str, Any]:
+    """Wraps the mapping in a response object, with extra fields for
+    RDF tools expecting JSON-LD throughout.
+    """
+    return {
+        "@context": {"data": "@nest"},
+        "apiVersion": api_version,
+        "data": mapping,
+    }
+
+
 @overload
 def as_response_page(
-    mappings: list[Record],
+    mappings: list[Document],
     link: str,
     *,
     page_size: int = ...,
     start: int | None = ...,
     page: int | None = ...,
-) -> dict[str, Any]: ...
-
-
-@overload
-def as_response_page[T: Document](
-    mappings: list[T],
-    link: str,
-    *,
-    page_size: int = ...,
-    start: int | None = ...,
-    page: int | None = ...,
-    callback: Callable[[T], dict[str, Any]],
+    thesaurus: Thesaurus,
 ) -> dict[str, Any]: ...
 
 
@@ -183,18 +165,19 @@ def as_response_page[T: MutableMapping](
     page_size: int = ...,
     start: int | None = ...,
     page: int | None = ...,
-    callback: Callable[[T], T],
+    callback: Callable[[T], T] = ...,
 ) -> dict[str, Any]: ...
 
 
 def as_response_page(
-    mappings: list,
-    link: str,
+    mappings,
+    link,
     *,
     page_size=10,
-    start: int | None = None,
-    page: int | None = None,
-    callback: Callable = embellish_record,
+    start=None,
+    page=None,
+    callback=do_not_embellish,
+    thesaurus=None,
 ) -> dict[str, Any]:
     """Wraps list of records in a response object representing a page of
     `page_size` items, starting with item number `start` or page number `page`
@@ -219,8 +202,12 @@ def as_response_page(
         page_index = 1
 
     items = list()
-    for mapping in mappings[start_index - 1 : start_index + page_size - 1]:
-        items.append(callback(mapping))
+    if thesaurus is None:
+        for mapping in mappings[start_index - 1 : start_index + page_size - 1]:
+            items.append(callback(mapping))
+    else:
+        for mapping in mappings[start_index - 1 : start_index + page_size - 1]:
+            items.append(thesaurus.get_concept(mapping))
 
     response = {
         "apiVersion": api_version,
@@ -266,6 +253,37 @@ def as_response_page(
     return response
 
 
+def as_thesaurus_page(
+    documents: list[Document],
+    link: str,
+    *,
+    page_size=10,
+    start: int | None = None,
+    page: int | None = None,
+    thesaurus: Thesaurus,
+) -> dict[str, Any]:
+    """Wraps the mapping in a response object, with extra fields for
+    RDF tools expecting JSON-LD throughout.
+    """
+    response = {
+        "@context": {"data": "@nest"},
+    }
+    response.update(
+        as_response_page(
+            documents,
+            link,
+            page_size=page_size,
+            start=start,
+            page=page,
+            thesaurus=thesaurus,
+        )
+    )
+
+    return response
+
+
+# Lucene-esque query handling
+# ===========================
 class Qp(Enum):
     """Query parser state."""
 
@@ -829,6 +847,7 @@ def get_records(table: TableID):
             page_size=page_size,
             start=start,
             page=page,
+            callback=embellish_record,
         )
     )
 
@@ -998,7 +1017,7 @@ def get_thesaurus_scheme():
     """Returns SKOS record for MSC Thesaurus Scheme."""
     th = Thesaurus()
 
-    return jsonify(as_response_item(th.as_jsonld, callback=do_not_embellish))
+    return jsonify(as_thesaurus_item(th.as_jsonld))
 
 
 @bp.route("/thesaurus/<any(domain, subdomain, concept):level><int:number>")
@@ -1015,7 +1034,7 @@ def get_thesaurus_concept(level: ThesaurusLevel, number: int):
     if concept is None:
         abort(404)
 
-    return jsonify(as_response_item(concept, callback=do_not_embellish))
+    return jsonify(as_thesaurus_item(concept))
 
 
 @bp.route("/thesaurus/concepts")
@@ -1034,13 +1053,13 @@ def get_thesaurus_concepts():
 
     # Return result
     return jsonify(
-        as_response_page(
+        as_thesaurus_page(
             th.entries,
             url_for(".get_thesaurus_concepts"),
             page_size=page_size,
             start=start,
             page=page,
-            callback=convert_thesaurus,
+            thesaurus=th,
         )
     )
 
@@ -1064,13 +1083,13 @@ def get_thesaurus_concepts_used():
 
     # Return result
     return jsonify(
-        as_response_page(
+        as_thesaurus_page(
             entries,
             url_for(".get_thesaurus_concepts_used"),
             page_size=page_size,
             start=start,
             page=page,
-            callback=convert_thesaurus,
+            thesaurus=th,
         )
     )
 
@@ -1205,7 +1224,7 @@ def set_relation(table: Literal["m", "t", "c", "e"], number: int):
         return jsonify(response), 400
 
     # Return report:
-    response = as_response_item(result, callback=do_not_embellish)
+    response = as_response_item(result)
     return jsonify(response)
 
 
@@ -1231,7 +1250,7 @@ def patch_relation(table: Literal["m", "t", "c", "e"], number: int):
         return jsonify(response), 400
 
     # Return report:
-    response = as_response_item(result, callback=do_not_embellish)
+    response = as_response_item(result)
     return jsonify(response)
 
 
@@ -1257,5 +1276,5 @@ def patch_inv_relation(table: Literal["m", "g"], number: int):
         return jsonify(response), 400
 
     # Return report:
-    response = as_response_item(result, callback=do_not_embellish)
+    response = as_response_item(result)
     return jsonify(response)
