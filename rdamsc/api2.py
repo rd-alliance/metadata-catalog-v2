@@ -265,21 +265,14 @@ def as_thesaurus_page(
     """Wraps the mapping in a response object, with extra fields for
     RDF tools expecting JSON-LD throughout.
     """
-    response = {
-        "@context": {"data": "@nest"},
-    }
-    response.update(
-        as_response_page(
-            documents,
-            link,
-            page_size=page_size,
-            start=start,
-            page=page,
-            thesaurus=thesaurus,
-        )
+    return as_response_page(
+        documents,
+        link,
+        page_size=page_size,
+        start=start,
+        page=page,
+        thesaurus=thesaurus,
     )
-
-    return response
 
 
 # Lucene-esque query handling

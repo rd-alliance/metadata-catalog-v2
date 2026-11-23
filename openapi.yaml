@@ -2677,11 +2677,6 @@ components:
       allOf:
       - $ref: '#/components/schemas/Response'
       - properties:
-          "@context":
-            type: object
-            properties:
-              data:
-                type: string
           data:
             allOf:
               - $ref: '#/components/schemas/Page'
