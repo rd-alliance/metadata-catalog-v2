@@ -5,7 +5,7 @@
   <ul class="nav nav-group">
 {% for item in tree recursive %}
 {{ '    ' * loop.depth }}<li class="nav-item">
-{{ '    ' * loop.depth }}  <a class="nav-link" href="{{ item['url'] }}">{{ item['name'] }}</a>
+{{ '    ' * loop.depth }}  <a class="nav-link" href="{{ item['uri'] }}">{{ item['label'] }}</a>
 {% if item['children'] %}
 {{ '    ' * loop.depth }}  <ul class="nav nav-group">
 {{ loop(item['children']) -}}

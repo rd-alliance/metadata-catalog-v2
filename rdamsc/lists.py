@@ -3,7 +3,7 @@
 # Standard
 # --------
 from collections.abc import Iterable
-from typing import Literal, TypedDict
+from typing import Literal
 
 # Non-standard
 # ------------
@@ -12,7 +12,7 @@ from flask import Blueprint, abort, current_app, render_template, url_for
 # Local
 # -----
 from .records import Record, Relation, Scheme, VocabTerm
-from .vocab import get_thesaurus
+from .vocab import TreeNode, get_thesaurus
 
 bp = Blueprint("list", __name__)
 RoleLabel = Literal[
@@ -26,12 +26,6 @@ RoleLabel = Literal[
     "users",
     "originators",
 ]
-
-
-class TreeNode(TypedDict):
-    name: str
-    url: str
-    children: list["TreeNode"]
 
 
 class IDAdder:
@@ -55,16 +49,16 @@ class IDAdder:
 def get_scheme_tree(
     records: list[Record],
     id_adder: IDAdder,
-    seen_so_far: list[str] | None = None,
+    seen_so_far: set[str] | None = None,
 ) -> list[TreeNode]:
     """Takes list of parent schemes and returns tree suitable for use with the
     contents template.
 
-    If provided, populates `descendent_ids` with the MSCIDs of all records
+    If provided, populates `id_adder` with the MSCIDs of all records
     descending from the given list of parent schemes.
     """
     if seen_so_far is None:
-        seen_so_far = list()
+        seen_so_far = set()
 
     tree = list()
     rel = Relation()
@@ -77,21 +71,22 @@ def get_scheme_tree(
             return tree
         children = rel.subject_records("parent schemes", record.mscid)
         id_adder.add(children)
-        node: TreeNode = {
-            "name": record.name,
-            "url": url_for("main.display", table=record.table, number=record.doc_id),
-            "children": get_scheme_tree(
+        seen_so_far.add(record.mscid)
+        node = TreeNode(
+            uri=url_for("main.display", table=record.table, number=record.doc_id),
+            label=record.name,
+            children=get_scheme_tree(
                 children,
                 id_adder,
-                seen_so_far=seen_so_far + [record.mscid],
+                seen_so_far=seen_so_far,
             ),
-        }
+        )
         tree.append(node)
     return tree
 
 
-# List of standards
-# =================
+# List of main records
+# ====================
 @bp.route(
     '/<string:series>-index/<any("parent schemes", "supported schemes",'
     ' "input schemes", "output schemes", "endorsed schemes", maintainers,'
@@ -99,8 +94,10 @@ def get_scheme_tree(
 )
 @bp.route("/<string:series>-index")
 def record_index(series: str, role: RoleLabel | None = None):
-    """The contents template takes a 'tree' variable, which is a list of
-    dictionaries, each with keys 'name' (human-readable name) and 'url'
+    """Renders index pages for the main records.
+
+    The contents template takes a 'tree' variable, which is a list of
+    dictionaries, each with keys 'label' (human-readable name) and 'uri'
     (Catalog page URL). The dictionary represents a node and if the node has
     children, the dictionary has a 'children' key, the value of which is
     another tree.
@@ -114,11 +111,11 @@ def record_index(series: str, role: RoleLabel | None = None):
         heading = "metadata standards"
         records = Scheme.all()
 
-        # Get blacklist of child schemes
+        # Get blocklist of child schemes
         children = rel.subjects(predicate="parent schemes")
         children_seen = set()
 
-        # Assemble tree of records that are not on blacklist:
+        # Assemble tree of records that are not on blocklist:
         tree = get_scheme_tree(
             [record for record in records if record and record.mscid not in children],
             IDAdder(children_seen),
@@ -133,7 +130,7 @@ def record_index(series: str, role: RoleLabel | None = None):
                     IDAdder(),
                 )
             )
-            tree.sort(key=lambda d: d["name"].lower())
+            tree.sort(key=lambda d: d["label"].lower())
 
         return render_template("contents.html", title=f"Index of {heading}", tree=tree)
 
@@ -162,12 +159,12 @@ def record_index(series: str, role: RoleLabel | None = None):
                 records = [k for k in record_cls.all() if k]
             records.sort(key=lambda k: k.name)
             tree = [
-                {
-                    "name": record.name,
-                    "url": url_for(
+                TreeNode(
+                    uri=url_for(
                         "main.display", table=record.table, number=record.doc_id
                     ),
-                }
+                    label=record.name,
+                )
                 for record in records
                 if record
             ]
@@ -182,7 +179,19 @@ def record_index(series: str, role: RoleLabel | None = None):
 # =============
 @bp.route("/subject-index")
 def subject_index():
+    """Renders index page for subject search pages.
+
+    The contents template takes a 'tree' variable, which is a list of
+    dictionaries, each with keys 'label' (human-readable name) and 'uri'
+    (Catalog page URL). The dictionary represents a node and if the node has
+    children, the dictionary has a 'children' key, the value of which is
+    another tree.
+    """
+    current_app.logger.debug("Getting thesaurus...")
     th = get_thesaurus()
+    current_app.logger.debug("Getting used keywords...")
     keywords_used = Scheme.get_used_keywords()
+    current_app.logger.debug("Transforming to tree...")
     tree = th.get_tree(keywords_used)
+    current_app.logger.debug("Rendering page...")
     return render_template("contents.html", title="Index of subjects", tree=tree)

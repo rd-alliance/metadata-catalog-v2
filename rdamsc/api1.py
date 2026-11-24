@@ -3,8 +3,8 @@
 # Non-standard
 # ------------
 from flask import (
-    abort,
     Blueprint,
+    abort,
     jsonify,
     url_for,
 )
@@ -14,12 +14,12 @@ from flask_cors import cross_origin
 # -----
 from .records import (
     MainTableID,
-    Relation,
     Record,
+    Relation,
     Scheme,
     mscid_prefix,
 )
-from .vocab import get_thesaurus
+from .vocab import TreeNode, get_thesaurus
 
 bp = Blueprint("api", __name__)
 api_version = "1.0.0"
@@ -99,11 +99,11 @@ def embellish_record(record: Record, route: str = ".get_record"):
 
     # Translate keywords
     if "keywords" in record:
-        thes = get_thesaurus()
+        th = get_thesaurus()
         old_keywords = record["keywords"][:]
         record["keywords"] = list()
         for kw_url in old_keywords:
-            kw_label = thes.get_label(kw_url)
+            kw_label = th.get_label(kw_url)
             if kw_label:
                 record["keywords"].append(kw_label)
         record["keywords"].sort()
@@ -138,6 +138,20 @@ def embellish_record(record: Record, route: str = ".get_record"):
             record["versions"].append(vn)
 
     return record
+
+
+def rekey_trees(trees: list[TreeNode]) -> list[dict]:
+    """Renames keys in TreeNodes."""
+    output = []
+    for tree in trees:
+        rekeyed = {"url": tree["uri"], "name": tree["label"]}
+        if "children" not in tree:
+            continue
+        children = tree["children"]
+        if children := tree.get("children"):
+            rekeyed["children"] = rekey_trees(children)
+        output.append(rekeyed)
+    return output
 
 
 # Routes
@@ -184,4 +198,4 @@ def get_subject_tree():
     tree = th.get_tree(keywords_used)
 
     # Return result
-    return jsonify(tree)
+    return jsonify(rekey_trees(tree))

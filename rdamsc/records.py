@@ -2280,7 +2280,7 @@ class Scheme(Record):
         return vocabs
 
     @classmethod
-    def get_used_keywords(cls) -> list[str]:
+    def get_used_keywords(cls) -> set[str]:
         """Returns a deduplicated list of subject keywords (as URIs) in use in
         the database.
         """
@@ -2291,7 +2291,7 @@ class Scheme(Record):
             for kw in s["keywords"]:
                 keywords_used.add(kw)
 
-        return list(keywords_used)
+        return keywords_used
 
     def __init__(self, value: Mapping, doc_id: int):
         super().__init__(value, doc_id)

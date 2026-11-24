@@ -1008,7 +1008,7 @@ def get_inv_relation(table: MainTableID, number: int):
 @bp.route("/thesaurus")
 def get_thesaurus_scheme():
     """Returns SKOS record for MSC Thesaurus Scheme."""
-    th = Thesaurus()
+    th = get_thesaurus()
 
     return jsonify(as_thesaurus_item(th.as_jsonld))
 
@@ -1016,7 +1016,7 @@ def get_thesaurus_scheme():
 @bp.route("/thesaurus/<any(domain, subdomain, concept):level><int:number>")
 def get_thesaurus_concept(level: ThesaurusLevel, number: int):
     """Returns SKOS record for MSC Thesaurus Concept."""
-    th = Thesaurus()
+    th = get_thesaurus()
 
     # Get requested level of detail:
     form = request.values.get("form", "concept")
@@ -1033,7 +1033,7 @@ def get_thesaurus_concept(level: ThesaurusLevel, number: int):
 @bp.route("/thesaurus/concepts")
 def get_thesaurus_concepts():
     """Gets list of concepts from the MSC Thesaurus."""
-    th = Thesaurus()
+    th = get_thesaurus()
 
     # Get paging parameters
     start_raw = request.values.get("start")
@@ -1060,7 +1060,7 @@ def get_thesaurus_concepts():
 @bp.route("/thesaurus/concepts/used")
 def get_thesaurus_concepts_used():
     """Gets list of concepts from the MSC Thesaurus that are in use."""
-    th = Thesaurus()
+    th = get_thesaurus()
     used = Scheme.get_used_keywords()
 
     entries = [entry for entry in th.entries if entry.get("uri") in used]

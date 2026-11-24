@@ -3,7 +3,7 @@
 # Standard
 # --------
 import os
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from typing import (
     Any,
     Literal,
@@ -42,7 +42,7 @@ class Term(TypedDict):
 
 
 class TreeNode(TypedDict):
-    uri: URIRef
+    uri: URIRef | str
     label: str
     children: NotRequired[list["TreeNode"]]
 
@@ -231,11 +231,11 @@ class Thesaurus(object):
             tree.sort(key=lambda k: k["uri"])
         return tree
 
-    def _child_uris(self, tree: TreeNode) -> list[str]:
-        """Given a tree (URI, label, list of trees), returns a list of URIs of
+    def _child_uris(self, tree: TreeNode | Document) -> list[str]:
+        """Given a TreeNode (as dict or Document), returns a list of URIs of
         all child terms."""
-        uris = list()
-        for child in tree.get("children", list()):
+        uris = []
+        for child in tree.get("children", []):
             uris.append(child["uri"])
             uris.extend(
                 self._child_cache.setdefault(child["uri"], self._child_uris(child))
@@ -245,33 +245,27 @@ class Thesaurus(object):
     def _lookup_child_uris(self, route: MutableSequence[str]) -> list[str]:
         """Given a sequence of URIs (a term, followed by each progressively
         broader ancestor), returns a list of URIs of all child terms."""
-        uris = list()
-
         # Get domain tree
         domain_uri = route.pop()
         tree = self.trees.get(Query().uri == domain_uri)
-        if not isinstance(tree, Document):  # pragma: no cover
-            return uris
+        if tree is None:  # pragma: no cover
+            return []
 
         # Traverse down to current term
         while route:
-            children = tree.get("children", list())
+            children: list[TreeNode] = tree.get("children", list())
             if not children:  # pragma: no cover
-                return uris
+                return []
             child_uri = route.pop()
             for child in children:
                 if child["uri"] == child_uri:
                     tree = child
                     break
+            else:  # pragma: no cover
+                return []
 
         # Tree now starts from current entry
-        for child in tree.get("children", list()):
-            uris.append(child["uri"])
-            uris.extend(
-                self._child_cache.setdefault(child["uri"], self._child_uris(child))
-            )
-
-        return uris
+        return self._child_cache.setdefault(tree["uri"], self._child_uris(tree))
 
     def get_branch(
         self, term: str, broader: bool = True, narrower: bool = True
@@ -489,38 +483,27 @@ class Thesaurus(object):
         """Returns all long labels in the thesaurus."""
         return [kw["long_label"] for kw in self.entries]
 
-    def get_tree(
-        self, filter: list[str], master: list | None = None
-    ) -> list[Mapping[str, str | list]]:
+    def get_tree(self, filter: set[str], master: list | None = None) -> list[TreeNode]:
         """Takes a list of term URIs, and returns the corresponding terms in
-        tree form, specifically as a list of dictionaries suitable for use with
-        the contents template: 'url' holds the URL of the term's search result
-        in the Catalog (not its ID URI), 'name' holds its preferred label in
-        English, and (if applicable) 'children' holds a list of dictionaries
-        corresponding to immediately narrower terms in the thesaurus.
+        a list of TreeNodes. As this is intended for the use with the contents
+        template, the returned 'uri' holds the URL of the term's search result
+        in the Catalog rather than its ID URI.
         """
         tree = list()
         if master is None:
             # First call -- start at top of tree:
             master = self.tree
-            # Add ancestor terms to whitelist:
-            kw_branches_used = set()
-            for kw in filter:
-                if kw in kw_branches_used:
-                    continue
-                kw_branches_used.update(self.get_branch(kw, narrower=False))
-            filter = list(kw_branches_used)
 
         for entry in master:
-            # For cosmetic reasons, escape slashes in labels:
-            url = url_for_subject(entry["label"])
-            if str(entry["uri"]) in filter:
-                node = {"url": url, "name": entry["label"]}
-                all_children = entry.get("children")
-                if all_children:
-                    children = self.get_tree(filter, all_children)
-                    if children:
-                        node["children"] = children
+            children = (
+                self.get_tree(filter, all_children)
+                if (all_children := entry.get("children"))
+                else []
+            )
+            if entry["uri"] in filter or children:
+                # For cosmetic reasons, escape slashes in labels:
+                url = url_for_subject(entry["label"])
+                node = TreeNode(uri=url, label=entry["label"], children=children)
                 tree.append(node)
         return tree
 
